@@ -18,7 +18,7 @@ O **Congresso Monogâmico** é uma viagem recorrente de 4 dias entre amigos, e a
 
 O humor fica implícito; o app deve parecer profissional.
 
-**Dono do projeto:** Bruno (GitHub `9brunosoares`). Organizadores e ADMs: **Bruno, Igor Baptista e Gabriel Bim**.
+**Dono do projeto:** Bruno (GitHub `9brunosoares`). Organizadores e ADMs: **Bruno, Igor e Pig**.
 
 ## 2. Estado atual: protótipo funcional, sem backend
 
@@ -28,24 +28,28 @@ Está tudo em **`index.html`**, num arquivo único: HTML, CSS e JavaScript puro,
 - **O login é falso:** escolhe-se a foto e digita-se qualquer PIN.
 - **Os dados de exemplo são fictícios:** datas de 19 a 22/11/2026, programação, gastos, pontos e denúncias.
 - **Há um relógio de demonstração** que começa na sexta, 20/11, às 15:40, para a contagem regressiva fazer sentido. Um botão no topo alterna para o relógio real.
-- **As fotos dos participantes estão embutidas em base64** na constante `PH` do `index.html`. Elas também estão em arquivos separados na pasta `img/`, com nome igual ao `id` de cada pessoa. Ao migrar, prefira os arquivos e tire o base64, que deixa o HTML pesado.
+- **Fotos externas:** carregadas de `img/<id>.jpg`, sem base64. Se o arquivo faltar, o avatar mostra a inicial do apelido.
 
-### Participantes (`PEOPLE`, `id` → nome exibido)
-| id | Nome | ADM |
-|---|---|---|
-| bruno | Bruno | sim |
-| caio | Caio Carvalho | |
-| luan | Luan | |
-| carlos | Carlos Eduardo | |
-| gabriel | Gabriel Bim | sim |
-| guiob | Gui OB | |
-| igor | Igor Baptista | sim |
-| rafa | Rafa Sarjani | |
-| rafael | Rafael Gherardi | |
-| thiago | Thiago Nanu | |
-| thiaga | Thiaga | |
-| guilherme | Guilherme | |
-| diogo | Diogo Antunes | |
+### Participantes (`PEOPLE`, lista oficial do XVI Congresso)
+
+Usar apenas `nick` (apelido); não há campo de nome completo. O `id` é o apelido em minúsculas e sem acento.
+
+| id | Apelido | Foto | ADM |
+|---|---|---|---|
+| bruno | Bruno | `img/bruno.jpg` | sim |
+| ob | OB | `img/ob.jpg` |  |
+| luan | Luan | `img/luan.jpg` |  |
+| igor | Igor | `img/igor.jpg` | sim |
+| pig | Pig | `img/pig.jpg` | sim |
+| pelado | Pelado | `img/pelado.jpg` |  |
+| kirk | Kirk | `img/kirk.jpg` (pendente) |  |
+| gherardi | Gherardi | `img/gherardi.jpg` |  |
+| nanu | Nanu | `img/nanu.jpg` |  |
+| sadano | Sadano | `img/sadano.jpg` (pendente) |  |
+| ibrahim | Ibrahim | `img/ibrahim.jpg` (pendente) |  |
+| cadu | Cadu | `img/cadu.jpg` |  |
+| diogo | Diogo | `img/diogo.jpg` |  |
+| felipe | Felipe | `img/felipe.jpg` (pendente) |  |
 
 ### Estrutura do estado local (objeto `S`), base para o modelo do Firestore
 - `me`: id do usuário logado.
@@ -84,12 +88,12 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - `manifest.webmanifest`: nome "XVI Congresso Monogâmico", nome curto "Congresso", `display: standalone`.
 - `icon-1024.png`, `icon-512.png`, `icon-192.png`, `apple-touch-icon.png` (180) e `favicon.png`.
 - `robots.txt` (`Disallow: /`) e a meta `noindex`: o Bruno quer o site público, mas fora dos buscadores.
-- `img/*.jpg`: as 13 fotos de perfil, 160×160.
+- `img/*.jpg`: 10 fotos de perfil, 160×160; as fotos de Kirk, Sadano, Ibrahim e Felipe serão enviadas depois. Até lá, exibir a inicial.
 
 ## 5. Repositório e hospedagem
 
-- O repositório **`9brunosoares/congresso-monogamico`** existe, é público e **está vazio**. Nada foi enviado ainda, porque o Claude não tinha permissão de escrita.
-- O destino é o **GitHub Pages**, a partir da branch `main` e da pasta raiz. A URL esperada é `https://9brunosoares.github.io/congresso-monogamico/`.
+- O repositório **`9brunosoares/congresso-monogamico`** existe, é público e **contém o protótipo na branch `main`**.
+- A hospedagem está configurada no **GitHub Pages**, a partir da branch `main` e da pasta raiz. A URL esperada é `https://9brunosoares.github.io/congresso-monogamico/`.
 - No iPhone, o app é instalado pelo Safari: Compartilhar → Adicionar à Tela de Início.
 
 ## 6. Próximos passos (decisão tomada: GitHub Pages + Firebase)
@@ -102,7 +106,7 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
    - As contas são criadas pelos ADMs ou por script.
    - O papel de ADM fica num documento `admins/{uid}`, checado nas rules com `exists()`. Assim não é preciso Admin SDK nem custom claims.
 4. **Modelo do Firestore (sugestão):**
-   - `people/{id}`: nome, foto e `uid`.
+   - `people/{id}`: apelido (`nick`), foto e `uid`. Sem nome completo.
    - `agenda/{sessionId}`.
    - `points/{autoId}` e `expenses/{autoId}`. Gravação para participantes; edição e exclusão só para ADM.
    - `settings/main`: orçamento e categorias.
@@ -116,6 +120,12 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 5. **Anonimato:** os participantes não podem ver o autor de nenhuma mensagem nem de nenhum voto. O Bruno já sabe da ressalva: quem administra o projeto poderia, em tese, mudar o código. Não prometer sigilo absoluto.
 6. **Opcional:** notificação ("sessão em 15 min") via Firebase Cloud Messaging. Funciona em PWA no iOS 16.4+ instalado na tela inicial.
 7. **Conteúdo real:** substituir os dados de exemplo por datas, programação, pontuações e orçamento reais, a pedir ao Bruno. Remover o relógio de demonstração antes da viagem, ou deixá-lo só para ADM.
+
+## Atualização da lista oficial
+
+- 14 participantes; ADMs: Bruno, Igor e Pig. Usar somente apelidos em todas as telas.
+- Estado local com `rosterVersion: 2`: migra IDs antigos dos participantes que continuam, remove registros de participantes fora da lista e atualiza rateios antigos de todos para os 14 atuais.
+- Fotos antigas dos participantes que saíram foram removidas; não há fotos em base64.
 
 ## 7. Como trabalhar com o Bruno
 
