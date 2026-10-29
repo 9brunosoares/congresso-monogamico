@@ -4,10 +4,10 @@ Documento de contexto para o próximo agente (Codex). Leia tudo antes de mexer n
 
 ## 1. O projeto
 
-O **Congresso Monogâmico** é uma viagem recorrente de 4 dias entre amigos, e a próxima é a 16ª ("XVI"). O app é um web app (PWA) que cada participante instala na tela inicial do iPhone. Ele precisa oferecer:
+O **Congresso Monogâmico** é uma viagem recorrente entre amigos, de quarta à noite até domingo de manhã, e a próxima é a 16ª ("XVI"). O app é um web app (PWA) que cada participante instala na tela inicial do iPhone. Ele precisa oferecer:
 
 - **Login individual:** cada congressista tem o seu.
-- **Programação dos 4 dias:** próxima sessão, contagem regressiva e se ela exige preparação.
+- **Programação de quarta a domingo:** próxima sessão, contagem regressiva e se ela exige preparação.
 - **Divisão de gastos estilo Splitwise:** quem pagou o quê, saldos e "quem paga quem" com o mínimo de transferências.
 - **Orçamento do congresso:** total e por categoria.
 - **Perfil ADM** para os organizadores.
@@ -29,7 +29,7 @@ O humor fica implícito; o app deve parecer profissional.
 - **Login real:** foto + PIN de 6 dígitos. Primeiro acesso cria a conta `<id>@congresso.app`, vincula o `uid` ao perfil previamente cadastrado e cria `admins/{uid}` somente para Bruno, Igor e Pig. O vínculo não pode ser transferido por clientes. Sessão persistida pelo Firebase Auth; PIN não é salvo no código nem no estado do app.
 - O primeiro registro reserva o apelido. Este fluxo foi escolhido para o grupo de amigos; não é uma verificação externa de identidade. Não generalizar esse cadastro para um serviço aberto sem convite/verificação.
 - **Dados compartilhados:** Firestore com `onSnapshot`, escritas por documento e transações para julgamentos e votação; sem sincronizar o objeto inteiro nem importar automaticamente o antigo `localStorage`.
-- **Coleções operacionais começam vazias:** pontos, gastos, tarefas, denúncias, mensagens e votos. `agenda-data.js` preserva apenas a programação provisória de 19 a 22/11/2026; orçamento inicial provisório R$ 12.000.
+- **Coleções operacionais começam vazias:** pontos, gastos, tarefas, denúncias, mensagens e votos. `agenda-data.js` preserva apenas a programação provisória de 18 a 22/11/2026; orçamento inicial provisório R$ 12.000.
 - Relógio real por padrão. Somente ADM vê a alternância para demonstração; a votação sempre usa a data real de São Paulo.
 - Fotos externas em `img/<id>.jpg`, com inicial se o arquivo não carregar. Sem base64.
 
@@ -112,11 +112,16 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Instalar ferramentas de desenvolvimento: `pnpm install`. O site não precisa de build e não depende de Node em produção.
 - `node scripts/setup-firebase.cjs`: inicialização idempotente com a sessão existente do Firebase CLI; não sobrescreve perfis/agenda/orçamento já existentes. Faz cópia local das regras anteriores em `.private/` e valida as novas pelo tooling MCP oficial incluído no Firebase CLI.
 - Publicar regras: `npx -y firebase-tools@latest deploy --only firestore:rules,firestore:indexes,auth --project congresso-monogamico --non-interactive`.
+- Atualizar a agenda aprovada: `node scripts/sync-agenda.cjs --apply` substitui somente a coleção `agenda` a partir de `agenda-data.js`, com backup em `.private/`. Sem `--apply`, apenas mostra as quantidades. Não usar sem pedido explícito para substituir a programação.
 - Publicar front-end: commit/push em `main`; GitHub Pages usa a raiz. Domínio `9brunosoares.github.io` autorizado no Firebase Auth.
 - Testes locais (sete cenários): `node --test tests/*.test.js`. Diagnóstico de regras sem gravações: `node scripts/test-rules.cjs` (nove cenários com data e documentos simulados, usando o texto exato das regras; complementado pelo teste real do backend).
 - Teste integrado: `node scripts/verify-firebase.cjs`. **Somente antes de os apelidos Bruno, OB e Luan terem sido cadastrados por pessoas reais**: recusa perfis/contas já usados. Cria contas e registros temporários, usa o backend real em sessões separadas, verifica permissões e limpa somente seus próprios dados no `finally`. Não executar sobre votos reais do dia.
 - Scripts administrativos usam a autenticação local do CLI em memória; não geram chaves de serviço nem imprimem tokens. `.private/`, logs, `.env*` e `node_modules/` estão ignorados pelo Git.
-- Conteúdo real pendente do Bruno: datas, programação e orçamento definitivos. Não inventar.
+- Datas informadas: chegada quarta à noite, 18/11/2026; quinta de home office; feriado sexta 20/11; retorno domingo 22/11 pela manhã.
+- Programação provisória: quinta pizza e jogos de tabuleiro; sexta circuito e Quiz dos especialistas; sábado guerra de bexiga e lona, mais retrospectiva individual com objeto pessoal à noite; domingo Oscar do Congresso e volta para São Paulo.
+- Café da manhã, almoço e janta cadastrados nos cinco dias. Quarta café/almoço indicados antes da chegada; domingo almoço/janta indicados após a saída, sem encontro coletivo definido. Horários são sugestões, não foram confirmados pelo Bruno.
+- Orçamento definitivo e horários ainda pendentes. Não inventar valores ou horários como se fossem confirmados.
+- Fase de testes até a divulgação perto da viagem: Bruno pode pedir limpeza. Não apagar registros agora nem automaticamente; quando solicitado, manter contas/PINs e programação salvo pedido diferente. Chat e votos não podem ser filtrados por autor, pois são anônimos; limpar essas áreas por dia ou integralmente, conforme o pedido.
 - FCM/notificações são opcionais e não foram ativadas.
 - Anonimato: o app não guarda autor nas mensagens nem ligação entre votante e emojis. Não prometer sigilo absoluto contra administradores de infraestrutura, que podem alterar código/regras e observar tráfego/eventos.
 

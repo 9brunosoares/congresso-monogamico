@@ -248,12 +248,13 @@ import * as backend from './backend.js';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
-// Datas de exemplo: Qui 19 a Dom 22 de novembro de 2026
+// Viagem: quarta 18 à noite até domingo 22/11/2026 pela manhã.
 const DAYS = [
-  {d:19, wd:"Qui", title:"Abertura"},
-  {d:20, wd:"Sex", title:"Plenário"},
-  {d:21, wd:"Sáb", title:"Tribunal"},
-  {d:22, wd:"Dom", title:"Encerramento"},
+  {d:18, wd:"Qua", title:"Chegadas"},
+  {d:19, wd:"Qui", title:"Home office"},
+  {d:20, wd:"Sex", title:"Circuito"},
+  {d:21, wd:"Sáb", title:"Bexiga e lona"},
+  {d:22, wd:"Dom", title:"Retorno"},
 ];
 const AGENDA = [];
 
@@ -318,7 +319,7 @@ function settle(){
 }
 
 /* ===================== TELAS ===================== */
-let tab = "inicio", day = 20, contasSeg = "despesas", fofocaSeg = "chat", qDraft = {};
+let tab = "inicio", day = 18, contasSeg = "despesas", fofocaSeg = "chat", qDraft = {};
 try{ tab = localStorage.getItem("xvi-tab") || "inicio"; }catch(e){}
 
 async function act(button,run){
@@ -417,6 +418,7 @@ function viewPrograma(){
   const t=now();
   const items = AGENDA.filter(a=>a.d===day);
   return `
+  <p class="muted" style="font-size:13px">Programação provisória de 18 a 22/11/2026. Horários sugeridos, sujeitos a ajuste.</p>
   <div class="days" role="tablist">${DAYS.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
   <div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
   <div class="card" style="padding-block:4px">${items.map(a=>{

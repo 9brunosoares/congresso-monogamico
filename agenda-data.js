@@ -1,19 +1,246 @@
+// Programação provisória informada pelo Bruno. Horários sugeridos, a confirmar.
 export const INITIAL_AGENDA = [
-  {d:19,t:"18:00",title:"Credenciamento e check-in",place:"Casa",prep:"Documento com foto e Pix da sua parte da casa"},
-  {d:19,t:"20:00",title:"Sessão solene de abertura",place:"Varanda",note:"Discurso do presidente e leitura do Regimento Monogâmico"},
-  {d:19,t:"21:30",title:"Jantar de boas-vindas",place:"Cozinha",prep:"Equipe 1 cozinha, equipe 2 lava"},
-  {d:19,t:"23:00",title:"Quiz: conhece o casal?",place:"Sala",pts:20,note:"Dupla vencedora leva 20 pontos cada"},
-  {d:20,t:"10:00",title:"Café coletivo",place:"Cozinha",pts:5,note:"Quem lavar a louça ganha 5"},
-  {d:20,t:"12:00",title:"Gincana aquática",place:"Piscina",pts:15,prep:"Sunga, protetor solar e boia se tiver"},
-  {d:20,t:"16:00",title:"Torneio de truco",place:"Mesa da varanda",pts:20,prep:"Duplas sorteadas às 15:30. Traga seu baralho da sorte"},
-  {d:20,t:"20:00",title:"Churrasco do plenário",place:"Área da churrasqueira"},
-  {d:20,t:"22:30",title:"Festa Plenário Neon",place:"Sala",pts:10,prep:"Look neon obrigatório. Sem neon, menos 5"},
-  {d:21,t:"10:30",title:"Trilha até a cachoeira",place:"Saída do portão",pts:10,prep:"Tênis, água e repelente"},
-  {d:21,t:"15:00",title:"Tribunal da Monogamia",place:"Varanda",note:"Julgamento das denúncias do Mural da Vergonha"},
-  {d:21,t:"17:00",title:"Assembleia de pautas da casa",place:"Sala"},
-  {d:21,t:"21:00",title:"Jantar de gala",place:"Mesa grande",prep:"Traje esporte fino"},
-  {d:21,t:"23:30",title:"Karaokê",place:"Sala",pts:15,note:"Júri popular vota a melhor performance"},
-  {d:22,t:"11:00",title:"Brunch e premiação",place:"Varanda",note:"Entrega da faixa de Congressista do Ano"},
-  {d:22,t:"13:00",title:"Faxina geral",place:"Casa toda",pts:10,note:"10 pontos para cada um que participar"},
-  {d:22,t:"15:00",title:"Check-out e acerto de contas",place:"Casa",prep:"Pix na mão: o app mostra quem paga quem"},
+  {
+    "d": 18,
+    "t": "08:00",
+    "title": "Café da manhã",
+    "place": "Antes da viagem",
+    "prep": "",
+    "note": "Antes da chegada à casa; sem encontro coletivo previsto.",
+    "pts": 0
+  },
+  {
+    "d": 18,
+    "t": "12:30",
+    "title": "Almoço",
+    "place": "Antes da viagem",
+    "prep": "",
+    "note": "Antes da chegada à casa; sem encontro coletivo previsto.",
+    "pts": 0
+  },
+  {
+    "d": 18,
+    "t": "20:00",
+    "title": "Chegada dos primeiros congressistas",
+    "place": "Casa",
+    "prep": "",
+    "note": "Chegada na quarta à noite, conforme a disponibilidade de cada um.",
+    "pts": 0
+  },
+  {
+    "d": 18,
+    "t": "20:30",
+    "title": "Janta de chegada",
+    "place": "Casa",
+    "prep": "",
+    "note": "Para quem já estiver na casa.",
+    "pts": 0
+  },
+  {
+    "d": 19,
+    "t": "08:00",
+    "title": "Café da manhã",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 19,
+    "t": "09:00",
+    "title": "Home office — manhã",
+    "place": "Casa",
+    "prep": "Notebook, carregador e o que você precisar para trabalhar.",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 19,
+    "t": "12:30",
+    "title": "Almoço",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 19,
+    "t": "14:00",
+    "title": "Home office — tarde",
+    "place": "Casa",
+    "prep": "Notebook e carregador.",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 19,
+    "t": "19:30",
+    "title": "Janta — noite da pizza",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 19,
+    "t": "21:00",
+    "title": "Jogos de tabuleiro",
+    "place": "Casa",
+    "prep": "Leve os jogos que quiser compartilhar.",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 20,
+    "t": "08:30",
+    "title": "Café da manhã",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 20,
+    "t": "10:00",
+    "title": "Circuito",
+    "place": "Casa",
+    "prep": "",
+    "note": "Atividade diurna; formato a definir.",
+    "pts": 0
+  },
+  {
+    "d": 20,
+    "t": "12:30",
+    "title": "Almoço",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 20,
+    "t": "14:00",
+    "title": "Circuito — continuação",
+    "place": "Casa",
+    "prep": "",
+    "note": "Atividade diurna; formato a definir.",
+    "pts": 0
+  },
+  {
+    "d": 20,
+    "t": "19:30",
+    "title": "Janta",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 20,
+    "t": "21:00",
+    "title": "Quiz dos especialistas",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 21,
+    "t": "08:30",
+    "title": "Café da manhã",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 21,
+    "t": "10:00",
+    "title": "Guerra de bexiga",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 21,
+    "t": "12:30",
+    "title": "Almoço",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 21,
+    "t": "14:00",
+    "title": "Lona",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 21,
+    "t": "19:30",
+    "title": "Janta",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 21,
+    "t": "21:00",
+    "title": "Retrospectiva individual com objeto pessoal",
+    "place": "Casa",
+    "prep": "Leve um objeto pessoal para apresentar na sua retrospectiva.",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 22,
+    "t": "07:30",
+    "title": "Café da manhã",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 22,
+    "t": "08:30",
+    "title": "Oscar do Congresso",
+    "place": "Casa",
+    "prep": "",
+    "note": "",
+    "pts": 0
+  },
+  {
+    "d": 22,
+    "t": "09:30",
+    "title": "Volta para São Paulo",
+    "place": "Casa",
+    "prep": "",
+    "note": "Saída da casa no domingo de manhã; horário a confirmar.",
+    "pts": 0
+  },
+  {
+    "d": 22,
+    "t": "12:30",
+    "title": "Almoço",
+    "place": "São Paulo / retorno",
+    "prep": "",
+    "note": "Após a saída da casa; refeição no trajeto ou em São Paulo, sem encontro coletivo definido.",
+    "pts": 0
+  },
+  {
+    "d": 22,
+    "t": "19:30",
+    "title": "Janta",
+    "place": "São Paulo",
+    "prep": "",
+    "note": "Após o retorno; sem encontro coletivo definido.",
+    "pts": 0
+  }
 ];
