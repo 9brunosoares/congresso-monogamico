@@ -1,0 +1,190 @@
+rules_version = '2';
+// Modelos: people/{id}: nick string<=30, photo string<=80, uid string<=128 ou null,
+// admin bool (campos de identidade imutáveis, salvo primeiro vínculo de uid).
+// admins/{uid}: id oficial string<=20; criado apenas no primeiro vínculo de ADM.
+// settings/main: budget number 0..1000000.
+// agenda/{id}: d int19..22, t HH:mm, title<=120, place<=100, pts int0..100,
+// prep<=500, note<=500, start/end epoch millis (sessão de até 24h).
+// points/{id}: who oficial, d int -100..100, why<=200, kind aux|jogo|inf,
+// at<=40, createdAt timestamp imutável. Apenas ADMs escrevem pontos.
+// expenses/{id}: title<=120, cat enum, amount number 0..1000000, payer oficial,
+// split lista de 1..14 IDs oficiais únicos, at<=40, createdAt timestamp imutável.
+// cases/{id}: who/by oficiais, what<=500, status pend|ok, at<=40,
+// createdAt imutável; somente ADM julga ou exclui.
+// tasks/{id}: who oficial, d int1..20, why<=200, status pend|ok|no,
+// at<=40, createdAt imutável; participante envia a própria tarefa; ADM aprova.
+// chat/{id}: SOMENTE text string1..280 e createdAt timestamp. Sem autor/uid.
+// querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
+// Cada valor é um número inteiro0..3722304989 com oito totais em base16.
+// Cada dígito armazena o total de um emoji (ordem fixa no roster.js), máximo13.
+// Não preserva a ordem dos votos nem ligação entre autor e escolha.
+// Contadores e marcador são atualizados na mesma transação (dois documentos).
+// querido/{diaSP}/voters/{uid}: SOMENTE voted:true. Somente o próprio lê.
+// DiaSP é o número inteiro de dias desde epoch, descontando UTC-3.
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function ids() { return ['bruno', 'ob', 'luan', 'igor', 'pig', 'pelado', 'kirk', 'gherardi', 'nanu', 'sadano', 'ibrahim', 'cadu', 'diogo', 'felipe']; }
+  function isAuthenticated() { return request.auth != null; }
+  function isOwner(uid) { return isAuthenticated() && request.auth.uid == uid; }
+  function personId() { return request.auth.token.email.split('@')[0]; }
+  function isKnownAccount() { return isAuthenticated() && personId() in ids() && request.auth.token.email == personId() + '@congresso.app'; }
+  function profilePath() { return /databases/$(database)/documents/people/$(personId()); }
+  // UID só é vinculado pelo cadastro oficial; a posse desse UID define a participação.
+  function isMember() { return isAuthenticated() && get(profilePath()).data.uid == request.auth.uid; }
+  function isAdmin() { return isMember() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+  function uidUnchanged() { return request.resource.data.uid == request.auth.uid; }
+  function uidNotModified(before,after) { return !after.keys().hasAny(['uid']) || before.uid == after.uid; }
+  function text(v,max) { return v is string && v.size() > 0 && v.size() <= max; }
+  function optionalText(v,max) { return v is string && v.size() <= max; }
+  function only(d,fields) { return d.keys().hasAll(fields) && d.keys().hasOnly(fields); }
+  function fresh(d) { return d.createdAt is timestamp && d.createdAt == request.time; }
+  function sameCreation() { return request.resource.data.createdAt == resource.data.createdAt && uidNotModified(resource.data,request.resource.data); }
+  function isValidPerson(d,id) {
+   return only(d,['nick','photo','uid','admin']) && id in ids() && text(d.nick,30)
+    && d.photo == 'img/' + id + '.jpg' && d.uid is string && d.uid.size() <= 128 && d.admin is bool;
+  }
+  match /people/{id} {
+   allow get: if isMember() || (isKnownAccount() && personId() == id);
+   allow list: if isMember();
+   allow create, delete: if false;
+   allow update: if isKnownAccount() && personId() == id && resource.data.uid == null
+    && uidUnchanged() && isValidPerson(request.resource.data,id)
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid']);
+  }
+  match /admins/{uid} {
+   allow get: if isOwner(uid) && isKnownAccount();
+   allow list, update, delete: if false;
+   allow create: if isOwner(uid) && isKnownAccount()
+    && only(request.resource.data,['id']) && request.resource.data.id == personId()
+    && get(profilePath()).data.uid == null && get(profilePath()).data.admin == true
+    && getAfter(profilePath()).data.uid == uid;
+  }
+  function isValidSettings(d) { return only(d,['budget']) && d.budget is number && d.budget >= 0 && d.budget <= 1000000; }
+  match /settings/{id} {
+   allow read: if isMember();
+   allow create, update: if id == 'main' && isAdmin() && isValidSettings(request.resource.data);
+   allow delete: if false;
+  }
+  function isValidAgenda(d) {
+   return only(d,['d','t','title','place','pts','prep','note','start','end'])
+    && d.d is int && d.d >= 19 && d.d <= 22 && d.t is string && d.t.matches('([01][0-9]|2[0-3]):[0-5][0-9]')
+    && text(d.title,120) && optionalText(d.place,100) && optionalText(d.prep,500) && optionalText(d.note,500)
+    && d.pts is int && d.pts >= 0 && d.pts <= 100
+    && d.start is number && d.start > 0 && d.start < 4102444800000
+    && d.end is number && d.end > d.start && d.end <= d.start + 86400000;
+  }
+  match /agenda/{id} {
+   allow read: if isMember();
+   allow create, update: if isAdmin() && isValidAgenda(request.resource.data);
+   allow delete: if isAdmin();
+  }
+  function isValidPoint(d) {
+   return only(d,['who','d','why','kind','at','createdAt']) && d.who in ids()
+    && d.d is int && d.d != 0 && d.d >= -100 && d.d <= 100
+    && text(d.why,200) && d.kind in ['aux','jogo','inf'] && text(d.at,40) && d.createdAt is timestamp;
+  }
+  match /points/{id} {
+   allow read: if isMember();
+   allow create: if isAdmin() && isValidPoint(request.resource.data) && fresh(request.resource.data);
+   allow update: if isAdmin() && isValidPoint(request.resource.data) && sameCreation();
+   allow delete: if isAdmin();
+  }
+  function isValidExpense(d) {
+   return only(d,['title','cat','amount','payer','split','at','createdAt']) && text(d.title,120)
+    && d.cat in ['casa','mercado','bebida','transporte','atividades']
+    && d.amount is number && d.amount > 0 && d.amount <= 1000000 && d.payer in ids()
+    && d.split is list && d.split.size() > 0 && d.split.size() <= 14
+    && d.split.toSet().size() == d.split.size() && d.split.hasOnly(ids()) && text(d.at,40) && d.createdAt is timestamp;
+  }
+  match /expenses/{id} {
+   allow read: if isMember();
+   allow create: if isMember() && isValidExpense(request.resource.data) && fresh(request.resource.data);
+   allow update: if isAdmin() && isValidExpense(request.resource.data) && sameCreation();
+   allow delete: if isAdmin();
+  }
+  function isValidCase(d) {
+   return only(d,['who','by','what','status','at','createdAt']) && d.who in ids() && d.by in ids()
+    && d.who != d.by && text(d.what,500) && d.status in ['pend','ok'] && text(d.at,40) && d.createdAt is timestamp;
+  }
+  match /cases/{id} {
+   allow read: if isMember();
+   allow create: if isMember() && isValidCase(request.resource.data) && fresh(request.resource.data)
+    && request.resource.data.by == personId() && request.resource.data.status == 'pend';
+   allow update: if isAdmin() && isValidCase(request.resource.data) && sameCreation()
+    && resource.data.status == 'pend' && request.resource.data.status == 'ok'
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+   allow delete: if isAdmin();
+  }
+  function isValidTask(d) {
+   return only(d,['who','d','why','status','at','createdAt']) && d.who in ids()
+    && d.d is int && d.d >= 1 && d.d <= 20 && text(d.why,200)
+    && d.status in ['pend','ok','no'] && text(d.at,40) && d.createdAt is timestamp;
+  }
+  match /tasks/{id} {
+   allow read: if isMember();
+   allow create: if isMember() && isValidTask(request.resource.data) && fresh(request.resource.data)
+    && request.resource.data.who == personId() && request.resource.data.status == 'pend';
+   allow update: if isAdmin() && isValidTask(request.resource.data) && sameCreation()
+    && resource.data.status == 'pend' && request.resource.data.status in ['ok','no']
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+   allow delete: if isAdmin();
+  }
+  function isValidChat(d) { return only(d,['text','createdAt']) && text(d.text,280) && d.createdAt is timestamp; }
+  match /chat/{id} {
+   allow read: if isMember();
+   allow create: if isMember() && isValidChat(request.resource.data) && fresh(request.resource.data);
+   allow update: if false;
+   allow delete: if isAdmin();
+  }
+  function isToday(day) { return day == string(int((request.time.toMillis() - 10800000) / 86400000)); }
+  // A subtração só aceita números; delta enumerado garante um único incremento.
+  // A partir de zero, com 14 votantes e sem voto próprio, cada dígito tem máximo13.
+  function isValidTallyDelta(delta,self,increments) { return self ? delta == 0 : delta in increments; }
+  function isValidVoteDay(d,old,day) {
+   let me=personId();
+   let before=old.counts;
+   let after=d.counts;
+   let official=ids();
+   let increments=[1,16,256,4096,65536,1048576,16777216,268435456];
+   return isToday(day) && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= 14
+    && d.counts is map && after.keys().hasAll(official) && after.keys().hasOnly(official)
+    && isValidTallyDelta(after['bruno']-before.get('bruno',0),'bruno'==me,increments)
+    && isValidTallyDelta(after['ob']-before.get('ob',0),'ob'==me,increments)
+    && isValidTallyDelta(after['luan']-before.get('luan',0),'luan'==me,increments)
+    && isValidTallyDelta(after['igor']-before.get('igor',0),'igor'==me,increments)
+    && isValidTallyDelta(after['pig']-before.get('pig',0),'pig'==me,increments)
+    && isValidTallyDelta(after['pelado']-before.get('pelado',0),'pelado'==me,increments)
+    && isValidTallyDelta(after['kirk']-before.get('kirk',0),'kirk'==me,increments)
+    && isValidTallyDelta(after['gherardi']-before.get('gherardi',0),'gherardi'==me,increments)
+    && isValidTallyDelta(after['nanu']-before.get('nanu',0),'nanu'==me,increments)
+    && isValidTallyDelta(after['sadano']-before.get('sadano',0),'sadano'==me,increments)
+    && isValidTallyDelta(after['ibrahim']-before.get('ibrahim',0),'ibrahim'==me,increments)
+    && isValidTallyDelta(after['cadu']-before.get('cadu',0),'cadu'==me,increments)
+    && isValidTallyDelta(after['diogo']-before.get('diogo',0),'diogo'==me,increments)
+    && isValidTallyDelta(after['felipe']-before.get('felipe',0),'felipe'==me,increments);
+  }
+  function emptyDay() { return {'counts':{},'voters':0}; }
+  function previousVoters(day) {
+   let path=/databases/$(database)/documents/querido/$(day);
+   return exists(path) ? get(path).data.voters : 0;
+  }
+  function newVoter(day) {
+   let path=/databases/$(database)/documents/querido/$(day)/voters/$(request.auth.uid);
+   return !exists(path) && getAfter(path).data == {'voted':true};
+  }
+  match /querido/{day} {
+   allow get: if isMember();
+   allow list, delete: if false;
+   allow create, update: if isMember() && newVoter(day)
+    && isValidVoteDay(request.resource.data,request.method == 'create' ? emptyDay() : resource.data,day);
+   match /voters/{uid} {
+    allow get: if isMember() && isOwner(uid);
+    allow list, update, delete: if false;
+    // O avanço do pai, obrigatório aqui, valida o membro, o dia e todos os contadores.
+    allow create: if isOwner(uid) && request.resource.data == {'voted':true}
+     && getAfter(/databases/$(database)/documents/querido/$(day)).data.voters == previousVoters(day) + 1;
+   }
+  }
+  match /{document=**} { allow read, write: if false; }
+ }
+}

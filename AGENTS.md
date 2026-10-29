@@ -20,15 +20,18 @@ O humor fica implícito; o app deve parecer profissional.
 
 **Dono do projeto:** Bruno (GitHub `9brunosoares`). Organizadores e ADMs: **Bruno, Igor e Pig**.
 
-## 2. Estado atual: protótipo funcional, sem backend
+## 2. Estado atual: Firebase integrado, sem build do front-end
 
-Está tudo em **`index.html`**, num arquivo único: HTML, CSS e JavaScript puro, sem framework e sem build.
-
-- **Todos os dados ficam no `localStorage` de cada celular** (chave `xvi-congresso`; a aba atual fica em `xvi-tab`). Por isso nada é compartilhado entre os participantes. Resolver isso é o objetivo da próxima etapa.
-- **O login é falso:** escolhe-se a foto e digita-se qualquer PIN.
-- **Os dados de exemplo são fictícios:** datas de 19 a 22/11/2026, programação, gastos, pontos e denúncias.
-- **Há um relógio de demonstração** que começa na sexta, 20/11, às 15:40, para a contagem regressiva fazer sentido. Um botão no topo alterna para o relógio real.
-- **Fotos externas:** carregadas de `img/<id>.jpg`, sem base64. Se o arquivo faltar, o avatar mostra a inicial do apelido.
+- Front-end estático no GitHub Pages. `index.html` contém a interface; `backend.js` usa os módulos oficiais do SDK Web 13.1.0 por CDN.
+- `roster.js` é a fonte da lista `PEOPLE`: 14 IDs/apelidos, fotos e os três ADMs oficiais.
+- `firebase-config.js` contém somente a configuração Web pública. Nenhuma senha, PIN ou credencial administrativa deve entrar no repositório.
+- Projeto Firebase `congresso-monogamico`, banco `(default)` Standard, região `southamerica-east1`, faixa gratuita. Authentication Email/Password ativado.
+- **Login real:** foto + PIN de 6 dígitos. Primeiro acesso cria a conta `<id>@congresso.app`, vincula o `uid` ao perfil previamente cadastrado e cria `admins/{uid}` somente para Bruno, Igor e Pig. O vínculo não pode ser transferido por clientes. Sessão persistida pelo Firebase Auth; PIN não é salvo no código nem no estado do app.
+- O primeiro registro reserva o apelido. Este fluxo foi escolhido para o grupo de amigos; não é uma verificação externa de identidade. Não generalizar esse cadastro para um serviço aberto sem convite/verificação.
+- **Dados compartilhados:** Firestore com `onSnapshot`, escritas por documento e transações para julgamentos e votação; sem sincronizar o objeto inteiro nem importar automaticamente o antigo `localStorage`.
+- **Coleções operacionais começam vazias:** pontos, gastos, tarefas, denúncias, mensagens e votos. `agenda-data.js` preserva apenas a programação provisória de 19 a 22/11/2026; orçamento inicial provisório R$ 12.000.
+- Relógio real por padrão. Somente ADM vê a alternância para demonstração; a votação sempre usa a data real de São Paulo.
+- Fotos externas em `img/<id>.jpg`, com inicial se o arquivo não carregar. Sem base64.
 
 ### Participantes (`PEOPLE`, lista oficial do XVI Congresso)
 
@@ -51,15 +54,22 @@ Usar apenas `nick` (apelido); não há campo de nome completo. O `id` é o apeli
 | diogo | Diogo | `img/diogo.jpg` |  |
 | felipe | Felipe | `img/felipe.jpg` |  |
 
-### Estrutura do estado local (objeto `S`), base para o modelo do Firestore
-- `me`: id do usuário logado.
-- `budget`: orçamento total em R$.
-- `points[]`: `{who, d (delta de pontos), why, kind: "aux"|"jogo"|"inf", at}`.
-- `exps[]`: `{id, title, cat, amount, payer, split: [ids], at}`.
-- `shame[]`: `{id, who (réu), by (denunciante), what, status: "pend"|"ok", at}`. Condenar gera `-15` em `points`; absolver remove a denúncia.
-- `querido`: `{ [dia]: { [idAlvo]: { [emoji]: contagem } } }`.
-- `qvoted`: `{ [dia]: [ids que já votaram] }`.
-- `chat[]`: `{id, text, at, mine?}`. Não há autor.
+### Modelo do Firestore
+
+- `people/{id}`: `{nick, photo, uid:null|string, admin:bool}`. Cadastro feito administrativamente; cliente só pode vincular o próprio `uid` uma vez.
+- `admins/{uid}`: `{id}`. Criado na mesma transação do primeiro vínculo, validado contra o perfil oficial. Sem autopromoção nem promoção local.
+- `settings/main`: `{budget}`.
+- `agenda/{id}`: `{d,t,title,place,pts,prep,note,start,end}`.
+- `points/{id}`: `{who,d,why,kind,at,createdAt}`. Escrita somente ADM.
+- `expenses/{id}`: `{title,cat,amount,payer,split,at,createdAt}`. Participantes criam; ADM edita/exclui.
+- `tasks/{id}`: `{who,d,why,status,at,createdAt}`. Participante pede aprovação da própria tarefa; ADM aprova/recusa. Aprovação gera `points/task_<id>` na mesma transação.
+- `cases/{id}`: `{who,by,what,status,at,createdAt}`. ADM condena com `points/case_<id>` e `-15` na mesma transação; absolvição remove a denúncia. Repetições são recusadas.
+- `chat/{id}`: **somente** `{text,createdAt}`, sem autor/uid. As últimas 100 mensagens aparecem em tempo real. Marcação de mensagem própria fica apenas em `sessionStorage` do remetente.
+- `querido/{diaSP}`: `{counts:{[id]:number},voters:int}`, com os 14 IDs oficiais. Cada número guarda oito contadores em dígitos de base 16, na ordem de `EMOJIS`: `1,16,256,...,268435456`. Um voto soma exatamente uma dessas potências por alvo, exceto o próprio. Há no máximo 13 recebimentos por alvo, portanto nenhum dígito ultrapassa 13 nem transfere para o seguinte. `decodeTally()` reconstrói os totais. A validação do delta exige valor numericamente inteiro e mantém o limite de avaliação do Firestore. Não guarda ordem, escolhas individuais nem ligação ao votante.
+- `querido/{diaSP}/voters/{uid}`: **somente** `{voted:true}`. Só o próprio usuário lê o marcador; não há listagem. Contadores e marcador são gravados atomicamente em `writeBatch` (dois documentos), com `increment()` calculado pelo servidor. Não usar contagens lidas no cliente: votos concorrentes precisam comutar. Contagem +1 para cada um dos outros 13 participantes, sem voto próprio, uma vez ao dia.
+- `diaSP = floor((epochMillis - 10800000)/86400000)`, validado contra o relógio do servidor nas regras. Não depende do relógio de demonstração.
+- O objeto `S` é apenas uma projeção em memória do Firestore. `localStorage` guarda só a aba de navegação; o Firebase Auth cuida da sessão.
+- `firestore.rules` valida autenticação, papéis, tipos, campos permitidos, tamanhos, listas oficiais e transições. Regras são um protótipo validado para este grupo; reavaliar antes de ampliar o público.
 
 ### Constantes no código
 - `AGENDA`: sessões com `d` (dia), `t` (hora), `title`, `place`, `pts?`, `prep?` (o que preparar) e `note?`.
@@ -96,35 +106,24 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - A hospedagem está configurada no **GitHub Pages**, a partir da branch `main` e da pasta raiz. A URL esperada é `https://9brunosoares.github.io/congresso-monogamico/`.
 - No iPhone, o app é instalado pelo Safari: Compartilhar → Adicionar à Tela de Início.
 
-## 6. Próximos passos (decisão tomada: GitHub Pages + Firebase)
+## 6. Operação e próximos passos
 
-1. **Publicar o estático atual** no repositório e ativar o Pages (Settings → Pages → main / root).
-2. **Bruno cria o projeto** no Firebase (console.firebase.google.com, plano gratuito Spark). Ele ativa o **Authentication** (Email/Password) e o **Firestore**, registra um app Web e passa o `firebaseConfig`. O config do Firebase pode ficar no front-end; a segurança vem das Security Rules.
-3. **Login:**
-   - Cada participante recebe uma conta com e-mail sintético (`<id>@congresso.app`) e um **PIN de 6 dígitos**, porque o Firebase exige pelo menos 6 caracteres.
-   - Na tela de login, a pessoa escolhe a foto e digita o PIN, e o app monta o e-mail a partir do `id`.
-   - As contas são criadas pelos ADMs ou por script.
-   - O papel de ADM fica num documento `admins/{uid}`, checado nas rules com `exists()`. Assim não é preciso Admin SDK nem custom claims.
-4. **Modelo do Firestore (sugestão):**
-   - `people/{id}`: apelido (`nick`), foto e `uid`. Sem nome completo.
-   - `agenda/{sessionId}`.
-   - `points/{autoId}` e `expenses/{autoId}`. Gravação para participantes; edição e exclusão só para ADM.
-   - `settings/main`: orçamento e categorias.
-   - `cases/{autoId}`: o Mural. Qualquer participante cria; só ADM julga.
-   - `chat/{autoId}`: `{text, createdAt}` **sem uid**. As rules devem aceitar exatamente essas chaves, e só ADM apaga.
-   - `querido/{dia}/voters/{uid}`: `{voted: true}`, criado uma vez, e `querido/{dia}/tally/{idAlvo}`: contadores por emoji.
-     - O voto é gravado num **batch**: o documento do votante e os incrementos.
-     - As rules usam `!exists()` no documento do votante e `existsAfter()` para garantir um voto por pessoa por dia.
-     - **Nunca gravar quem deu qual emoji.**
-   - Trocar o `localStorage` por `onSnapshot` para que tudo apareça em tempo real.
-5. **Anonimato:** os participantes não podem ver o autor de nenhuma mensagem nem de nenhum voto. O Bruno já sabe da ressalva: quem administra o projeto poderia, em tese, mudar o código. Não prometer sigilo absoluto.
-6. **Opcional:** notificação ("sessão em 15 min") via Firebase Cloud Messaging. Funciona em PWA no iOS 16.4+ instalado na tela inicial.
-7. **Conteúdo real:** substituir os dados de exemplo por datas, programação, pontuações e orçamento reais, a pedir ao Bruno. Remover o relógio de demonstração antes da viagem, ou deixá-lo só para ADM.
+- Configuração local: `.firebaserc`, `firebase.json`, `firestore.rules`, `firestore.indexes.json`.
+- Instalar ferramentas de desenvolvimento: `pnpm install`. O site não precisa de build e não depende de Node em produção.
+- `node scripts/setup-firebase.cjs`: inicialização idempotente com a sessão existente do Firebase CLI; não sobrescreve perfis/agenda/orçamento já existentes. Faz cópia local das regras anteriores em `.private/` e valida as novas pelo tooling MCP oficial incluído no Firebase CLI.
+- Publicar regras: `npx -y firebase-tools@latest deploy --only firestore:rules,firestore:indexes,auth --project congresso-monogamico --non-interactive`.
+- Publicar front-end: commit/push em `main`; GitHub Pages usa a raiz. Domínio `9brunosoares.github.io` autorizado no Firebase Auth.
+- Testes locais (sete cenários): `node --test tests/*.test.js`. Diagnóstico de regras sem gravações: `node scripts/test-rules.cjs` (nove cenários com data e documentos simulados, usando o texto exato das regras; complementado pelo teste real do backend).
+- Teste integrado: `node scripts/verify-firebase.cjs`. **Somente antes de os apelidos Bruno, OB e Luan terem sido cadastrados por pessoas reais**: recusa perfis/contas já usados. Cria contas e registros temporários, usa o backend real em sessões separadas, verifica permissões e limpa somente seus próprios dados no `finally`. Não executar sobre votos reais do dia.
+- Scripts administrativos usam a autenticação local do CLI em memória; não geram chaves de serviço nem imprimem tokens. `.private/`, logs, `.env*` e `node_modules/` estão ignorados pelo Git.
+- Conteúdo real pendente do Bruno: datas, programação e orçamento definitivos. Não inventar.
+- FCM/notificações são opcionais e não foram ativadas.
+- Anonimato: o app não guarda autor nas mensagens nem ligação entre votante e emojis. Não prometer sigilo absoluto contra administradores de infraestrutura, que podem alterar código/regras e observar tráfego/eventos.
 
 ## Atualização da lista oficial
 
 - 14 participantes; ADMs: Bruno, Igor e Pig. Usar somente apelidos em todas as telas.
-- Estado local com `rosterVersion: 2`: migra IDs antigos dos participantes que continuam, remove registros de participantes fora da lista e atualiza rateios antigos de todos para os 14 atuais.
+- Migração Firebase: os registros locais antigos não são enviados ao banco. O app usa apenas os 14 IDs oficiais de `roster.js`.
 - Fotos antigas dos participantes que saíram foram removidas; não há fotos em base64.
 
 ## 7. Como trabalhar com o Bruno

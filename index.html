@@ -238,29 +238,15 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><div class="app login"><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
+<noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script>
+<script type="module">
+import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
+import {dayKey} from './shared.js';
+import * as backend from './backend.js';
 /* ===================== DADOS ===================== */
-const PEOPLE = [
-  {id:"bruno", nick:"Bruno", admin:true, frame:[583,280,50,7,260]},
-  {id:"ob", nick:"OB"},
-  {id:"luan", nick:"Luan"},
-  {id:"igor", nick:"Igor", admin:true},
-  {id:"pig", nick:"Pig", admin:true},
-  {id:"pelado", nick:"Pelado"},
-  {id:"kirk", nick:"Kirk", frame:[1179,337,96,165,120]},
-  {id:"gherardi", nick:"Gherardi"},
-  {id:"nanu", nick:"Nanu"},
-  {id:"sadano", nick:"Sadano", frame:[875,286,49,20,258]},
-  {id:"ibrahim", nick:"Ibrahim", frame:[1179,337,96,12,120]},
-  {id:"cadu", nick:"Cadu"},
-  {id:"diogo", nick:"Diogo"},
-  {id:"felipe", nick:"Felipe", frame:[489,316,49,35,256]},
-];
-const P = Object.fromEntries(PEOPLE.map(p=>[p.id,p]));
 const first = id => P[id].nick;
-const ALL = PEOPLE.map(p=>p.id);
 
 // Datas de exemplo: Qui 19 a Dom 22 de novembro de 2026
 const DAYS = [
@@ -269,44 +255,12 @@ const DAYS = [
   {d:21, wd:"Sáb", title:"Tribunal"},
   {d:22, wd:"Dom", title:"Encerramento"},
 ];
-const AGENDA = [
-  {d:19,t:"18:00",title:"Credenciamento e check-in",place:"Casa",prep:"Documento com foto e Pix da sua parte da casa"},
-  {d:19,t:"20:00",title:"Sessão solene de abertura",place:"Varanda",note:"Discurso do presidente e leitura do Regimento Monogâmico"},
-  {d:19,t:"21:30",title:"Jantar de boas-vindas",place:"Cozinha",prep:"Equipe 1 cozinha, equipe 2 lava"},
-  {d:19,t:"23:00",title:"Quiz: conhece o casal?",place:"Sala",pts:20,note:"Dupla vencedora leva 20 pontos cada"},
-  {d:20,t:"10:00",title:"Café coletivo",place:"Cozinha",pts:5,note:"Quem lavar a louça ganha 5"},
-  {d:20,t:"12:00",title:"Gincana aquática",place:"Piscina",pts:15,prep:"Sunga, protetor solar e boia se tiver"},
-  {d:20,t:"16:00",title:"Torneio de truco",place:"Mesa da varanda",pts:20,prep:"Duplas sorteadas às 15:30. Traga seu baralho da sorte"},
-  {d:20,t:"20:00",title:"Churrasco do plenário",place:"Área da churrasqueira"},
-  {d:20,t:"22:30",title:"Festa Plenário Neon",place:"Sala",pts:10,prep:"Look neon obrigatório. Sem neon, menos 5"},
-  {d:21,t:"10:30",title:"Trilha até a cachoeira",place:"Saída do portão",pts:10,prep:"Tênis, água e repelente"},
-  {d:21,t:"15:00",title:"Tribunal da Monogamia",place:"Varanda",note:"Julgamento das denúncias do Mural da Vergonha"},
-  {d:21,t:"17:00",title:"Assembleia de pautas da casa",place:"Sala"},
-  {d:21,t:"21:00",title:"Jantar de gala",place:"Mesa grande",prep:"Traje esporte fino"},
-  {d:21,t:"23:30",title:"Karaokê",place:"Sala",pts:15,note:"Júri popular vota a melhor performance"},
-  {d:22,t:"11:00",title:"Brunch e premiação",place:"Varanda",note:"Entrega da faixa de Congressista do Ano"},
-  {d:22,t:"13:00",title:"Faxina geral",place:"Casa toda",pts:10,note:"10 pontos para cada um que participar"},
-  {d:22,t:"15:00",title:"Check-out e acerto de contas",place:"Casa",prep:"Pix na mão: o app mostra quem paga quem"},
-].map((a,i)=>{const [h,m]=a.t.split(":").map(Number);return {...a,id:i,start:new Date(2026,10,a.d,h,m).getTime()}});
-AGENDA.forEach((a,i)=>a.end = AGENDA[i+1] && AGENDA[i+1].d===a.d ? AGENDA[i+1].start : a.start + 120*60000);
+const AGENDA = [];
 
 const RULES = {
   plus:[["Lavar a louça",5],["Tirar o lixo",5],["Cozinhar uma refeição",10],["Repor gelo ou bebida",3],["Vencer jogo ou gincana","10 a 20"]],
   minus:[["Lixo no chão",-5],["Louça suja pela casa",-5],["Atraso na programação",-3],["Sem look temático",-5],["Infração da monogamia",-15]],
 };
-
-const EMOJIS = ["❤️","💔","🐍","🤮","🧳","🍪","🤥","🎯"];
-// Gera contagens de exemplo para uma manhã (votos de 11 pessoas por alvo)
-function seedQuerido(dayNum){
-  const out={};
-  ALL.forEach((id,k)=>{
-    const c={}; let s=(k+1)*7919+dayNum*104729;
-    const bias = {igor:[0,0,0,5],nanu:[0,0,0,5],diogo:[0,0,5],pelado:[5,4,1],luan:[4,4,5],ob:[4,5],pig:[0,0,5]}[id]||[];
-    for(let v=0;v<11;v++){ s=(s*1103515245+12345)>>>0; let e = v<bias.length ? bias[v] : (s>>>8)%9; if(e>7) e=0; const em=EMOJIS[e]; c[em]=(c[em]||0)+1; }
-    out[id]=c;
-  });
-  return out;
-}
 
 const CATS = [
   {id:"casa",name:"Casa",budget:6500},
@@ -316,70 +270,11 @@ const CATS = [
   {id:"atividades",name:"Atividades e festa",budget:1200},
 ];
 
-/* Estado de exemplo (fica só neste aparelho) */
-const seed = () => ({
-  rosterVersion:2,
-  me:null,
-  budget:12000,
-  points:[
-    {who:"igor",d:3,why:"Lavou a louça do café",kind:"aux",at:"Sex 10:40"},
-    {who:"bruno",d:20,why:"Vencedor do quiz do casal",kind:"jogo",at:"Qui 23:50"},
-    {who:"pig",d:15,why:"1º lugar na gincana aquática",kind:"jogo",at:"Sex 13:10"},
-    {who:"nanu",d:5,why:"Lavou a louça do jantar",kind:"aux",at:"Qui 22:40"},
-    {who:"nanu",d:5,why:"Tirou o lixo",kind:"aux",at:"Sex 09:30"},
-    {who:"pelado",d:-5,why:"Copo largado na piscina",kind:"inf",at:"Sex 14:05"},
-    {who:"luan",d:-5,why:"Louça suja no quarto",kind:"inf",at:"Sex 11:20"},
-    {who:"diogo",d:10,why:"Cozinhou o jantar de quinta",kind:"aux",at:"Qui 21:30"},
-    {who:"ob",d:-3,why:"Atrasou o café coletivo",kind:"inf",at:"Sex 10:20"},
-    {who:"cadu",d:10,why:"2º lugar na gincana aquática",kind:"jogo",at:"Sex 13:10"},
-    {who:"gherardi",d:5,why:"Tirou o lixo",kind:"aux",at:"Qui 23:10"},
-    {who:"igor",d:5,why:"Tirou o lixo",kind:"aux",at:"Sex 12:00"},
-    {who:"pig",d:3,why:"Repôs o gelo",kind:"aux",at:"Sex 13:40"},
-  ],
-  exps:[
-    {id:1,title:"Aluguel da casa",cat:"casa",amount:6500,payer:"bruno",split:ALL,at:"Out"},
-    {id:2,title:"Mercado da chegada",cat:"mercado",amount:1240,payer:"igor",split:ALL,at:"Qui 17:10"},
-    {id:4,title:"Carvão e carne do churrasco",cat:"mercado",amount:720,payer:"nanu",split:ALL,at:"Sex 11:00"},
-    {id:5,title:"Uber do aeroporto",cat:"transporte",amount:212,payer:"pelado",split:["pelado","gherardi","luan","diogo"],at:"Qui 15:30"},
-    {id:6,title:"Kit neon da festa",cat:"atividades",amount:390,payer:"pig",split:ALL,at:"Sex 14:30"},
-  ],
-  querido:{ "20": seedQuerido(20) },
-  qvoted:{},
-  chat:[
-    {id:1,text:"alguém não deu descarga no banheiro de cima. sabemos que foi ontem depois do churrasco",at:"Sex 08:12"},
-    {id:2,text:"quem tomou minha skol beats que tava com nome escrito na lata???",at:"Sex 10:05"},
-    {id:3,text:"gente que gritaria era aquela no quarto do meio às 4h",at:"Sex 10:31"},
-    {id:4,text:"o tribunal de sábado vai ser longo, já aviso",at:"Sex 12:58"},
-    {id:5,text:"quem pegou o carregador branco da sala devolve por favor 🙏",at:"Sex 14:47"},
-  ],
-  shame:[
-    {id:2,who:"pelado",by:"luan",what:"Perguntou 'cadê a Zara?' três vezes durante a sessão solene",status:"pend",at:"Sex 15:02"},
-  ],
-});
-// Compatibilidade com dados salvos antes da lista oficial de participantes.
-function migrateRoster(state){
-  const aliases = {guiob:"ob",gabriel:"pig",rafa:"pelado",rafael:"gherardi",thiago:"nanu",carlos:"cadu"};
-  const idOf = id => aliases[id] || id;
-  const valid = id => Object.hasOwn(P,id);
-  const idsOf = ids => [...new Set((ids || []).map(idOf).filter(valid))];
-  const oldRoster = state.rosterVersion !== 2;
-  state.me = valid(idOf(state.me)) ? idOf(state.me) : null;
-  state.points = (state.points || []).map(x=>({...x,who:idOf(x.who)})).filter(x=>valid(x.who));
-  state.exps = (state.exps || []).map(x=>({...x,payer:idOf(x.payer),split:oldRoster && x.split?.length===13 ? [...ALL] : idsOf(x.split)})).filter(x=>valid(x.payer) && x.split.length);
-  state.shame = (state.shame || []).map(x=>({...x,who:idOf(x.who),by:idOf(x.by)})).filter(x=>valid(x.who) && valid(x.by));
-  state.querido = Object.fromEntries(Object.entries(state.querido || {}).map(([day,targets])=>[day,Object.fromEntries(Object.entries(targets).map(([id,tally])=>[idOf(id),tally]).filter(([id])=>valid(id)))]));
-  state.qvoted = Object.fromEntries(Object.entries(state.qvoted || {}).map(([day,ids])=>[day,idsOf(ids)]));
-  state.rosterVersion = 2;
-  return state;
-}
-let S;
-try{ const L = JSON.parse(localStorage.getItem("xvi-congresso")||"null"); S = migrateRoster(L ? {...seed(), ...L, rosterVersion:L.rosterVersion} : seed()); }catch(e){ S = seed(); }
-const save = () => { try{ localStorage.setItem("xvi-congresso", JSON.stringify(S)); }catch(e){} };
-save();
+let S = {me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,error:''};
 
 /* Relógio de demonstração: começa na sexta, 20/11, 15:40 */
 const T0 = Date.now(), DEMO0 = new Date(2026,10,20,15,40).getTime();
-let demo = true;
+let demo = false;
 const now = () => demo ? DEMO0 + (Date.now()-T0) : Date.now();
 
 /* ===================== AJUDANTES ===================== */
@@ -395,7 +290,7 @@ const photoStyle = id => {
   return `width:${w/size*100}%;height:${h/size*100}%;left:${-x/size*100}%;top:${-y/size*100}%;object-fit:fill`;
 };
 const av = (id,cls="") => `<span class="av ${cls}" aria-hidden="true">${esc(P[id].nick[0])}<img src="img/${id}.jpg" style="${photoStyle(id)}" alt="" onerror="this.remove()"></span>`;
-const isAdm = () => S.me && P[S.me].admin;
+const isAdm = () => S.me && S.admin;
 const score = id => S.points.filter(x=>x.who===id).reduce((a,x)=>a+x.d,0);
 const ranking = () => ALL.map(id=>({id,s:score(id),n:S.points.filter(x=>x.who===id).length})).sort((a,b)=>b.s-a.s||P[a.id].nick.localeCompare(P[b.id].nick));
 const pts = d => `<span class="pts ${d<0?"neg":"pos"}">${d>0?"+":""}${d}</span>`;
@@ -426,23 +321,33 @@ function settle(){
 let tab = "inicio", day = 20, contasSeg = "despesas", fofocaSeg = "chat", qDraft = {};
 try{ tab = localStorage.getItem("xvi-tab") || "inicio"; }catch(e){}
 
+async function act(button,run){
+  if(button?.disabled)return;
+  if(button)button.disabled=true;
+  try{await run();}catch(e){toast(backend.errorText(e));}
+  finally{if(button)button.disabled=false;}
+}
 function viewLogin(){
-  let sel = null;
-  $("#root").innerHTML = `<div class="app"><div class="login">
-    <div class="badge">
-      <div class="lanyard"><span>CREDENCIAL</span><span>19 a 22 · NOV</span></div>
-      <div class="body">
-        <div class="eyebrow">Bem-vindo ao</div>
-        <h1><em>XVI</em> Congresso Monogâmico</h1>
-        <p class="muted" style="margin:10px 0 0">Escolha sua foto para entrar. Cada congressista tem seu login, seu placar e suas contas.</p>
-      </div>
-    </div>
-    <div class="pick" id="pick">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="false">${av(p.id)}<span>${esc(first(p.id))}${p.admin?' <span class="adm">ADM</span>':""}</span></button>`).join("")}</div>
-    <label class="f">PIN de 4 dígitos (rascunho: qualquer número)<input id="pin" inputmode="numeric" maxlength="4" placeholder="••••"></label>
-    <button class="btn seal block" id="enter" type="button">Entrar no congresso</button>
-  </div></div>`;
-  $("#pick").onclick = e=>{ const b=e.target.closest("button"); if(!b)return; sel=b.dataset.id; document.querySelectorAll("#pick button").forEach(x=>x.setAttribute("aria-pressed",x===b)); };
-  $("#enter").onclick = ()=>{ if(!sel){toast("Escolha sua foto primeiro");return;} S.me=sel; save(); render(); toast(`Credenciado: ${first(sel)}`); };
+  let sel=null;
+  $('#root').innerHTML=`<div class="app"><form class="login" id="loginForm">
+    <div class="badge"><div class="lanyard"><span>CREDENCIAL</span><span>XVI CONGRESSO</span></div><div class="body">
+    <div class="eyebrow">Bem-vindo ao</div><h1><em>XVI</em> Congresso Monogâmico</h1>
+    <p class="muted" style="margin:10px 0 0">Escolha sua foto e use seu PIN. No primeiro acesso, crie um PIN de 6 dígitos.</p></div></div>
+    <div class="pick" id="pick">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="false">${av(p.id)}<span>${esc(p.nick)}${p.admin?' <span class="adm">ADM</span>':''}</span></button>`).join('')}</div>
+    <label class="f">PIN de 6 dígitos<input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="current-password" required placeholder="••••••"></label>
+    <label style="display:flex;align-items:center;gap:8px;margin:16px 0"><input id="newAccount" type="checkbox">Primeiro acesso: criar meu PIN</label>
+    <label class="f" id="confirmPin" style="display:none;margin-bottom:14px">Confirme seu PIN<input id="pinAgain" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" placeholder="••••••"></label>
+    ${S.error?`<p role="alert">${esc(S.error)}</p>`:''}
+    <button class="btn seal block" id="enter" type="submit">Entrar no congresso</button>
+    <p class="muted" style="font-size:12px;text-align:center">O celular mantém sua sessão. Esqueceu o PIN? Fale com um ADM.</p>
+  </form></div>`;
+  $('#pick').onclick=e=>{const b=e.target.closest('button');if(!b)return;sel=b.dataset.id;document.querySelectorAll('#pick button').forEach(x=>x.setAttribute('aria-pressed',x===b));};
+  $('#newAccount').onchange=()=>{const create=$('#newAccount').checked;$('#confirmPin').style.display=create?'flex':'none';$('#pinAgain').required=create;$('#pin').autocomplete=create?'new-password':'current-password';$('#enter').textContent=create?'Criar PIN e entrar':'Entrar no congresso';};
+  $('#loginForm').onsubmit=e=>{e.preventDefault();const pin=$('#pin').value,create=$('#newAccount').checked;
+    if(!sel){toast('Escolha sua foto primeiro');return;}
+    if(create && pin!==$('#pinAgain').value){toast('Os dois PINs precisam ser iguais');return;}
+    act($('#enter'),()=>backend.login(sel,pin,create));
+  };
 }
 
 function header(){
@@ -452,7 +357,7 @@ function header(){
   </div>
   <div class="demo">
     <span>Agora: <b class="num" id="clock"></b></span>
-    <button class="chip" id="clockBtn" type="button">${demo?"Relógio de demonstração":"Relógio real"}</button>
+    ${isAdm()?`<button class="chip" id="clockBtn" type="button">${demo?"Relógio de demonstração":"Relógio real"}</button>`:""}
   </div>`;
 }
 
@@ -480,9 +385,9 @@ function viewInicio(){
 
   ${cur?`<div class="card row" style="margin-top:12px"><span class="tag live">Agora</span><div class="grow"><b>${esc(cur.title)}</b><div class="muted" style="font-size:13px">até ${fmtTime(cur.end)} · ${esc(cur.place||"")}</div></div></div>`:""}
 
-  ${(()=>{const d=todayNum(); if(!d||!S.querido[d]) return ""; const done=(S.qvoted[d]||[]).includes(S.me);
+  ${(()=>{const d=dayKey(); if(!S.querido[d]) return ""; const done=(S.qvoted[d]||[]).includes(S.me);
     return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${done?"Ver resultado":"Votar agora"}</button></div>
-    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${done?"Você já votou hoje. Os votos são anônimos.":`Votação da manhã de ${dayOf(now()).wd} aberta. Ninguém sabe quem deu o quê.`}</div></div>`})()}
+    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${done?"Você já votou hoje. Os votos são anônimos.":`Votação da manhã de ${new Date().toLocaleDateString("pt-BR")} aberta. Ninguém sabe quem deu o quê.`}</div></div>`})()}
 
   <div class="sec-h"><h3>Seu placar</h3><button class="link" data-go="placar" type="button">Ranking completo</button></div>
   <div class="card row">
@@ -527,10 +432,12 @@ function viewPrograma(){
 function viewPlacar(){
   const rk=ranking();
   const log=[...S.points].reverse().slice(0,12);
+  const tasks=S.tasks.filter(t=>isAdm()?t.status==='pend':t.who===S.me);
+  const approvals=tasks.length?`<div class="sec-h"><h3>${isAdm()?'Tarefas para aprovar':'Minhas tarefas'}</h3></div><div class="card stack">${tasks.map(t=>`<div><b>${esc(first(t.who))}</b> · ${esc(t.why)} (+${t.d})<div class="muted">${t.status==='pend'?'Aguardando aprovação':t.status==='ok'?'Aprovada':'Não aprovada'}</div>${isAdm()?`<button class="btn sm" data-task="${esc(t.id)}" data-approve="yes" type="button">Aprovar</button> <button class="btn sm ghost" data-task="${esc(t.id)}" data-approve="no" type="button">Recusar</button>`:''}</div>`).join('')}</div>`:'';
   return `
   <div class="card">${podium(rk)}</div>
   ${isAdm()?`<div class="fab-row" style="margin-top:12px"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`:`<button class="btn ghost block" style="margin-top:12px" id="quickReport" type="button">Fiz uma tarefa (vai para aprovação)</button>`}
-  <div class="sec-h"><h3>Classificação</h3><span class="muted" style="font-size:13px">${ALL.length} congressistas</span></div>
+  ${approvals}<div class="sec-h"><h3>Classificação</h3><span class="muted" style="font-size:13px">${ALL.length} congressistas</span></div>
   <div class="card rank" style="padding-block:4px">${rk.map((r,i)=>`<div class="rk ${r.id===S.me?"me-row":""}"><span class="pos">${i+1}</span>${av(r.id)}<div><div class="nm">${esc(P[r.id].nick)}</div><div class="sub">${r.n} lançamentos</div></div><span class="score">${r.s}</span></div>`).join("")}</div>
   <div class="sec-h"><h3>Últimos lançamentos</h3></div>
   <div class="card" style="padding-block:4px">${log.map(x=>`<div class="log">${av(x.who,"sm")}<div><b>${esc(first(x.who))}</b> · ${esc(x.why)}<div class="muted" style="font-size:12px">${esc(x.at)}</div></div>${pts(x.d)}</div>`).join("")}</div>
@@ -589,14 +496,14 @@ function viewMural(){
     <div class="row">${av(s.who,"lg")}<div><div class="eyebrow">Réu</div><b style="font-size:18px">${esc(P[s.who].nick)}</b></div></div>
     <h4>${esc(s.what)}</h4>
     <div class="muted" style="font-size:13px">Denunciado por ${esc(first(s.by))} · ${esc(s.at)}${s.status==="ok"?' · <span class="pts neg">−15</span>':""}</div>
-    ${isAdm()&&s.status==="pend"?`<div class="fab-row" style="margin-top:12px"><button class="btn sm seal" data-judge="${s.id}" data-v="ok" type="button">Condenar (−15)</button><button class="btn sm ghost" data-judge="${s.id}" data-v="no" type="button">Absolver</button></div>`:""}
+    ${isAdm()&&s.status==="pend"?`<div class="fab-row" style="margin-top:12px"><button class="btn sm seal" data-judge="${esc(s.id)}" data-v="ok" type="button">Condenar (−15)</button><button class="btn sm ghost" data-judge="${esc(s.id)}" data-v="no" type="button">Absolver</button></div>`:""}
   </article>`).join("")}</div>`;
 }
 
 function todayNum(){ const t=now(); const d=new Date(t).getDate(); return DAYS.some(x=>x.d===d)?d:null; }
 
 function viewQuerido(){
-  const d = todayNum() || 20;
+  const d = dayKey();
   if(!S.querido[d]) S.querido[d] = Object.fromEntries(ALL.map(id=>[id,{}]));
   const voted = (S.qvoted[d]||[]).includes(S.me);
   const res = S.querido[d];
@@ -605,7 +512,7 @@ function viewQuerido(){
   const highlights = [["❤️","Mais amado"],["🐍","Mais cobra"],["🍪","Mais biscoiteiro"],["🎯","Mais alvo"]].map(([em,l])=>{const t=top(em);return t.n?`<div class="qhl">${av(t.id)}<div><div class="eyebrow">${l}</div><b>${esc(first(t.id))}</b> <span class="qn">${em} ${t.n}</span></div></div>`:""}).join("");
   const others = ALL.filter(id=>id!==S.me);
   const form = voted ? "" : `
-    <div class="card"><div class="eyebrow">Votação da manhã · ${dayOf(now())?.wd||"Sex"} ${d}/11</div>
+    <div class="card"><div class="eyebrow">Votação de ${new Date().toLocaleDateString("pt-BR")}</div>
       <h2 class="qtitle">Dê um emoji para cada congressista</h2>
       <p class="muted" style="margin:6px 0 0;font-size:14px">Anônimo: o app só guarda quantos emojis cada um recebeu, nunca quem deu.</p>
     </div>
@@ -615,7 +522,7 @@ function viewQuerido(){
     </div>`).join("")}</div>
     <button class="btn seal block" style="margin-top:14px" id="qSend" type="button">Enviar votos (${Object.keys(qDraft).filter(k=>others.includes(k)).length} de ${others.length})</button>`;
   const results = `
-    <div class="sec-h"><h3>Resultado de ${dayOf(now())?.wd||"Sex"}</h3><span class="muted" style="font-size:13px">${(S.qvoted[d]||[]).length + 11} votantes</span></div>
+    <div class="sec-h"><h3>Resultado de hoje</h3><span class="muted" style="font-size:13px">${S.voterCount} votantes</span></div>
     ${highlights?`<div class="card qhls">${highlights}</div>`:""}
     <div class="card" style="margin-top:12px;padding-block:4px">${ALL.slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
@@ -627,11 +534,11 @@ function viewFofoca(){
   const seg = `<div class="seg seg2" role="tablist">${[["chat","Chat anônimo"],["mural","Mural da Vergonha"]].map(([k,l])=>`<button type="button" data-fseg="${k}" aria-pressed="${fofocaSeg===k}">${l}</button>`).join("")}</div>`;
   if(fofocaSeg==="mural") return seg + `<div style="margin-top:14px">${viewMural()}</div>`;
   return seg + `
-  <p class="muted" style="font-size:14px;margin:12px 0 10px">Ninguém vê quem mandou, nem os ADMs. Fofoca liberada, ofensa não.</p>
+  <p class="muted" style="font-size:14px;margin:12px 0 10px">As mensagens aparecem sem autor para os participantes e ADMs. Fofoca liberada, ofensa não.</p>
   <div class="chat" id="chatList">${S.chat.map(m=>`<div class="bubble ${m.mine?"mine":""}">
     <div class="who">${m.mine?"Você (anônimo)":"Anônimo"} · ${esc(m.at)}</div>
     <div>${esc(m.text)}</div>
-    ${isAdm()&&!m.mine?`<button class="link del" data-del="${m.id}" type="button">apagar</button>`:""}
+    ${isAdm()&&!m.mine?`<button class="link del" data-del="${esc(m.id)}" type="button">apagar</button>`:""}
   </div>`).join("")}</div>
   <form class="composer" id="chatForm"><input id="chatIn" maxlength="280" autocomplete="off" placeholder="Solta a fofoca…" aria-label="Mensagem anônima"><button class="btn seal" type="submit">Enviar</button></form>`;
 }
@@ -647,111 +554,80 @@ function sheet(html, onMount){
 const personOpts = (sel)=>PEOPLE.map(p=>`<option value="${p.id}" ${p.id===sel?"selected":""}>${esc(p.nick)}</option>`).join("");
 
 function sheetPoints(neg){
-  const opts = neg ? RULES.minus : RULES.plus.concat([["Jogo: 1º lugar",20],["Jogo: 2º lugar",10],["Participação",5]]);
-  sheet(`<h3>${neg?"Registrar infração":"Lançar pontos"}</h3><div class="stack">
-    <label class="f">Congressista<select id="spWho">${personOpts()}</select></label>
-    <label class="f">Motivo<select id="spWhy">${opts.filter(o=>typeof o[1]==="number").map(([n,v])=>`<option value="${v}">${n} (${v>0?"+":""}${v})</option>`).join("")}</select></label>
-    <label class="f">Pontos<input id="spVal" type="number" inputmode="numeric"></label>
-    <button class="btn ${neg?"seal":""} block" id="spOk" type="button">${neg?"Aplicar penalidade":"Lançar pontos"}</button>
-    <button class="btn ghost block" data-close type="button">Cancelar</button></div>`, s=>{
-      const w=s.querySelector("#spWhy"), v=s.querySelector("#spVal"); v.value=w.value; w.onchange=()=>v.value=w.value;
-      s.querySelector("#spOk").onclick=()=>{
-        const who=s.querySelector("#spWho").value, d=parseInt(v.value,10)||0;
-        S.points.push({who,d,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,""),kind:neg?"inf":"aux",at:stamp()});
-        save(); s.remove(); render(); toast(`${first(who)} ${d>0?"+":""}${d} pontos`);
-      };
-    });
+ if(!isAdm())return;
+ const opts=(neg?RULES.minus:RULES.plus.concat([["Jogo: 1º lugar",20],["Jogo: 2º lugar",10],["Participação",5]])).filter(o=>typeof o[1]==='number');
+ sheet(`<h3>${neg?'Registrar infração':'Lançar pontos'}</h3><div class="stack">
+ <label class="f">Congressista<select id="spWho">${personOpts()}</select></label>
+ <label class="f">Motivo<select id="spWhy">${opts.map(([n,v])=>`<option value="${v}">${n} (${v>0?'+':''}${v})</option>`).join('')}</select></label>
+ <label class="f">Pontos<input id="spVal" type="number" min="-100" max="100" step="1" inputmode="numeric"></label>
+ <button class="btn seal block" id="spOk" type="button">Confirmar pontos</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ const w=s.querySelector('#spWhy'),v=s.querySelector('#spVal');v.value=w.value;w.onchange=()=>v.value=w.value;
+ s.querySelector('#spOk').onclick=()=>act(s.querySelector('#spOk'),async()=>{
+  const d=Number(v.value);if(!Number.isInteger(d)||!d||Math.abs(d)>100)throw Error('Use pontos inteiros entre −100 e 100, diferentes de zero.');
+  await backend.addPoints({who:s.querySelector('#spWho').value,d,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,''),kind:neg?'inf':'aux'});s.remove();toast('Pontos lançados');
+ });});
 }
 function sheetTask(){
-  sheet(`<h3>Fiz uma tarefa</h3><p class="muted" style="margin:-4px 0 12px;font-size:14px">Vai para um organizador aprovar. Na versão final, com foto de prova.</p><div class="stack">
-    <label class="f">Tarefa<select id="tkWhy">${RULES.plus.filter(o=>typeof o[1]==="number").map(([n,v])=>`<option value="${v}">${n} (+${v})</option>`).join("")}</select></label>
-    <button class="btn block" id="tkOk" type="button">Enviar para aprovação</button>
-    <button class="btn ghost block" data-close type="button">Cancelar</button></div>`, s=>{
-      s.querySelector("#tkOk").onclick=()=>{
-        const w=s.querySelector("#tkWhy");
-        if(isAdm()){ S.points.push({who:S.me,d:+w.value,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,""),kind:"aux",at:stamp()}); save(); render(); toast("Pontos lançados"); }
-        else toast("Enviado para aprovação do ADM");
-        s.remove();
-      };
-    });
+ sheet(`<h3>Fiz uma tarefa</h3><p class="muted">Um organizador aprova antes de os pontos entrarem no placar.</p><div class="stack">
+ <label class="f">Tarefa<select id="tkWhy">${RULES.plus.filter(o=>typeof o[1]==='number').map(([n,v])=>`<option value="${v}">${n} (+${v})</option>`).join('')}</select></label>
+ <button class="btn block" id="tkOk" type="button">Enviar para aprovação</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ s.querySelector('#tkOk').onclick=()=>act(s.querySelector('#tkOk'),async()=>{const w=s.querySelector('#tkWhy');await backend.submitTask({d:+w.value,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,'')});s.remove();toast('Tarefa enviada para aprovação');});});
 }
 function sheetExpense(){
-  let split=new Set(ALL);
-  sheet(`<h3>Lançar gasto</h3><div class="stack">
-    <label class="f">O que foi<input id="exT" placeholder="Ex.: gelo e limão"></label>
-    <label class="f">Valor (R$)<input id="exV" type="number" inputmode="decimal" step="0.01" placeholder="0,00"></label>
-    <label class="f">Quem pagou<select id="exP">${personOpts(S.me)}</select></label>
-    <label class="f">Categoria<select id="exC">${CATS.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select></label>
-    <div class="f" style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:var(--muted)"><span>Dividir entre <button class="link" id="exAll" type="button" style="font-size:13px">todos / ninguém</button></span>
-      <div class="pick" id="exS">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="true">${av(p.id)}<span>${esc(first(p.id))}</span></button>`).join("")}</div></div>
-    <button class="btn block" id="exOk" type="button">Salvar gasto</button>
-    <button class="btn ghost block" data-close type="button">Cancelar</button></div>`, s=>{
-      const sync=()=>s.querySelectorAll("#exS button").forEach(b=>b.setAttribute("aria-pressed",split.has(b.dataset.id)));
-      s.querySelector("#exS").onclick=e=>{const b=e.target.closest("button");if(!b)return;const id=b.dataset.id;split.has(id)?split.delete(id):split.add(id);sync();};
-      s.querySelector("#exAll").onclick=()=>{split=split.size?new Set():new Set(ALL);sync();};
-      s.querySelector("#exOk").onclick=()=>{
-        const title=s.querySelector("#exT").value.trim(), amount=parseFloat(String(s.querySelector("#exV").value).replace(",","."));
-        if(!title||!(amount>0)){toast("Preencha o que foi e o valor");return;}
-        if(!split.size){toast("Escolha com quem dividir");return;}
-        S.exps.push({id:Date.now(),title,amount,payer:s.querySelector("#exP").value,cat:s.querySelector("#exC").value,split:[...split],at:stamp()});
-        save(); s.remove(); render(); toast("Gasto lançado");
-      };
-    });
+ let split=new Set(ALL);
+ sheet(`<h3>Lançar gasto</h3><div class="stack">
+ <label class="f">O que foi<input id="exT" maxlength="120" placeholder="Ex.: gelo e limão"></label>
+ <label class="f">Valor (R$)<input id="exV" type="number" inputmode="decimal" min="0.01" max="1000000" step="0.01" placeholder="0,00"></label>
+ <label class="f">Quem pagou<select id="exP">${personOpts(S.me)}</select></label>
+ <label class="f">Categoria<select id="exC">${CATS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></label>
+ <div><span>Dividir entre <button class="link" id="exAll" type="button">todos / ninguém</button></span>
+ <div class="pick" id="exS">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="true">${av(p.id)}<span>${esc(p.nick)}</span></button>`).join('')}</div></div>
+ <button class="btn seal block" id="exOk" type="button">Lançar gasto</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ const sync=()=>s.querySelectorAll('#exS button').forEach(b=>b.setAttribute('aria-pressed',split.has(b.dataset.id)));
+ s.querySelector('#exS').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.id;split.has(id)?split.delete(id):split.add(id);sync();};
+ s.querySelector('#exAll').onclick=()=>{split=split.size?new Set():new Set(ALL);sync();};
+ s.querySelector('#exOk').onclick=()=>act(s.querySelector('#exOk'),async()=>{
+ const title=s.querySelector('#exT').value.trim(),amount=Number(s.querySelector('#exV').value.replace(',','.'));
+ if(!title||!Number.isFinite(amount)||amount<=0||amount>1000000)throw Error('Preencha o gasto e um valor válido.');
+ if(!split.size)throw Error('Escolha com quem dividir.');
+ await backend.addExpense({title,amount,payer:s.querySelector('#exP').value,cat:s.querySelector('#exC').value,split:[...split]});s.remove();toast('Gasto lançado');
+ });});
 }
 function sheetReport(){
-  sheet(`<h3>Denúncia ao Tribunal</h3><div class="stack">
-    <label class="f">Réu<select id="rpW">${PEOPLE.filter(p=>p.id!==S.me).map(p=>`<option value="${p.id}">${esc(p.nick)}</option>`).join("")}</select></label>
-    <label class="f">O que aconteceu<input id="rpT" placeholder="Descreva a infração"></label>
-    <button class="btn seal block" id="rpOk" type="button">Protocolar denúncia</button>
-    <button class="btn ghost block" data-close type="button">Cancelar</button></div>`, s=>{
-      s.querySelector("#rpOk").onclick=()=>{
-        const what=s.querySelector("#rpT").value.trim(); if(!what){toast("Descreva a infração");return;}
-        S.shame.push({id:Date.now(),who:s.querySelector("#rpW").value,by:S.me,what,status:"pend",at:stamp()});
-        save(); s.remove(); render(); toast("Denúncia protocolada");
-      };
-    });
+ sheet(`<h3>Denúncia ao Tribunal</h3><div class="stack">
+ <label class="f">Réu<select id="rpW">${PEOPLE.filter(p=>p.id!==S.me).map(p=>`<option value="${p.id}">${esc(p.nick)}</option>`).join('')}</select></label>
+ <label class="f">O que aconteceu<input id="rpT" maxlength="500" placeholder="Descreva a infração"></label>
+ <button class="btn seal block" id="rpOk" type="button">Protocolar denúncia</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ s.querySelector('#rpOk').onclick=()=>act(s.querySelector('#rpOk'),async()=>{const what=s.querySelector('#rpT').value.trim();if(!what)throw Error('Descreva a infração.');await backend.addCase({who:s.querySelector('#rpW').value,what});s.remove();toast('Denúncia protocolada');});});
 }
 function sheetMe(){
-  sheet(`<div class="badge" style="margin-bottom:14px"><div class="lanyard"><span>CREDENCIAL</span><span>${isAdm()?"ORGANIZAÇÃO":"CONGRESSISTA"}</span></div>
-    <div class="body row">${av(S.me,"xl")}<div><h3 style="margin:0">${esc(P[S.me].nick)}</h3><div class="muted">${score(S.me)} pontos · ${ranking().findIndex(r=>r.id===S.me)+1}º lugar</div></div></div></div>
-    <div class="stack">
-    ${isAdm()?`<div class="eyebrow">Painel do ADM</div>
-      <button class="btn block" data-a="give" type="button">Lançar pontos</button>
-      <button class="btn ghost block" data-a="take" type="button">Registrar infração</button>
-      <button class="btn ghost block" data-a="mural" type="button">Julgar denúncias (${S.shame.filter(x=>x.status==="pend").length})</button>
-      <button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>
-      <label class="f">Promover outro organizador<select id="mkAdm"><option value="">Escolha…</option>${PEOPLE.filter(p=>!p.admin).map(p=>`<option value="${p.id}">${esc(p.nick)}</option>`).join("")}</select></label>`:""}
-    <button class="btn ghost block" data-a="out" type="button">Trocar de congressista</button>
-    <button class="btn ghost block" data-a="reset" type="button">Restaurar dados de exemplo</button>
-    </div>`, s=>{
-      s.onclick=e=>{const b=e.target.closest("[data-a]"); if(!b){ if(e.target===s) s.remove(); return;} const a=b.dataset.a; s.remove();
-        if(a==="give")sheetPoints(false); if(a==="take")sheetPoints(true); if(a==="mural")go("mural"); if(a==="budget")sheetBudget();
-        if(a==="out"){S.me=null;save();render();} if(a==="reset"){const me=S.me;S=seed();S.me=me;save();render();toast("Dados de exemplo restaurados");}};
-      const m=s.querySelector("#mkAdm"); if(m) m.onchange=()=>{ if(!m.value)return; P[m.value].admin=true; toast(`${first(m.value)} agora é ADM (só neste rascunho)`); s.remove(); render(); };
-    });
+ sheet(`<div class="badge" style="margin-bottom:14px"><div class="lanyard"><span>CREDENCIAL</span><span>${isAdm()?'ORGANIZAÇÃO':'CONGRESSISTA'}</span></div>
+ <div class="body row">${av(S.me,'xl')}<div><h3 style="margin:0">${esc(first(S.me))}</h3><div class="muted">${score(S.me)} pontos</div></div></div></div>
+ <div class="stack">${isAdm()?`<div class="eyebrow">Painel do ADM</div>
+ <button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>
+ <button class="btn ghost block" data-a="mural" type="button">Julgar denúncias (${S.shame.filter(x=>x.status==='pend').length})</button><button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>`:''}
+ <button class="btn ghost block" data-a="out" type="button">Sair / trocar de congressista</button></div>`,s=>{
+ s.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
+ if(a==='out'){act(b,async()=>{await backend.logout();s.remove();});return;}s.remove();
+ if(a==='give')sheetPoints(false);if(a==='take')sheetPoints(true);if(a==='mural')go('mural');if(a==='budget')sheetBudget();};});
 }
 function sheetBudget(){
-  sheet(`<h3>Orçamento total</h3><div class="stack"><label class="f">Valor (R$)<input id="bgV" type="number" inputmode="numeric" value="${S.budget}"></label>
-    <button class="btn block" id="bgOk" type="button">Salvar</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`, s=>{
-      s.querySelector("#bgOk").onclick=()=>{const v=parseFloat(s.querySelector("#bgV").value); if(v>0){S.budget=v;save();render();toast("Orçamento atualizado");} s.remove();};
-    });
+ if(!isAdm())return;
+ sheet(`<h3>Orçamento total</h3><div class="stack"><label class="f">Valor (R$)<input id="bgV" type="number" inputmode="decimal" min="0" max="1000000" step="0.01" value="${S.budget}"></label>
+ <button class="btn block" id="bgOk" type="button">Salvar</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ s.querySelector('#bgOk').onclick=()=>act(s.querySelector('#bgOk'),async()=>{const budget=Number(s.querySelector('#bgV').value);if(!Number.isFinite(budget)||budget<0||budget>1000000)throw Error('Use um valor entre 0 e 1.000.000.');await backend.setBudget(budget);s.remove();toast('Orçamento atualizado');});});
 }
 function sheetActivity(){
-  sheet(`<h3>Nova sessão</h3><div class="stack">
-    <label class="f">Dia<select id="acD">${DAYS.map(d=>`<option value="${d.d}" ${d.d===day?"selected":""}>${d.wd} ${d.d}/11</option>`).join("")}</select></label>
-    <label class="f">Horário<input id="acT" type="time" value="18:00"></label>
-    <label class="f">Título<input id="acN" placeholder="Ex.: Bingo da varanda"></label>
-    <label class="f">Pontos (opcional)<input id="acP" type="number" inputmode="numeric"></label>
-    <label class="f">Preparação (opcional)<input id="acR" placeholder="O que levar ou fazer antes"></label>
-    <button class="btn block" id="acOk" type="button">Adicionar à programação</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`, s=>{
-      s.querySelector("#acOk").onclick=()=>{
-        const d=+s.querySelector("#acD").value,t=s.querySelector("#acT").value,title=s.querySelector("#acN").value.trim(); if(!title||!t){toast("Preencha título e horário");return;}
-        const [h,m]=t.split(":").map(Number), start=new Date(2026,10,d,h,m).getTime();
-        AGENDA.push({id:Date.now(),d,t,title,start,end:start+90*60000,pts:+s.querySelector("#acP").value||0,prep:s.querySelector("#acR").value.trim()});
-        AGENDA.sort((a,b)=>a.start-b.start); day=d; s.remove(); render(); toast("Sessão adicionada");
-      };
-    });
+ if(!isAdm())return;
+ sheet(`<h3>Nova sessão</h3><div class="stack">
+ <label class="f">Dia<select id="acD">${DAYS.map(d=>`<option value="${d.d}" ${d.d===day?'selected':''}>${d.wd} ${d.d}/11</option>`).join('')}</select></label>
+ <label class="f">Horário<input id="acT" type="time" value="18:00"></label><label class="f">Título<input id="acN" maxlength="120"></label>
+ <label class="f">Pontos (opcional)<input id="acP" type="number" min="0" max="100" step="1" inputmode="numeric"></label><label class="f">Preparação (opcional)<input id="acR" maxlength="500"></label>
+ <button class="btn block" id="acOk" type="button">Adicionar à programação</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ s.querySelector('#acOk').onclick=()=>act(s.querySelector('#acOk'),async()=>{const d=+s.querySelector('#acD').value,t=s.querySelector('#acT').value,title=s.querySelector('#acN').value.trim();if(!title||!t)throw Error('Preencha título e horário.');const pts=+s.querySelector('#acP').value||0;if(!Number.isInteger(pts)||pts<0||pts>100)throw Error('Use pontos inteiros entre 0 e 100.');
+ const [h,m]=t.split(':').map(Number),start=new Date(`2026-11-${String(d).padStart(2,'0')}T${t}:00-03:00`).getTime();await backend.addSession({d,t,title,place:'',pts,prep:s.querySelector('#acR').value.trim(),note:'',start,end:start+90*60000});day=d;s.remove();toast('Sessão adicionada');});});
 }
+
 function stamp(){ const t=now(); return `${dayOf(t)?.wd||""} ${fmtTime(t)}`.trim(); }
 
 /* ===================== RENDER ===================== */
@@ -768,33 +644,29 @@ const LABELS={inicio:"Início",programa:"Programa",placar:"Placar",querido:"Quer
 function go(t){ if(t==="mural"){ t="fofoca"; fofocaSeg="mural"; } tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
 
 function render(){
+  if(!S.ready){$('#root').innerHTML=`<div class="app login"><h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
   const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,fofoca:viewFofoca}[tab]||viewInicio)();
-  $("#root").innerHTML = `<div class="app">${header()}<main>${body}</main>
-    <p class="muted" style="font-size:12px;text-align:center;margin-top:28px">Rascunho com dados de exemplo. Datas, valores e pontos são fictícios.</p></div>
+  $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p>`:""}<main>${body}</main>
+    <p class="muted" style="font-size:12px;text-align:center;margin-top:28px">Programação e orçamento provisórios. Pontos, gastos e mensagens são compartilhados pelo congresso.</p></div>
     <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${LABELS[k]}</button>`).join("")}</div></nav>`;
   tick();
 }
 
-document.addEventListener("click",e=>{
-  if(e.target.closest(".scrim")) return;
-  const g=e.target.closest("[data-go]"); if(g){ go(g.dataset.go); return; }
-  const d=e.target.closest("[data-day]"); if(d){ day=+d.dataset.day; render(); return; }
-  const fs=e.target.closest("[data-fseg]"); if(fs){ fofocaSeg=fs.dataset.fseg; render(); return; }
-  const q=e.target.closest("[data-q]"); if(q){ qDraft[q.dataset.q] = qDraft[q.dataset.q]===q.dataset.em ? undefined : q.dataset.em; if(!qDraft[q.dataset.q]) delete qDraft[q.dataset.q]; const y=scrollY; render(); scrollTo(0,y); return; }
-  const dl=e.target.closest("[data-del]"); if(dl){ S.chat=S.chat.filter(m=>m.id!=dl.dataset.del); save(); render(); toast("Mensagem apagada"); return; }
-  const sg=e.target.closest("[data-seg]"); if(sg){ contasSeg=sg.dataset.seg; render(); return; }
-  const j=e.target.closest("[data-judge]"); if(j){ const s=S.shame.find(x=>x.id==j.dataset.judge);
-    if(j.dataset.v==="ok"){ s.status="ok"; S.points.push({who:s.who,d:-15,why:"Infração da monogamia (Mural)",kind:"inf",at:stamp()}); toast(`${first(s.who)} condenado: −15`); }
-    else { S.shame=S.shame.filter(x=>x!==s); toast(`${first(s.who)} absolvido`); }
-    save(); render(); return; }
-  const id=e.target.closest("button")?.id;
-  ({meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
-    qSend:()=>{ const d=todayNum()||20, others=ALL.filter(id=>id!==S.me), miss=others.filter(id=>!qDraft[id]).length;
-      if(miss){ toast(`Falta${miss>1?"m":""} ${miss} congressista${miss>1?"s":""}`); return; }
-      others.forEach(id=>{ const c=S.querido[d][id]||(S.querido[d][id]={}); c[qDraft[id]]=(c[qDraft[id]]||0)+1; });
-      (S.qvoted[d]||(S.qvoted[d]=[])).push(S.me); qDraft={}; save(); render(); scrollTo({top:0}); toast("Votos enviados, anonimamente"); },
-    clockBtn:()=>{demo=!demo;render();toast(demo?"Relógio de demonstração: sexta 15:40":"Usando o relógio real");}})[id]?.();
+document.addEventListener('click',e=>{
+ if(e.target.closest('.scrim'))return;
+ const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
+ const d=e.target.closest('[data-day]');if(d){day=+d.dataset.day;render();return;}
+ const fs=e.target.closest('[data-fseg]');if(fs){fofocaSeg=fs.dataset.fseg;render();return;}
+ const q=e.target.closest('[data-q]');if(q){qDraft[q.dataset.q]=qDraft[q.dataset.q]===q.dataset.em?undefined:q.dataset.em;if(!qDraft[q.dataset.q])delete qDraft[q.dataset.q];const y=scrollY;render();scrollTo(0,y);return;}
+ const sg=e.target.closest('[data-seg]');if(sg){contasSeg=sg.dataset.seg;render();return;}
+ const task=e.target.closest('[data-task]');if(task){act(task,async()=>{await backend.reviewTask(task.dataset.task,task.dataset.approve==='yes');toast('Tarefa julgada');});return;}
+ const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
+ const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
+ const button=e.target.closest('button'),id=button?.id;
+ ({meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
+ qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
+ clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Usando o relógio real');}})[id]?.();
 });
 
 function tick(){
@@ -804,14 +676,21 @@ function tick(){
     const parts = dd?[[dd,"dias"],[h,"h"],[m,"min"]]:[[h,"h"],[m,"min"],[s,"seg"]];
     box.innerHTML=parts.map(([v,l])=>`<div><b>${String(v).padStart(2,"0")}</b><span>${l}</span></div>`).join(""); }
 }
-document.addEventListener("submit",e=>{
-  if(e.target.id!=="chatForm") return; e.preventDefault();
-  const v=$("#chatIn").value.trim(); if(!v) return;
-  S.chat.push({id:Date.now(),text:v,at:stamp(),mine:true}); save(); render();
-  const l=$("#chatList"); if(l) l.lastElementChild?.scrollIntoView({block:"end"}); $("#chatIn")?.focus();
+document.addEventListener('submit',e=>{
+ if(e.target.id!=='chatForm')return;e.preventDefault();
+ const input=$('#chatIn'),text=input.value.trim();if(!text)return;
+ act(e.target.querySelector('button'),async()=>{await backend.sendChat(text);if($('#chatIn')?.value.trim()===text)$('#chatIn').value='';$('#chatIn')?.focus();});
 });
 setInterval(tick,1000);
 render();
+backend.start(data=>{
+ const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
+ const previous=S.me;S=data;if(!S.admin)demo=false;if(previous!==S.me)qDraft={};
+ AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
+ const y=scrollY;render();scrollTo(0,y);
+ if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}
+}).catch(e=>{S.ready=true;S.error=backend.errorText(e);render();});
+
 </script>
 
 </body>
