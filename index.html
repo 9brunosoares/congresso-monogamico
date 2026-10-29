@@ -243,20 +243,20 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <script>
 /* ===================== DADOS ===================== */
 const PEOPLE = [
-  {id:"bruno", nick:"Bruno", admin:true},
+  {id:"bruno", nick:"Bruno", admin:true, frame:[583,280,50,7,260]},
   {id:"ob", nick:"OB"},
   {id:"luan", nick:"Luan"},
   {id:"igor", nick:"Igor", admin:true},
   {id:"pig", nick:"Pig", admin:true},
   {id:"pelado", nick:"Pelado"},
-  {id:"kirk", nick:"Kirk"},
+  {id:"kirk", nick:"Kirk", frame:[1179,337,96,165,120]},
   {id:"gherardi", nick:"Gherardi"},
   {id:"nanu", nick:"Nanu"},
-  {id:"sadano", nick:"Sadano"},
-  {id:"ibrahim", nick:"Ibrahim"},
+  {id:"sadano", nick:"Sadano", frame:[875,286,49,20,258]},
+  {id:"ibrahim", nick:"Ibrahim", frame:[1179,337,96,12,120]},
   {id:"cadu", nick:"Cadu"},
   {id:"diogo", nick:"Diogo"},
-  {id:"felipe", nick:"Felipe"},
+  {id:"felipe", nick:"Felipe", frame:[489,316,49,35,256]},
 ];
 const P = Object.fromEntries(PEOPLE.map(p=>[p.id,p]));
 const first = id => P[id].nick;
@@ -387,7 +387,14 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const brl = v => "R$ " + v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const brl0 = v => "R$ " + Math.round(v).toLocaleString("pt-BR");
-const av = (id,cls="") => `<span class="av ${cls}" aria-hidden="true">${esc(P[id].nick[0])}<img src="img/${id}.jpg" alt="" onerror="this.remove()"></span>`;
+// Enquadra as fotos das capturas originais sem alterar seus pixels.
+const photoStyle = id => {
+  const frame=P[id].frame;
+  if(!frame)return "";
+  const [w,h,x,y,size]=frame;
+  return `width:${w/size*100}%;height:${h/size*100}%;left:${-x/size*100}%;top:${-y/size*100}%;object-fit:fill`;
+};
+const av = (id,cls="") => `<span class="av ${cls}" aria-hidden="true">${esc(P[id].nick[0])}<img src="img/${id}.jpg" style="${photoStyle(id)}" alt="" onerror="this.remove()"></span>`;
 const isAdm = () => S.me && P[S.me].admin;
 const score = id => S.points.filter(x=>x.who===id).reduce((a,x)=>a+x.d,0);
 const ranking = () => ALL.map(id=>({id,s:score(id),n:S.points.filter(x=>x.who===id).length})).sort((a,b)=>b.s-a.s||P[a.id].nick.localeCompare(P[b.id].nick));

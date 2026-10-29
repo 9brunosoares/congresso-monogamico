@@ -42,14 +42,14 @@ Usar apenas `nick` (apelido); não há campo de nome completo. O `id` é o apeli
 | igor | Igor | `img/igor.jpg` | sim |
 | pig | Pig | `img/pig.jpg` | sim |
 | pelado | Pelado | `img/pelado.jpg` |  |
-| kirk | Kirk | `img/kirk.jpg` (pendente) |  |
+| kirk | Kirk | `img/kirk.jpg` |  |
 | gherardi | Gherardi | `img/gherardi.jpg` |  |
 | nanu | Nanu | `img/nanu.jpg` |  |
-| sadano | Sadano | `img/sadano.jpg` (pendente) |  |
-| ibrahim | Ibrahim | `img/ibrahim.jpg` (pendente) |  |
+| sadano | Sadano | `img/sadano.jpg` |  |
+| ibrahim | Ibrahim | `img/ibrahim.jpg` |  |
 | cadu | Cadu | `img/cadu.jpg` |  |
 | diogo | Diogo | `img/diogo.jpg` |  |
-| felipe | Felipe | `img/felipe.jpg` (pendente) |  |
+| felipe | Felipe | `img/felipe.jpg` |  |
 
 ### Estrutura do estado local (objeto `S`), base para o modelo do Firestore
 - `me`: id do usuário logado.
@@ -88,7 +88,7 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - `manifest.webmanifest`: nome "XVI Congresso Monogâmico", nome curto "Congresso", `display: standalone`.
 - `icon-1024.png`, `icon-512.png`, `icon-192.png`, `apple-touch-icon.png` (180) e `favicon.png`.
 - `robots.txt` (`Disallow: /`) e a meta `noindex`: o Bruno quer o site público, mas fora dos buscadores.
-- `img/*.jpg`: 10 fotos de perfil, 160×160; as fotos de Kirk, Sadano, Ibrahim e Felipe serão enviadas depois. Até lá, exibir a inicial.
+- `img/*.jpg`: fotos dos 14 participantes. Bruno, Sadano, Felipe, Ibrahim e Kirk usam as capturas originais recebidas, enquadradas pelo campo `frame: [largura, altura, x, y, lado]` de `PEOPLE` e pelo CSS do avatar; apenas o retrato circular fica visível. As demais fotos têm 160×160. Fotos ausentes continuam mostrando a inicial.
 
 ## 5. Repositório e hospedagem
 
