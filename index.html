@@ -251,13 +251,13 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
-<div id="root"><div class="app login"><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
+<div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><i class="ring one"></i><i class="ring two"></i><i class="padlock"></i></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
 <script type="module">
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js';
-import * as backend from './backend.js';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js?v=20261029b';
+import * as backend from './backend.js?v=20261029b';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 

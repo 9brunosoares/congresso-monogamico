@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, collection, doc, getDoc, onSnapshot, query, orderBy, limit, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen } from './shared.js';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen } from './shared.js?v=20261029b';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
 const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},agenda:[],error:''});
