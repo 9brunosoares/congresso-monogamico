@@ -233,6 +233,19 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 .composer{position:sticky;bottom:calc(72px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;margin-top:14px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
 .composer input{flex:1;min-width:0;border:0;background:transparent;padding:8px;font-size:16px;color:var(--ink)}
 .composer input:focus{outline:none}
+
+.union-loader{display:inline-block;position:relative;width:76px;height:56px;vertical-align:middle;flex-shrink:0}
+.union-loader .ring{position:absolute;top:10px;width:30px;height:30px;border:3px solid var(--brass);border-radius:50%}
+.union-loader .one{left:7px;animation:ring-one 1.8s ease-in-out infinite}
+.union-loader .two{right:7px;animation:ring-two 1.8s ease-in-out infinite}
+.union-loader .padlock{position:absolute;left:28px;top:30px;width:20px;height:16px;background:var(--seal);border-radius:4px;animation:locking 1.8s ease-in-out infinite}
+.union-loader .padlock:before{content:"";position:absolute;width:12px;height:13px;border:3px solid var(--seal);border-bottom:0;border-radius:9px 9px 0 0;left:4px;top:-11px;box-sizing:border-box}
+@keyframes ring-one{0%,100%{transform:translateX(-4px)}45%,75%{transform:translateX(6px)}}
+@keyframes ring-two{0%,100%{transform:translateX(4px)}45%,75%{transform:translateX(-6px)}}
+@keyframes locking{0%,20%,100%{opacity:0;transform:translateY(7px)}45%,75%{opacity:1;transform:translateY(0)}}
+.btn[aria-busy="true"]{display:flex;align-items:center;justify-content:center;gap:8px}.btn .union-loader{transform:scale(.65);margin:-10px}
+.mural-alert{border:2px solid var(--seal);color:var(--seal);font-weight:800}
+@media(prefers-reduced-motion:reduce){.union-loader i{animation:none!important}}
 </style>
 
 <style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}</style>
@@ -243,7 +256,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 
 <script type="module">
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey} from './shared.js';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js';
 import * as backend from './backend.js';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
@@ -292,8 +305,9 @@ const photoStyle = id => {
 };
 const av = (id,cls="") => `<span class="av ${cls}" aria-hidden="true">${esc(P[id].nick[0])}<img src="img/${id}.jpg" style="${photoStyle(id)}" alt="" onerror="this.remove()"></span>`;
 const isAdm = () => S.me && S.admin;
-const score = id => S.points.filter(x=>x.who===id).reduce((a,x)=>a+x.d,0);
-const ranking = () => ALL.map(id=>({id,s:score(id),n:S.points.filter(x=>x.who===id).length})).sort((a,b)=>b.s-a.s||P[a.id].nick.localeCompare(P[b.id].nick));
+const allPoints = () => [...S.points,...missedVotePoints(S.attendance)];
+const score = id => allPoints().filter(x=>x.who===id).reduce((a,x)=>a+x.d,0);
+const ranking = () => ALL.map(id=>({id,s:score(id),n:allPoints().filter(x=>x.who===id).length})).sort((a,b)=>b.s-a.s||P[a.id].nick.localeCompare(P[b.id].nick));
 const pts = d => `<span class="pts ${d<0?"neg":"pos"}">${d>0?"+":""}${d}</span>`;
 const fmtTime = ms => new Date(ms).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 const dayOf = ms => DAYS.find(x=>x.d===new Date(ms).getDate());
@@ -324,17 +338,18 @@ try{ tab = localStorage.getItem("xvi-tab") || "inicio"; }catch(e){}
 
 async function act(button,run){
   if(button?.disabled)return;
-  if(button)button.disabled=true;
+  if(button){button.disabled=true;button.setAttribute("aria-busy","true");button.dataset.original=button.innerHTML;button.innerHTML=loader()+"<span>Enviando…</span>";}
   try{await run();}catch(e){toast(backend.errorText(e));}
-  finally{if(button)button.disabled=false;}
+  finally{if(button){button.disabled=false;button.removeAttribute("aria-busy");button.innerHTML=button.dataset.original;}}
 }
+function loader(){return '<span class="union-loader" aria-hidden="true"><i class="ring one"></i><i class="ring two"></i><i class="padlock"></i></span>';}
 function viewLogin(){
   let sel=null;
   $('#root').innerHTML=`<div class="app"><form class="login" id="loginForm">
     <div class="badge"><div class="lanyard"><span>CREDENCIAL</span><span>XVI CONGRESSO</span></div><div class="body">
     <div class="eyebrow">Bem-vindo ao</div><h1><em>XVI</em> Congresso Monogâmico</h1>
     <p class="muted" style="margin:10px 0 0">Escolha sua foto e use seu PIN. No primeiro acesso, crie um PIN de 6 dígitos.</p></div></div>
-    <div class="pick" id="pick">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="false">${av(p.id)}<span>${esc(p.nick)}${p.admin?' <span class="adm">ADM</span>':''}</span></button>`).join('')}</div>
+    <h2 style="margin-top:22px">Quem é você?</h2><div class="pick" id="pick">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="false">${av(p.id)}<span>${esc(p.nick)}</span></button>`).join('')}</div>
     <label class="f">PIN de 6 dígitos<input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="current-password" required placeholder="••••••"></label>
     <label style="display:flex;align-items:center;gap:8px;margin:16px 0"><input id="newAccount" type="checkbox">Primeiro acesso: criar meu PIN</label>
     <label class="f" id="confirmPin" style="display:none;margin-bottom:14px">Confirme seu PIN<input id="pinAgain" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" placeholder="••••••"></label>
@@ -358,7 +373,7 @@ function header(){
   </div>
   <div class="demo">
     <span>Agora: <b class="num" id="clock"></b></span>
-    ${isAdm()?`<button class="chip" id="clockBtn" type="button">${demo?"Relógio de demonstração":"Relógio real"}</button>`:""}
+    ${isAdm()?`<button class="chip" id="clockBtn" type="button">${demo?"Encerrar demonstração":"Demonstração"}</button>`:""}
   </div>`;
 }
 
@@ -375,6 +390,8 @@ function viewInicio(){
   const myPos = rk.findIndex(r=>r.id===S.me)+1;
   const pending = S.shame.filter(s=>s.status==="pend").length;
   return `
+  <button class="btn seal block" id="homeReport" type="button" style="margin-bottom:14px">Fazer denúncia</button>
+  ${S.shame.length?'<button class="btn block mural-alert" data-go="mural" type="button" style="margin-bottom:14px">Ver mural da vergonha →</button>':''}
   ${nxt ? `<section class="card next">
     <div class="sealmark" aria-hidden="true">XVI</div>
     <div class="eyebrow">Próxima sessão · ${dayOf(nxt.start).wd} ${fmtTime(nxt.start)}</div>
@@ -387,8 +404,8 @@ function viewInicio(){
   ${cur?`<div class="card row" style="margin-top:12px"><span class="tag live">Agora</span><div class="grow"><b>${esc(cur.title)}</b><div class="muted" style="font-size:13px">até ${fmtTime(cur.end)} · ${esc(cur.place||"")}</div></div></div>`:""}
 
   ${(()=>{const d=dayKey(); if(!S.querido[d]) return ""; const done=(S.qvoted[d]||[]).includes(S.me);
-    return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${done?"Ver resultado":"Votar agora"}</button></div>
-    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${done?"Você já votou hoje. Os votos são anônimos.":`Votação da manhã de ${new Date().toLocaleDateString("pt-BR")} aberta. Ninguém sabe quem deu o quê.`}</div></div>`})()}
+    return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
+    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${done?"Você já votou hoje. Os votos são anônimos.":votingOpen()?"Vote até meio-dia. Quem não preencher perde 5 pontos.":"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
 
   <div class="sec-h"><h3>Seu placar</h3><button class="link" data-go="placar" type="button">Ranking completo</button></div>
   <div class="card row">
@@ -433,7 +450,7 @@ function viewPrograma(){
 
 function viewPlacar(){
   const rk=ranking();
-  const log=[...S.points].reverse().slice(0,12);
+  const log=allPoints().sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0)).slice(0,12);
   const tasks=S.tasks.filter(t=>isAdm()?t.status==='pend':t.who===S.me);
   const approvals=tasks.length?`<div class="sec-h"><h3>${isAdm()?'Tarefas para aprovar':'Minhas tarefas'}</h3></div><div class="card stack">${tasks.map(t=>`<div><b>${esc(first(t.who))}</b> · ${esc(t.why)} (+${t.d})<div class="muted">${t.status==='pend'?'Aguardando aprovação':t.status==='ok'?'Aprovada':'Não aprovada'}</div>${isAdm()?`<button class="btn sm" data-task="${esc(t.id)}" data-approve="yes" type="button">Aprovar</button> <button class="btn sm ghost" data-task="${esc(t.id)}" data-approve="no" type="button">Recusar</button>`:''}</div>`).join('')}</div>`:'';
   return `
@@ -446,7 +463,7 @@ function viewPlacar(){
   <div class="sec-h"><h3>Tabela de pontos</h3></div>
   <div class="card rules">
     <div><h4 style="color:var(--good)">Somam</h4><ul>${RULES.plus.map(([n,v])=>`<li><span>${n}</span><span class="pts pos">+${v}</span></li>`).join("")}</ul></div>
-    <div><h4 style="color:var(--bad)">Tiram</h4><ul>${RULES.minus.map(([n,v])=>`<li><span>${n}</span><span class="pts neg">${v}</span></li>`).join("")}</ul></div>
+    <div><h4 style="color:var(--bad)">Tiram</h4><ul>${RULES.minus.map(([n,v])=>`<li><span>${n}</span><span class="pts neg">${v}</span></li>`).join("")}<li><span>Não votar até meio-dia (automático)</span><span class="pts neg">−5</span></li></ul></div>
   </div>`;
 }
 
@@ -513,10 +530,10 @@ function viewQuerido(){
   const top = em => ALL.map(id=>({id,n:(res[id]||{})[em]||0})).sort((a,b)=>b.n-a.n)[0];
   const highlights = [["❤️","Mais amado"],["🐍","Mais cobra"],["🍪","Mais biscoiteiro"],["🎯","Mais alvo"]].map(([em,l])=>{const t=top(em);return t.n?`<div class="qhl">${av(t.id)}<div><div class="eyebrow">${l}</div><b>${esc(first(t.id))}</b> <span class="qn">${em} ${t.n}</span></div></div>`:""}).join("");
   const others = ALL.filter(id=>id!==S.me);
-  const form = voted ? "" : `
+  const form = voted || !votingOpen() ? "" : `
     <div class="card"><div class="eyebrow">Votação de ${new Date().toLocaleDateString("pt-BR")}</div>
       <h2 class="qtitle">Dê um emoji para cada congressista</h2>
-      <p class="muted" style="margin:6px 0 0;font-size:14px">Anônimo: o app só guarda quantos emojis cada um recebeu, nunca quem deu.</p>
+      <p class="muted" style="margin:6px 0 0;font-size:14px">Vote até meio-dia (São Paulo). Não preencher custa 5 pontos. As escolhas são anônimas.</p>
     </div>
     <div class="card" style="margin-top:12px;padding-block:4px">${others.map(id=>`<div class="qrow">
       <div class="row">${av(id,"sm")}<b class="grow">${esc(P[id].nick)}</b>${qDraft[id]?`<span class="qpick">${qDraft[id]}</span>`:""}</div>
@@ -529,7 +546,7 @@ function viewQuerido(){
     <div class="card" style="margin-top:12px;padding-block:4px">${ALL.slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
       return `<div class="qres ${id===S.me?"me-row":""}">${av(id)}<div style="min-width:0"><div class="nm">${esc(P[id].nick)}</div><div class="qchips">${chips||'<span class="muted" style="font-size:13px">sem votos ainda</span>'}</div></div><span class="muted num" style="font-size:13px">${total(id)}</span></div>`}).join("")}</div>`;
-  return (voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">Seus votos de hoje foram enviados. Amanhã de manhã abre de novo.</div></div>`:form) + results;
+  return (!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>De quinta, 19/11, a domingo, 22/11, da meia-noite até antes das 12h (São Paulo).</p><p class="muted">Não preencher até meio-dia: −5 pontos por dia.</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">Seus votos de hoje foram enviados.</div></div>`:form) + results;
 }
 
 function viewFofoca(){
@@ -646,7 +663,7 @@ const LABELS={inicio:"Início",programa:"Programa",placar:"Placar",querido:"Quer
 function go(t){ if(t==="mural"){ t="fofoca"; fofocaSeg="mural"; } tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
 
 function render(){
-  if(!S.ready){$('#root').innerHTML=`<div class="app login"><h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
+  if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
   const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,fofoca:viewFofoca}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p>`:""}<main>${body}</main>
@@ -666,9 +683,9 @@ document.addEventListener('click',e=>{
  const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
- ({meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
+ ({meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
  qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
- clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Usando o relógio real');}})[id]?.();
+ clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Demonstração encerrada');}})[id]?.();
 });
 
 function tick(){
@@ -683,7 +700,8 @@ document.addEventListener('submit',e=>{
  const input=$('#chatIn'),text=input.value.trim();if(!text)return;
  act(e.target.querySelector('button'),async()=>{await backend.sendChat(text);if($('#chatIn')?.value.trim()===text)$('#chatIn').value='';$('#chatIn')?.focus();});
 });
-setInterval(tick,1000);
+let votingPhase=votingOpen();
+setInterval(()=>{tick();const phase=votingOpen();if(phase!==votingPhase){votingPhase=phase;render();}},1000);
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;

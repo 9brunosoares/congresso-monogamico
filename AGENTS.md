@@ -137,3 +137,12 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Ele tem olho apurado para língua e estética: revise acentuação e concordância nos textos do app.
 - Evite aberturas como "claro, aqui está" e expressões como "sem frescura".
 - Mostre versões navegáveis cedo e itere a partir do retorno dele.
+
+## Ajustes de votação e home (29/10/2026)
+- Login pergunta “Quem é você?” e não exibe selo ADM nos perfis antes de autenticar.
+- Home: botão destacado Fazer denúncia; Ver mural da vergonha sempre que houver qualquer caso, pendente ou julgado.
+- Loading em CSS: duas alianças se aproximam e cadeado fecha. Sem imagens extras; respeita redução de movimento.
+- Queridômetro SOMENTE de 19 a 22/11/2026, 00h <= hora < 12h de São Paulo, validado em request.time. Demonstração não altera votação.
+- Cada voto grava atomicamente o total, marcador privado e `participation/{diaSP}/people/{apelido}` com somente `{voted:true}`. Participantes podem ler a entrega, nunca escolhas por autor. Clientes não podem editar/apagar comprovantes ou marcar outra pessoa.
+- Quatro listeners de participação carregam antes do placar. `missedVotePoints()` deriva −5 por pessoa/dia após o meio-dia, sem depender de abrir o app no prazo e sem gravações repetidas. Computado em todos os placares e histórico. Não lançar também points manuais pelo mesmo motivo.
+- Antes da viagem não há penalidade nem voto de teste. Limpeza futura precisa incluir participation nos dias correspondentes, para manter consistência.

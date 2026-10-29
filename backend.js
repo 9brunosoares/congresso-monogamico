@@ -3,10 +3,10 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, collection, doc, getDoc, onSnapshot, query, orderBy, limit, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally } from './shared.js';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen } from './shared.js';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
-const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,agenda:[],error:''});
+const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},agenda:[],error:''});
 let state=emptyState(), notify=()=>{}, generation=0, stops=[], voteStops=[], currentDay=dayKey();
 let firstSnapshots=new Set(), connected=false;
 let mine=new Set();
@@ -25,7 +25,7 @@ const errorText=e=>({
 export {errorText};
 function stopData(){stops.forEach(f=>f());stops=[];voteStops.forEach(f=>f());voteStops=[];firstSnapshots=new Set();connected=false;}
 function failed(e){state.error=errorText(e);emit();}
-function ready(key){firstSnapshots.add(key);if(firstSnapshots.size>=10){state.ready=true;connected=true;}emit();}
+function ready(key){firstSnapshots.add(key);if(firstSnapshots.size>=14){state.ready=true;connected=true;}emit();}
 function rows(snapshot){return snapshot.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));}
 async function claimProfile(user,id){
  await runTransaction(db,async tx=>{
@@ -75,6 +75,10 @@ export async function start(onUpdate){
    stops.push(onSnapshot(doc(db,'settings','main'),snap=>{if(version!==generation)return;state.budget=snap.data()?.budget||0;ready('settings');},failed));
    stops.push(onSnapshot(collection(db,'agenda'),snapshot=>{if(version!==generation)return;state.agenda=rows(snapshot).sort((a,b)=>a.start-b.start);ready('agenda');},failed));
    stops.push(onSnapshot(doc(db,'admins',user.uid),snap=>{if(version!==generation)return;state.admin=snap.exists();ready('admin');},failed));
+   for(const day of VOTE_DAYS)stops.push(onSnapshot(collection(db,'participation',day.key,'people'),snapshot=>{
+    if(version!==generation)return;
+    state.attendance={...state.attendance,[day.key]:Object.fromEntries(snapshot.docs.map(d=>[d.id,true]))};ready('participation-'+day.key);
+   },failed));
    subscribeVoting();
   }catch(e){if(version!==generation)return;await signOut(auth);failed(e);}
  });
@@ -122,7 +126,8 @@ export async function deleteChat(id){admin();await deleteDoc(doc(db,'chat',id));
 export async function setBudget(budget){admin();await updateDoc(doc(db,'settings','main'),{budget});}
 export async function addSession(data){admin();return addDoc(collection(db,'agenda'),data);}
 export async function vote(ballot){
- member();const key=dayKey(),uid=auth.currentUser.uid,id=state.me;
+ member();if(!votingOpen())throw Error("A votação abre de quinta a domingo da viagem, até meio-dia (São Paulo).");
+ const key=dayKey(),uid=auth.currentUser.uid,id=state.me;
  const total=doc(db,'querido',key),marker=doc(db,'querido',key,'voters',uid);
  const delta=applyBallot(undefined,ballot,id);
  if((await getDocFromServer(marker)).exists())throw Error('Você já votou hoje. Amanhã abre de novo.');
@@ -131,6 +136,7 @@ export async function vote(ballot){
  const batch=writeBatch(db);
  batch.set(total,{voters:increment(1),counts:Object.fromEntries(ALL.map(target=>[target,increment(delta.counts[target])]))},{merge:true});
  batch.set(marker,{voted:true});
+ batch.set(doc(db,"participation",key,"people",id),{voted:true});
  try{await batch.commit();}
  catch(e){
   if(e.code==='permission-denied' && (await getDocFromServer(marker)).exists())throw Error('Você já votou hoje. Amanhã abre de novo.');

@@ -137,6 +137,10 @@ service cloud.firestore {
    allow delete: if isAdmin();
   }
   function isToday(day) { return day == string(int((request.time.toMillis() - 10800000) / 86400000)); }
+  function votingOpen() {
+   let local=request.time.toMillis()-10800000;
+   return local >= 1795046400000 && local < 1795392000000 && local % 86400000 < 43200000;
+  }
   // A subtração só aceita números; delta enumerado garante um único incremento.
   // A partir de zero, com 14 votantes e sem voto próprio, cada dígito tem máximo13.
   function isValidTallyDelta(delta,self,increments) { return self ? delta == 0 : delta in increments; }
@@ -146,7 +150,7 @@ service cloud.firestore {
    let after=d.counts;
    let official=ids();
    let increments=[1,16,256,4096,65536,1048576,16777216,268435456];
-   return isToday(day) && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= 14
+   return isToday(day) && votingOpen() && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= 14
     && d.counts is map && after.keys().hasAll(official) && after.keys().hasOnly(official)
     && isValidTallyDelta(after['bruno']-before.get('bruno',0),'bruno'==me,increments)
     && isValidTallyDelta(after['ob']-before.get('ob',0),'ob'==me,increments)
@@ -170,7 +174,8 @@ service cloud.firestore {
   }
   function newVoter(day) {
    let path=/databases/$(database)/documents/querido/$(day)/voters/$(request.auth.uid);
-   return !exists(path) && getAfter(path).data == {'voted':true};
+   return !exists(path) && getAfter(path).data == {'voted':true}
+    && getAfter(/databases/$(database)/documents/participation/$(day)/people/$(personId())).data == {'voted':true};
   }
   match /querido/{day} {
    allow get: if isMember();
@@ -181,9 +186,19 @@ service cloud.firestore {
     allow get: if isMember() && isOwner(uid);
     allow list, update, delete: if false;
     // O avanço do pai, obrigatório aqui, valida o membro, o dia e todos os contadores.
-    allow create: if isOwner(uid) && request.resource.data == {'voted':true}
+    allow create: if isOwner(uid) && votingOpen() && isToday(day) && request.resource.data == {'voted':true}
      && getAfter(/databases/$(database)/documents/querido/$(day)).data.voters == previousVoters(day) + 1;
    }
+  }
+  // Participação registra apenas a entrega, nunca os emojis escolhidos.
+  match /participation/{day}/people/{id} {
+   allow read: if isMember();
+   allow create: if isMember() && id == personId() && isToday(day) && votingOpen()
+    && request.resource.data == {'voted':true}
+    && !exists(/databases/$(database)/documents/querido/$(day)/voters/$(request.auth.uid))
+    && getAfter(/databases/$(database)/documents/querido/$(day)/voters/$(request.auth.uid)).data == {'voted':true}
+    && getAfter(/databases/$(database)/documents/querido/$(day)).data.voters == previousVoters(day) + 1;
+   allow update, delete: if false;
   }
   match /{document=**} { allow read, write: if false; }
  }
