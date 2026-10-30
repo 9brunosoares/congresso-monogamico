@@ -97,6 +97,21 @@ service cloud.firestore {
     && request.resource.data.version == resource.data.version + 1 && audited('budget',id);
    allow delete: if false;
   }
+  // Recursos compartilhados só com membros; edição ADM, independente do financeiro.
+  function officialUrl(v) { return v is string && v.size() <= 2000 && (v == '' || v.matches('https://[a-zA-Z0-9][^ <>" ]*')); }
+  function validOfficialLinks(d) {
+   return only(d,['albumUrl','playlistUrl','mapUrl','airbnbUrl','address','wifiName','wifiPassword','version','updatedAt','updatedBy'])
+    && officialUrl(d.albumUrl) && officialUrl(d.playlistUrl) && officialUrl(d.mapUrl) && officialUrl(d.airbnbUrl)
+    && optionalText(d.address,300) && optionalText(d.wifiName,80) && optionalText(d.wifiPassword,120)
+    && d.version is int && d.version > 0 && d.version <= 1000000 && d.updatedAt is timestamp
+    && d.updatedAt == request.time && d.updatedBy == personId();
+  }
+  match /officialLinks/{id} {
+   allow read: if isMember();
+   allow create: if id == 'main' && isAdmin() && validOfficialLinks(request.resource.data) && request.resource.data.version == 1;
+   allow update: if id == 'main' && isAdmin() && validOfficialLinks(request.resource.data) && request.resource.data.version == resource.data.version + 1;
+   allow delete: if false;
+  }
   function isValidPix(d) {
    return only(d,['type','value']) && text(d.value,77)
     && (d.type == 'aleatoria' && d.value.matches('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')

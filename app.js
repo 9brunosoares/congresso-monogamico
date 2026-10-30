@@ -1,10 +1,11 @@
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030b';
-import {PIX_TYPES} from './pix.js?v=20261030b';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030c';
+import {PIX_TYPES} from './pix.js?v=20261030c';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030b';
-import * as backend from './backend.js?v=20261030b';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030c';
+import * as backend from './backend.js?v=20261030c';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -142,6 +143,8 @@ function viewInicio(){
   </section>` : `<section class="card next"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2></section>`}
 
   ${cur?`<div class="card row" style="margin-top:12px"><span class="tag live">Agora</span><div class="grow"><b>${esc(cur.title)}</b><div class="muted" style="font-size:13px">até ${fmtTime(cur.end)} · ${esc(cur.place||"")}</div></div></div>`:""}
+
+  <button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>
 
   ${(()=>{const d=dayKey(); const done=(S.qvoted[d]||[]).includes(S.me);
     return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
@@ -351,6 +354,23 @@ function sheetTask(){
 function sheetCloseScores(){
  sheet('<h3>Encerrar placar?</h3><p>A pontuação e a classificação ficarão congeladas. O restante do app continua funcionando.</p><div class="stack"><button class="btn block" id="scoreCloseOk" type="button">Encerrar placar</button><button class="btn ghost block" data-close type="button">Voltar</button></div>',s=>{s.querySelector('#scoreCloseOk').onclick=()=>act(s.querySelector('#scoreCloseOk'),async()=>{await backend.closeScores();s.remove();toast('Placar encerrado.');});});
 }
+function resourceIcon(kind){
+ const paths={links:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/>',album:'<rect x="3" y="5" width="18" height="15" rx="2"/><circle cx="8" cy="10" r="1"/><path d="m4 18 5-5 4 4 3-3 4 4"/>',music:'<path d="M9 18V5l11-2v13M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/>',map:'<path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z"/><circle cx="12" cy="10" r="2"/>',house:'<path d="m3 11 9-8 9 8M5 10v11h14V10M10 21v-7h4v7"/>',wifi:'<path d="M3 8a15 15 0 0 1 18 0M6 12a10 10 0 0 1 12 0M9 16a5 5 0 0 1 6 0M12 20h.01"/>'};
+ return `<svg class="resource-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[kind]}</svg>`;
+}
+function sheetOfficialLinks(){
+ const data={...EMPTY_OFFICIAL_LINKS,...S.officialLinks};
+ const row=(kind,label,url,detail='')=>url?`<a class="official-resource" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${resourceIcon(kind)}<span class="grow"><b>${label}</b>${detail?`<small>${esc(detail)}</small>`:''}</span><span class="muted" aria-hidden="true">↗</span></a>`:`<div class="official-resource unavailable">${resourceIcon(kind)}<span class="grow"><b>${label}</b><small>Em breve</small></span></div>`;
+ sheet(`<div class="row official-heading"><h3 class="grow">Links oficiais</h3>${isAdm()?'<button class="link" id="editOfficialLinks" type="button">Editar</button>':''}</div>${row('album','Álbum compartilhado',data.albumUrl)}${row('music','Playlist oficial',data.playlistUrl)}${row('map','Endereço da casa',data.mapUrl,data.address)}${row('house','Airbnb',data.airbnbUrl)}<div class="official-resource">${resourceIcon('wifi')}<div class="grow"><b>Wi-Fi</b><small>${esc(data.wifiName||(data.wifiPassword?'Senha da casa':'Em breve'))}</small>${data.wifiPassword?`<code class="wifi-password">${esc(data.wifiPassword)}</code>`:''}</div>${data.wifiPassword?'<button class="link" id="copyOfficialWifi" type="button">Copiar senha</button>':''}</div><button class="btn ghost block" style="margin-top:14px" data-close type="button">Fechar</button>`,s=>{
+  if(isAdm())s.querySelector('#editOfficialLinks').onclick=()=>{s.remove();sheetEditOfficialLinks();};
+  if(data.wifiPassword)s.querySelector('#copyOfficialWifi').onclick=()=>act(s.querySelector('#copyOfficialWifi'),async()=>{if(navigator.clipboard){await navigator.clipboard.writeText(data.wifiPassword);toast('Senha copiada.');}else{toast('A senha está disponível para copiar.');}});
+ });
+}
+function sheetEditOfficialLinks(){
+ const data={...EMPTY_OFFICIAL_LINKS,...S.officialLinks},version=S.officialLinks?.version||0;
+ const fields=[['albumUrl','Álbum compartilhado','url'],['playlistUrl','Playlist oficial','url'],['mapUrl','Mapa da casa','url'],['address','Endereço (opcional)','text'],['airbnbUrl','Airbnb','url'],['wifiName','Rede Wi-Fi','text'],['wifiPassword','Senha do Wi-Fi','text']];
+ sheet(`<h3>Editar links oficiais</h3><div class="stack">${fields.map(([key,label,type])=>`<label class="f">${label}<input id="official-${key}" type="${type}" maxlength="${key.endsWith('Url')?2000:key==='address'?300:key==='wifiName'?80:120}" value="${esc(data[key])}" placeholder="${type==='url'?'https://':'Em breve'}" ${type==='url'?'inputmode="url"':''} autocapitalize="none" autocomplete="off" spellcheck="false"></label>`).join('')}<button class="btn block" id="saveOfficialLinks" type="button">Salvar</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{s.querySelector('#saveOfficialLinks').onclick=()=>act(s.querySelector('#saveOfficialLinks'),async()=>{await backend.saveOfficialLinks(Object.fromEntries(fields.map(([key])=>[key,s.querySelector('#official-'+key).value])),version);s.remove();toast('Links oficiais atualizados.');});});
+}
 function sheetExpense(expense=null){
  let split=new Set(expense?.split||ALL);
  sheet(`<h3>${expense?'Editar':'Lançar'} gasto</h3><div class="stack">
@@ -530,7 +550,7 @@ document.addEventListener('click',e=>{
  const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
- ({closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
+ ({officialLinks:sheetOfficialLinks,closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
  qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
  clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Demonstração encerrada');}})[id]?.();
 });

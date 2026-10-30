@@ -77,6 +77,15 @@ const {context}=require('./firebase-context.cjs');
    const point={who:'bruno',d:5,why:'Tarefa',kind:'aux',at:'19/11 11:59',createdAt:new Date(testTime).toISOString()};t.request.resource.data=point;t.resource={data:point};cases.push(t);
   }
  }
+ function linksCase(method,admin=true,expectation='ALLOW'){
+  const before={albumUrl:'',playlistUrl:'https://open.spotify.com/playlist/example',mapUrl:'https://maps.app.goo.gl/example',airbnbUrl:'https://www.airbnb.com.br/rooms/example',address:'',wifiName:'',wifiPassword:'',version:1,updatedAt:new Date(testTime).toISOString(),updatedBy:'bruno'};
+  return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path:prefix+'/officialLinks/main',method,resource:{data:{...before,version:method==='update'?2:1}}},resource:{data:before},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,admin)]};
+ }
+ for(const method of ['create','update','get'])cases.push(linksCase(method));
+ for(const method of ['create','update'])cases.push(linksCase(method,false,'DENY'));
+ cases.push(linksCase('get',false));cases.push(linksCase('delete',true,'DENY'));
+ const guestLinks=linksCase('get',false,'DENY');guestLinks.request.auth=null;cases.push(guestLinks);
+ for(const method of ['create','update'])for(const patch of [{playlistUrl:'javascript:alert(1)'},{mapUrl:'http://example.com'},{albumUrl:7},{wifiPassword:'x'.repeat(121)},{address:'x'.repeat(301)},{arbitrary:true},{updatedBy:'ob'},{version:8}]){const t=linksCase(method,true,'DENY');Object.assign(t.request.resource.data,patch);cases.push(t);}
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});

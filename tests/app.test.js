@@ -1,6 +1,7 @@
 import test from 'node:test';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from '../finance.js';
 import {PIX_TYPES} from '../pix.js';
+import {EMPTY_OFFICIAL_LINKS} from '../official-links.js';
 import {prepareReportPhoto} from '../report-photo.js';
 import {bindAgendaSwipe,adjacentDay} from '../agenda-gesture.js';
 import assert from 'node:assert/strict';
@@ -38,7 +39,7 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={};const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
+ const nodes={};const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html};
 }
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
@@ -123,4 +124,10 @@ test('placar congelado não ganha multa de domingo; CPF padrão e novas categori
  assert(!nodes['#root'].innerHTML.includes('id="givePts"'));assert(nodes['#root'].innerHTML.includes('Placar encerrado.'));
  assert(vm.runInContext("CATS.some(c=>c.name==='Colocação')&&CATS.some(c=>c.name==='Outros')",context));
  assert.equal(notice('Escolha sua foto primeiro'),'Escolha sua foto primeiro.');assert.equal(notice('Escolha sua foto primeiro.'),'Escolha sua foto primeiro.');
+});
+test('links ficam compactos na home; modal oculta edição a membros e não expõe URL vazia',()=>{
+ const {context,nodes}=ui();vm.runInContext("S={...S,me:'bruno',ready:true,admin:false,loaded:{officialLinks:true},officialLinks:{...EMPTY_OFFICIAL_LINKS,playlistUrl:'https://open.spotify.com/playlist/example',wifiPassword:'senha-exemplo'}};tab='inicio';render();sheet=(html)=>globalThis.modal=html;sheetOfficialLinks()",context);
+ assert(nodes['#root'].innerHTML.includes('Links oficiais'));assert(!nodes['#root'].innerHTML.includes('senha-exemplo'));assert(!nodes['#root'].innerHTML.includes('https://open.spotify.com'));
+ assert(!context.modal.includes('editOfficialLinks'));assert(context.modal.includes('Em breve'));assert(context.modal.includes('noopener noreferrer'));assert(context.modal.includes('Copiar senha'));assert(!context.modal.includes('href=""'));
+ vm.runInContext('S.admin=true;sheetOfficialLinks()',context);assert(context.modal.includes('editOfficialLinks'));
 });

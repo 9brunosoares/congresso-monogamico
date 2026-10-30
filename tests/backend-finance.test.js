@@ -35,6 +35,9 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   await fs.writeFile(sdkFile,Object.keys(sdk).map(name=>name==='browserLocalPersistence'?'export const browserLocalPersistence={};':`export const ${name}=(...args)=>globalThis.__financeSDK.${name}(...args);`).join('\n'));
   const source=(await fs.readFile('backend.js','utf8')).replace(/from "https:\/\/www.gstatic.com\/firebasejs\/13.1.0\/firebase-(app|auth|firestore).js"/g,`from '${pathToFileURL(sdkFile).href}'`).replace(/from '\.\//g,"from '../");await fs.writeFile(backendFile,source);
   const api=await import(pathToFileURL(backendFile).href);await api.start(s=>state=s);await flush();await flush();assert(state.ready&&state.admin);
+  const resources={albumUrl:'',playlistUrl:'https://example.com/playlist',mapUrl:'https://example.com/map',airbnbUrl:'https://example.com/house',address:'',wifiName:'',wifiPassword:''};
+  await api.saveOfficialLinks(resources,0);assert.equal(records.get('officialLinks/main').version,1);
+  await assert.rejects(api.saveOfficialLinks(resources,0),/alterados/);
   const auth=async id=>{user={uid:'uid-'+id,email:id+'@congresso.app'};await authCallback(user);await flush();await flush()};
   const expense=await api.addExpense({title:'Casa',cat:'casa',amount:'14.01',payer:'pig',split:['ob','bruno','pig']});
   assert(records.has('financeHistory/expense_'+expense.path.split('/')[1]+'_1'));
@@ -43,6 +46,7 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   await assert.rejects(api.updateExpense(id,{title:'Sobrescrita',cat:'casa',amount:'1',payer:'pig',split:['ob']},1),/alterado/);
   await api.setBudget(14000);assert(records.has('financeHistory/budget_main_2'));
   await auth('ob');assert(!state.admin);
+  await assert.rejects(api.saveOfficialLinks(resources,1),/ADMs/);
   await assert.rejects(api.savePayment({from:'pig',to:'luan',amount:'1',kind:'payment',settlementId:'',note:'',paidOn:'2026-10-29'}),/envolvido/);
   const payment=await api.savePayment({from:'ob',to:'pig',amount:'3',kind:'payment',settlementId:'',note:'Parcial',paidOn:'2026-10-29'});
   assert.equal(ledgerBalances(state.exps,state.payments).ob,-700);

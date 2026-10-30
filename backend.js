@@ -1,5 +1,6 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030b';
-import {normalizePix} from './pix.js?v=20261030b';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030c';
+import {normalizePix} from './pix.js?v=20261030c';
+import {normalizeOfficialLinks} from './official-links.js?v=20261030c';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -7,7 +8,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030b';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030c';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -65,6 +66,7 @@ function syncData(){
  listen('settings',doc(db,'settings','main'),snap=>{state.budget=snap.data()?.budget||0},true);
  listen('agenda',collection(db,'agenda'),snapshot=>{state.agenda=rows(snapshot).sort((a,b)=>a.start-b.start)},true);
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(1)),snap=>{state.hasMural=!snap.empty},true);
+ if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
  const key=dayKey(),votingDay=VOTE_DAYS.find(d=>d.key===key);
  if(key!==currentDay){currentDay=key;state.qvoted={};state.querido={};state.voterCount=0;}
  if(votingDay){
@@ -179,6 +181,14 @@ export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate
 const stamp=()=>new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const created=data=>({...data,at:stamp(),createdAt:serverTimestamp()});
 export async function addPoints(data){admin();const ref=doc(collection(db,'points'));await runTransaction(db,async tx=>{const closed=await tx.get(doc(db,'scoreClosures','main'));if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,created(data));});return ref;}
+export async function saveOfficialLinks(data,expectedVersion){
+ admin();const values=normalizeOfficialLinks(data);
+ await runTransaction(db,async tx=>{
+  const ref=doc(db,'officialLinks','main'),snap=await tx.get(ref),version=snap.exists()?snap.data().version:0;
+  if(version!==expectedVersion)throw Error('Os links foram alterados. Feche e abra novamente antes de salvar.');
+  tx.set(ref,{...values,version:version+1,updatedBy:state.me,updatedAt:serverTimestamp()});
+ });
+}
 export async function closeScores(){admin();await runTransaction(db,async tx=>{const ref=doc(db,'scoreClosures','main'),closed=await tx.get(ref);if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,{closedBy:state.me,closedAt:serverTimestamp()});});}
 const financeCollection=type=>({expense:'expenses',payment:'payments',budget:'settings'})[type];
 async function financeWrite(type,id,changes,expectedVersion){
