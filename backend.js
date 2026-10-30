@@ -1,6 +1,7 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030c';
-import {normalizePix} from './pix.js?v=20261030c';
-import {normalizeOfficialLinks} from './official-links.js?v=20261030c';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030d';
+import {normalizePix} from './pix.js?v=20261030d';
+import {normalizeOfficialLinks} from './official-links.js?v=20261030d';
+import {REACTIONS} from './mural-reactions.js?v=20261030d';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -8,7 +9,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030c';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030d';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -67,6 +68,9 @@ function syncData(){
  listen('agenda',collection(db,'agenda'),snapshot=>{state.agenda=rows(snapshot).sort((a,b)=>a.start-b.start)},true);
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(1)),snap=>{state.hasMural=!snap.empty},true);
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
+ if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){
+  listen('reactions-'+item.id,doc(db,'caseReactions',item.id),snap=>{state.caseReactions={...state.caseReactions,[item.id]:snap.data()?.votes||{}}});
+ }
  const key=dayKey(),votingDay=VOTE_DAYS.find(d=>d.key===key);
  if(key!==currentDay){currentDay=key;state.qvoted={};state.querido={};state.voterCount=0;}
  if(votingDay){
@@ -102,6 +106,7 @@ function syncData(){
     if(!muralOlder.length){muralCursor=snapshot.docs.at(-1)||null;state.muralHasMore=snapshot.size===12;}
    }else state.shame=rows(snapshot);
    const ids=new Set(state.shame.map(x=>x.id));state.casePhotos=Object.fromEntries(Object.entries(state.casePhotos).filter(([id])=>ids.has(id)));
+   if(currentView==='mural')queueMicrotask(syncData);
   });
  }
 
@@ -142,6 +147,7 @@ export async function loadOlderMural(){
   const snapshot=await getDocs(query(collection(db,'cases'),where('status','==','ok'),orderBy('createdAt','desc'),startAfter(muralCursor),limit(12)));
   if(version!==generation)return;
   muralOlder=mergeRows(muralOlder,rows(snapshot));muralCursor=snapshot.docs.at(-1)||muralCursor;state.muralHasMore=snapshot.size===12;state.shame=mergeRows(muralOlder,muralHead);
+  syncData();
  }catch(error){if(version===generation)failed(error);throw error;}
  finally{if(version===generation){state.muralLoadingOlder=false;emit();}}
 }
@@ -280,6 +286,21 @@ export async function judgeCase(id,condemn){
   if(condemn){tx.update(ref,{status:'ok'});if(!closed.exists())tx.set(doc(db,'points',`case_${id}`),created({who:snap.data().who,d:-15,why:'Infração da monogamia (Mural)',kind:'inf'}));}
   else {tx.delete(ref);if(snap.data().hasPhoto)tx.delete(doc(db,'casePhotos',id));}
  });
+}
+export async function reactToCase(id,emoji){
+ member();if(!REACTIONS.some(r=>r.emoji===emoji))throw Error('Escolha uma reação válida.');
+ if(state.reactionPending?.[id])return;
+ const version=generation,actor=state.me;
+ state.reactionPending={...state.reactionPending,[id]:true};emit();
+ try{await runTransaction(db,async tx=>{
+  const ref=doc(db,'caseReactions',id);
+  const [parent,snap]=await Promise.all([tx.get(doc(db,'cases',id)),tx.get(ref)]);
+  if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
+  if(!parent.exists()||parent.data().status!=='ok')throw Error('Esta publicação não está no mural.');
+  const votes={...snap.data()?.votes};
+  if(votes[actor]===emoji)delete votes[actor];else votes[actor]=emoji;
+  tx.set(ref,{votes});
+ });}finally{if(version===generation){state.reactionPending={...state.reactionPending,[id]:false};emit();}}
 }
 export async function sendChat(text){
  member();const ref=doc(collection(db,'chat'));mine.add(ref.id);

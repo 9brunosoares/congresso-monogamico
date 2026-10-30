@@ -63,11 +63,14 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   api.setView('contas');await flush();assert(active().some(x=>x.ref.path==='pixKeys'));assert(state.loaded.pix);
   api.setView('inicio');await flush();assert(!active().some(x=>x.ref.path==='pixKeys'));
   api.setView('mural');await flush();assert(!active().some(x=>x.ref.path==='chat'));assert.equal(state.shame.length,12);
+  assert.equal(active().filter(x=>x.ref.path.startsWith('caseReactions/')).length,12);
+  const reactionQueries=listeners.length;api.refreshTime();await flush();assert.equal(listeners.length,reactionQueries);
   assert.equal(gets.filter(x=>typeof x==='string'&&x.startsWith('casePhotos/')).length,0);
   await Promise.all([api.loadCasePhoto('case1'),api.loadCasePhoto('case1')]);await api.loadCasePhoto('case1');
   assert.equal(gets.filter(x=>x==='casePhotos/case1').length,1);
   await api.loadOlderMural();assert(gets.some(ref=>ref.path==='cases'&&ref.filters.some(f=>f.after)));
   api.setView('placar');await flush();const taskQuery=active().find(x=>x.ref.path==='tasks').ref;assert(taskQuery.filters.some(f=>f.where?.[0]==='who'&&f.where[2]==='bruno'));
+  assert(!active().some(x=>x.ref.path.startsWith('caseReactions/')));
   Date.now=()=>Date.parse('2026-11-19T11:00:00-03:00');api.setView('querido');await flush();
   assert(active().some(x=>x.ref.path.startsWith('querido/')));assert(!active().some(x=>x.ref.path.startsWith('participation/')));
   assert(!active().some(x=>/^querido\/[^/]+$/.test(x.ref.path)));

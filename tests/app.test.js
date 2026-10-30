@@ -2,6 +2,7 @@ import test from 'node:test';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from '../finance.js';
 import {PIX_TYPES} from '../pix.js';
 import {EMPTY_OFFICIAL_LINKS} from '../official-links.js';
+import {REACTIONS} from '../mural-reactions.js';
 import {prepareReportPhoto} from '../report-photo.js';
 import {bindAgendaSwipe,adjacentDay} from '../agenda-gesture.js';
 import assert from 'node:assert/strict';
@@ -39,9 +40,21 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={};const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
+ const nodes={};const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html};
 }
+
+test('mural mostra cinco reações, contagens e seleção; tribunal não permite reagir',()=>{
+ const {context}=ui();
+ vm.runInContext("S={...S,me:'bruno',caseReactions:{example:{bruno:'😂',ob:'😂',pig:'❤️'}},loaded:{'reactions-example':true}}",context);
+ const html=vm.runInContext("caseCard({id:'example',who:'ob',what:'Teste',status:'ok'})",context);
+ assert.equal((html.match(/data-react=/g)||[]).length,5);
+ assert(html.includes('class="reaction-count" aria-hidden="true">2</span>'));
+ assert.equal((html.match(/aria-pressed="true"/g)||[]).length,1);
+ assert(!vm.runInContext("caseCard({id:'example',who:'ob',what:'Teste',status:'pend'},true)",context).includes('data-react='));
+ vm.runInContext("S.reactionPending={example:true}",context);
+ assert.equal((vm.runInContext("caseReactions('example')",context).match(/ disabled/g)||[]).length,5);
+});
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
  const {context,nodes,html}=ui();assert(!html.includes('xvi-congresso'));assert(!html.includes('base64'));
  vm.runInContext('S.ready=true;viewLogin();',context);assert.equal((nodes['#root'].innerHTML.match(/data-id=/g)||[]).length,14);

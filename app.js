@@ -1,11 +1,12 @@
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030c';
-import {PIX_TYPES} from './pix.js?v=20261030c';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030c';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030d';
+import {PIX_TYPES} from './pix.js?v=20261030d';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030d';
+import {REACTIONS} from './mural-reactions.js?v=20261030d';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030c';
-import * as backend from './backend.js?v=20261030c';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030d';
+import * as backend from './backend.js?v=20261030d';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -257,12 +258,19 @@ function viewFinanceHistory(){
  return `<button class="link" data-go="contas" type="button">← Contas</button><h2 class="page-title">Histórico das contas</h2>${!S.loaded?.financeHistory?'<p role="status">Carregando…</p>':`<div class="stack">${(S.financeHistory||[]).slice().reverse().map(e=>`<article class="card"><b>${esc(({baseline:'Registro inicial',create:'Criado',update:'Alterado',cancel:'Cancelado'})[e.action]||e.action)} · ${esc(first(e.by))}</b><div class="muted" style="font-size:13px">${esc(backend.formatStamp(e.createdAt))} · versão ${e.version}</div>${e.action!=='create'?`<p class="muted" style="overflow-wrap:anywhere">Antes: ${esc(financeSummary(e.type,e.before))}</p>`:''}<p style="overflow-wrap:anywhere">${e.action==='baseline'?'Registro atual':'Depois'}: ${esc(financeSummary(e.type,e.after))}</p></article>`).join('')||'<p class="muted">Nenhuma alteração registrada.</p>'}</div>${S.historyHasMore?`<button class="btn ghost block" id="olderFinance" type="button" ${S.historyLoading?'disabled':''}>Ver anteriores</button>`:''}`}`;
 }
 
+function caseReactions(id){
+ const votes=S.caseReactions?.[id]||{},loading=!S.loaded?.['reactions-'+id],busy=!!S.reactionPending?.[id];
+ return `<div class="case-reactions" role="group" aria-label="Reações à publicação" ${busy?'aria-busy="true"':''}>${REACTIONS.map(({emoji,label})=>{
+  const count=Object.values(votes).filter(value=>value===emoji).length,selected=votes[S.me]===emoji;
+  return `<button class="case-reaction${selected?' selected':''}" data-react="${esc(id)}" data-emoji="${emoji}" type="button" aria-pressed="${selected}" aria-label="${label}: ${count}${selected?'. Sua reação. Toque para retirar.':'.'}" ${loading||busy?'disabled':''}><span aria-hidden="true">${emoji}</span>${count?`<span class="reaction-count" aria-hidden="true">${count}</span>`:''}</button>`;
+ }).join('')}</div>`;
+}
 function caseCard(item,pending=false){
  const photo=S.casePhotos?.[item.id];
  return `<article class="shame">
  ${photo?`<img class="case-photo" src="${esc(photo)}" alt="Foto da denúncia contra ${esc(first(item.who))}" loading="lazy">`:item.hasPhoto?`<div class="case-photo-placeholder" ${S.photoErrors?.[item.id]?'':`data-photo-id="${esc(item.id)}"`}>${av(item.who,'lg')}${S.photoErrors?.[item.id]?`<button class="link" data-photo-retry="${esc(item.id)}" type="button">Tentar carregar foto</button>`:'<span class="muted">Carregando foto…</span>'}</div>`:av(item.who,'xl')}
  <h3>${esc(item.what)}</h3><div class="row" style="margin-top:10px"><b class="grow">${esc(first(item.who))}</b>${pending?'':!S.scoreClosing||S.points.some(p=>p.id==='case_'+item.id)?pts(-15):''}</div>
- ${pending?`<div class="fab-row" style="margin-top:14px"><button class="btn sm seal" data-judge="${esc(item.id)}" data-v="ok" type="button">${S.scoreClosing?'Condenar':'Condenar (−15)'}</button><button class="btn sm ghost" data-judge="${esc(item.id)}" data-v="no" type="button">Absolver</button></div>`:''}
+ ${pending?`<div class="fab-row" style="margin-top:14px"><button class="btn sm seal" data-judge="${esc(item.id)}" data-v="ok" type="button">${S.scoreClosing?'Condenar':'Condenar (−15)'}</button><button class="btn sm ghost" data-judge="${esc(item.id)}" data-v="no" type="button">Absolver</button></div>`:caseReactions(item.id)}
  </article>`;
 }
 function viewMural(){
@@ -537,6 +545,7 @@ function selectAgendaDay(next){
 bindAgendaSwipe(document,()=>tab==='programa'&&S.ready&&!!S.me,direction=>selectAgendaDay(adjacentDay(DAYS.map(d=>d.d),day,direction)));
 document.addEventListener('click',e=>{
  if(e.target.closest('.scrim'))return;
+ const reaction=e.target.closest('[data-react]');if(reaction){if(!reaction.disabled)backend.reactToCase(reaction.dataset.react,reaction.dataset.emoji).catch(error=>{backend.reportError(error);toast(backend.errorText(error));});return;}
  const pr=e.target.closest('[data-photo-retry]');if(pr){backend.loadCasePhoto(pr.dataset.photoRetry,true);return;}
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}

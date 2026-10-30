@@ -26,6 +26,8 @@ rules_version = '2';
 // tasks/{id}: who oficial, d int1..20, why<=200, status pend|ok|no,
 // at<=40, createdAt imutável; participante envia a própria tarefa; ADM aprova.
 // chat/{id}: SOMENTE text string1..280 e createdAt timestamp. Sem autor/uid.
+// caseReactions/{caseId}: votes mapa de até14 IDs oficiais para um dos cinco emojis.
+// Só publicações condenadas; cada membro altera somente a própria entrada.
 // querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
 // Cada valor é um número inteiro0..3722304989 com oito totais em base16.
 // Cada dígito armazena o total de um emoji (ordem fixa no roster.js), máximo13.
@@ -293,6 +295,28 @@ service cloud.firestore {
     && getAfter(/databases/$(database)/documents/cases/$(id)).data.status == 'pend'
     && getAfter(/databases/$(database)/documents/cases/$(id)).data.hasPhoto == true;
    allow delete: if isAdmin();
+  }
+  function validReaction(value) { return value in ['😂','😱','🤦','👏','❤️']; }
+  function validReactionFor(votes,id) { return !(id in votes) || validReaction(votes[id]); }
+  function isValidCaseReactions(d) {
+   return only(d,['votes']) && d.votes is map && d.votes.keys().hasOnly(ids())
+    && validReactionFor(d.votes,'bruno') && validReactionFor(d.votes,'ob')
+    && validReactionFor(d.votes,'luan') && validReactionFor(d.votes,'igor')
+    && validReactionFor(d.votes,'pig') && validReactionFor(d.votes,'pelado')
+    && validReactionFor(d.votes,'kirk') && validReactionFor(d.votes,'gherardi')
+    && validReactionFor(d.votes,'nanu') && validReactionFor(d.votes,'sadano')
+    && validReactionFor(d.votes,'ibrahim') && validReactionFor(d.votes,'cadu')
+    && validReactionFor(d.votes,'diogo') && validReactionFor(d.votes,'felipe');
+  }
+  function publishedCase(id) { return get(/databases/$(database)/documents/cases/$(id)).data.status == 'ok'; }
+  match /caseReactions/{id} {
+   allow get: if isMember() && publishedCase(id);
+   allow list,delete: if false;
+   allow create: if isMember() && publishedCase(id) && isValidCaseReactions(request.resource.data)
+    && request.resource.data.votes.keys().hasOnly([personId()])
+    && validReaction(request.resource.data.votes.get(personId(),''));
+   allow update: if isMember() && publishedCase(id) && isValidCaseReactions(request.resource.data)
+    && request.resource.data.votes.diff(resource.data.votes).affectedKeys().hasOnly([personId()]);
   }
   function isValidTask(d) {
    return only(d,['who','d','why','status','at','createdAt']) && d.who in ids()

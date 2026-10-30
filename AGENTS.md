@@ -1,5 +1,10 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Correção do valor da locação (30/10/2026)
+- Bruno corrigiu o valor real para **R$3.000**, pago por Pig e dividido pelos14. Substitui todas as referências históricas a R$2.640 abaixo. Orçamento permanece R$14.000.
+- Atualizar o lançamento existente `expenses/rental-2026`, mantendo autoria/data original e rateio, com nova versão, evento financeiro antes/depois e incremento do controle. Não criar gasto duplicado.
+- Na futura limpeza, preservar a locação com o VALOR ATUAL; a base limpa privada antiga com R$2.640 é histórica e não deve sobrescrever esta correção. Checkpoints originais permanecem imutáveis.
+
 Documento de contexto para o próximo agente (Codex). Leia tudo antes de mexer no código.
 
 ## 1. O projeto
@@ -243,3 +248,10 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Links reais, tokens colaborativos e senha ficam somente no Firestore autenticado; nunca colocar o convite do Spotify no JS público ou script versionado. Playlist mantém parâmetro pt do convite fornecido. Airbnb aponta para o anúncio sem query antiga check_in=2025; rua/endereço não foi inventado a partir do link curto. Álbum e Wi-Fi aguardam preenchimento pelos ADMs.
 - Este documento é CONFIGURAÇÃO REAL e deve ser preservado na futura limpeza dos testes, inclusive alterações posteriores dos ADMs. Checkpoints novos descobrem automaticamente a coleção; base antiga anterior à criação não deve apagá-la.
 - Validação: 38 testes locais e97 cenários do texto das regras; prévia isolada em navegador validou home compacta, abrir atalhos, editar/salvar e visualizar Wi-Fi de teste. Nenhuma senha real ou dado de teste foi enviado à produção.
+
+## Reações no Mural (30/10/2026)
+- Cada publicação condenada mostra cinco reações: 😂 😱 🤦 👏 ❤️, com contagem e destaque da própria escolha. Uma por pessoa/publicação; tocar na selecionada retira, outra troca. Não altera pontos nem depende dos fechamentos financeiro/placar.
+- `caseReactions/{caseId}`: somente `{votes:{apelido:emoji}}`, até14 entradas oficiais. Não são anônimas no armazenamento; a interface exibe somente totais e a própria seleção. Clientes só leem documentos individuais de casos condenados e só alteram a própria entrada; nem ADM altera a dos outros. Sem listagem/exclusão pelo cliente, sem contadores duplicados.
+- Transação lê o caso e o mapa atual para preservar reações concorrentes de outras pessoas. Remover última reação deixa mapa vazio. Não colocar reações no documento de foto nem na coleção de pontos.
+- Listener de um documento pequeno por publicação carregada, somente enquanto no mural; usa pool/cache/pausa existentes e acompanha paginação. Nada de reações é consultado na home/chat/Tribunal. Novos documentos são criados só ao reagir, sem migração ou publicações fictícias.
+- Na futura limpeza, remover reações dos casos de teste junto com esses casos; checkpoint descobre a coleção automaticamente. Preservar locação corrigida para R$3.000 e configurações reais.

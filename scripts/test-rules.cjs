@@ -86,6 +86,22 @@ const {context}=require('./firebase-context.cjs');
  cases.push(linksCase('get',false));cases.push(linksCase('delete',true,'DENY'));
  const guestLinks=linksCase('get',false,'DENY');guestLinks.request.auth=null;cases.push(guestLinks);
  for(const method of ['create','update'])for(const patch of [{playlistUrl:'javascript:alert(1)'},{mapUrl:'http://example.com'},{albumUrl:7},{wifiPassword:'x'.repeat(121)},{address:'x'.repeat(301)},{arbitrary:true},{updatedBy:'ob'},{version:8}]){const t=linksCase(method,true,'DENY');Object.assign(t.request.resource.data,patch);cases.push(t);}
+ function reactionCase(method,data={votes:{bruno:'😂'}},expectation='ALLOW',status='ok'){
+  return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path:prefix+'/caseReactions/example',method,resource:{data}},resource:{data:{votes:{bruno:'👏',ob:'❤️'}}},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('get',prefix+'/cases/example',{data:{status}})]};
+ }
+ cases.push(reactionCase('create'),reactionCase('get'),reactionCase('update',{votes:{bruno:'😱',ob:'❤️'}}),reactionCase('update',{votes:{ob:'❤️'}}));
+ cases.push(reactionCase('update',{votes:{bruno:'👏',ob:'❤️'}}));
+ for(const method of ['create','update']){
+  for(const data of [{votes:{ob:'😂'}},{votes:{bruno:'💔'}},{votes:{bruno:7}},{votes:{bruno:'x'.repeat(10000)}},{votes:{stranger:'😂'}},{votes:[]},{votes:{} ,extra:1},{}])cases.push(reactionCase(method,data,'DENY'));
+  cases.push(reactionCase(method,{votes:{bruno:'😂'}},'DENY','pend'));
+ }
+ cases.push(reactionCase('update',{votes:{bruno:'😂',ob:'👏'}},'DENY'));
+ cases.push(reactionCase('update',{votes:{}},'DENY'));
+ for(const method of ['get','create','update']){const t=reactionCase(method,undefined,'DENY');t.request.auth=null;cases.push(t);}
+ for(const method of ['get','create','update']){const t=reactionCase(method,undefined,'DENY');t.functionMocks.find(m=>m.args[0].exactValue.endsWith('/cases/example')).result.value=null;cases.push(t);}
+ for(const method of ['list','delete'])cases.push(reactionCase(method,undefined,'DENY'));
+ const fullVotes=Object.fromEntries(ALL.map(id=>[id,'😂']));cases.push(reactionCase('update',{votes:fullVotes},'DENY'));
+ const fullRead=reactionCase('get');fullRead.resource.data={votes:fullVotes};cases.push(fullRead);
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});
