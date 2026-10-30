@@ -60,6 +60,14 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   assert(Object.values(ledgerBalances(state.exps,state.payments)).every(n=>n===0));
   const final=state.payments.find(p=>p.id==='final_'+transfer.id);await api.cancelPayment(final.id,final.version);assert(Object.values(ledgerBalances(state.exps,state.payments)).some(n=>n!==0));await api.confirmSettlement(transfer.id);
   assert(Object.values(ledgerBalances(state.exps,state.payments)).every(n=>n===0));assert.equal(records.get('payments/'+final.id).version,3);
+  await api.addPoints({who:'ob',d:5,why:'Tarefa',kind:'aux'});await api.closeScores();assert(state.scoreClosing);
+  await assert.rejects(api.addPoints({who:'ob',d:5,why:'Depois',kind:'aux'}),/encerrado/);
+  await assert.rejects(api.closeScores(),/encerrado/);
+  const pointsBefore=[...records.keys()].filter(k=>k.startsWith('points/')).length;
+  records.set('tasks/task-after',{who:'ob',d:5,why:'Louça',status:'pend'});records.set('cases/case-after',{who:'ob',by:'bruno',what:'Teste',status:'pend'});
+  await api.reviewTask('task-after',true);await api.judgeCase('case-after',true);
+  assert.equal(records.get('tasks/task-after').status,'ok');assert.equal(records.get('cases/case-after').status,'ok');
+  assert.equal([...records.keys()].filter(k=>k.startsWith('points/')).length,pointsBefore);
  }finally{
   Date.now=saved.DateNow;for(const key of ['setInterval','window','document','sessionStorage']){if(saved[key]===undefined)delete globalThis[key];else globalThis[key]=saved[key]}if(online)Object.defineProperty(navigator,'onLine',online);else delete navigator.onLine;delete globalThis.__financeSDK;await Promise.all(files.map(f=>fs.rm(f,{force:true})));
  }

@@ -2,24 +2,6 @@
 export const INITIAL_AGENDA = [
   {
     "d": 18,
-    "t": "08:00",
-    "title": "Café da manhã",
-    "place": "Antes da viagem",
-    "prep": "",
-    "note": "Antes da chegada à casa; sem encontro coletivo previsto.",
-    "pts": 0
-  },
-  {
-    "d": 18,
-    "t": "12:30",
-    "title": "Almoço",
-    "place": "Antes da viagem",
-    "prep": "",
-    "note": "Antes da chegada à casa; sem encontro coletivo previsto.",
-    "pts": 0
-  },
-  {
-    "d": 18,
     "t": "20:00",
     "title": "Chegada dos primeiros congressistas",
     "place": "Casa",
@@ -218,15 +200,6 @@ export const INITIAL_AGENDA = [
   },
   {
     "d": 22,
-    "t": "14:00",
-    "title": "Volta para São Paulo",
-    "place": "Casa",
-    "prep": "",
-    "note": "Saída da casa no começo da tarde; horário exato a confirmar.",
-    "pts": 0
-  },
-  {
-    "d": 22,
     "t": "12:30",
     "title": "Almoço",
     "place": "Casa",
@@ -236,11 +209,11 @@ export const INITIAL_AGENDA = [
   },
   {
     "d": 22,
-    "t": "19:30",
-    "title": "Janta",
-    "place": "São Paulo",
+    "t": "14:00",
+    "title": "Volta para São Paulo",
+    "place": "Casa",
     "prep": "",
-    "note": "Após o retorno; sem encontro coletivo definido.",
+    "note": "Saída da casa no começo da tarde; horário exato a confirmar.",
     "pts": 0
   }
 ];

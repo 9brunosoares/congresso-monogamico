@@ -1,4 +1,4 @@
-export const PIX_TYPES={aleatoria:'Chave aleatória',cpf:'CPF',telefone:'Celular',email:'E-mail'};
+export const PIX_TYPES={cpf:'CPF',telefone:'Celular',email:'E-mail',aleatoria:'Chave aleatória'};
 export function normalizePix(type,value){
  let key=String(value).trim();
  if(!Object.hasOwn(PIX_TYPES,type))throw Error('Escolha o tipo da chave Pix.');

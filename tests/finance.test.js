@@ -43,7 +43,7 @@ test('chaves Pix normalizadas e formatos inválidos recusados',()=>{
 test('chegada quarta à noite e quinta home office na casa',()=>{
  assert(INITIAL_AGENDA.some(a=>a.d===18&&a.t==='20:00'&&a.title.includes('Chegada')));
  assert(INITIAL_AGENDA.filter(a=>a.d===19&&a.title.includes('Home office')).every(a=>a.place==='Casa'));
- for(const d of [18,19,20,21,22])assert.equal(INITIAL_AGENDA.filter(a=>a.d===d&&/^(Café da manhã|Almoço|Janta)/.test(a.title)).length,3);
+ for(const d of [18,19,20,21,22])assert.equal(INITIAL_AGENDA.filter(a=>a.d===d&&/^(Café da manhã|Almoço|Janta)/.test(a.title)).length,d===18?1:d===22?2:3);
  assert.equal(INITIAL_AGENDA.find(a=>a.title==='Volta para São Paulo').t,'14:00');
 });
 test('pagamentos parciais, cancelamentos e fechamento preservam todos os saldos',()=>{

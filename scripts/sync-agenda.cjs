@@ -7,7 +7,8 @@ const {context}=require('./firebase-context.cjs');
   const list=INITIAL_AGENDA.map(a=>({...a,start:Date.parse(`2026-11-${String(a.d).padStart(2,'0')}T${a.t}:00-03:00`)})).sort((a,b)=>a.start-b.start);
   for(const d of [18,19,20,21,22]){
    const meals=list.filter(a=>a.d===d&&/^(Café da manhã|Almoço|Janta)/.test(a.title));
-   if(meals.length!==3)throw Error(`Esperadas três refeições no dia ${d}.`);
+   const expected=d===18?1:d===22?2:3;
+   if(meals.length!==expected)throw Error(`Esperadas ${expected} refeições no dia ${d}.`);
   }
   const previous=await c.db.collection('agenda').get();
   console.log(`Agenda atual: ${previous.size} sessões. Nova agenda: ${list.length} sessões.`);

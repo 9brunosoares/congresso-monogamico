@@ -1,5 +1,5 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030a';
-import {normalizePix} from './pix.js';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030b';
+import {normalizePix} from './pix.js?v=20261030b';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -7,7 +7,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen } from './shared.js?v=20261029b';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030b';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -20,7 +20,7 @@ const PAGE_SIZE=50;
 let mine=new Set();
 try{mine=new Set(JSON.parse(sessionStorage.getItem('xvi-mine')||'[]'));}catch{}
 const emit=()=>notify({...state});
-const errorText=e=>({
+const errorText=e=>notice(({
  'auth/invalid-credential':'Apelido ou PIN incorreto.',
  'auth/wrong-password':'PIN incorreto.',
  'auth/user-not-found':'Este apelido ainda não tem PIN. Use Primeiro acesso.',
@@ -30,7 +30,7 @@ const errorText=e=>({
  'permission-denied':'Você não tem permissão para esta ação.',
  'unavailable':'Sem conexão com o congresso. Tente novamente.',
  'resource-exhausted':'O serviço atingiu um limite temporário. Tente mais tarde. Os registros já salvos estão preservados.',
-}[e.code] || e.message || 'Não foi possível concluir. Tente novamente.');
+}[e.code] || e.message || 'Não foi possível concluir. Tente novamente.'));
 export {errorText};
 const pool=subscriptionPool(spec=>{
  let active=true;
@@ -61,6 +61,7 @@ function syncData(){
  for(const [name,key] of [['points','points'],['expenses','exps']])listen(key,collection(db,name),snapshot=>{state[key]=rows(snapshot)},true);
  listen('payments',collection(db,'payments'),snapshot=>{state.payments=rows(snapshot)},true);
  listen('closing',doc(db,'financeClosings','main'),snapshot=>{state.closing=snapshot.exists()?{...snapshot.data(),transfers:transferRows(snapshot.data())}:null},true);
+ listen('scoreClosing',doc(db,'scoreClosures','main'),snapshot=>{state.scoreClosing=snapshot.exists()?snapshot.data():null},true);
  listen('settings',doc(db,'settings','main'),snap=>{state.budget=snap.data()?.budget||0},true);
  listen('agenda',collection(db,'agenda'),snapshot=>{state.agenda=rows(snapshot).sort((a,b)=>a.start-b.start)},true);
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(1)),snap=>{state.hasMural=!snap.empty},true);
@@ -68,12 +69,13 @@ function syncData(){
  if(key!==currentDay){currentDay=key;state.qvoted={};state.querido={};state.voterCount=0;}
  if(votingDay){
   listen('voted-'+key,doc(db,'querido',key,'voters',auth.currentUser.uid),snap=>{state.qvoted={[key]:snap.exists()?[state.me]:[]}},true);
-  if(currentView==='querido')listen('votes-'+key,doc(db,'querido',key),snap=>{
-   const data=snap.data();state.voterCount=data?.voters||0;state.querido={[key]:Object.fromEntries(ALL.map(id=>[id,decodeTally(data?.counts?.[id]||0)]))};
-  });
  }
+ const revealed=resultDay();
+ if(currentView==='querido'&&revealed)listen('votes-'+revealed.key,doc(db,'querido',revealed.key),snap=>{
+  const data=snap.data();state.voterCount=data?.voters||0;state.querido={[revealed.key]:Object.fromEntries(ALL.map(id=>[id,decodeTally(data?.counts?.[id]||0)]))};
+ });
  // Não consulta dias futuros nem presume ausência de voto antes de carregar o dia.
- for(const day of VOTE_DAYS.filter(d=>Date.now()>=d.deadline))listen('participation-'+day.key,collection(db,'participation',day.key,'people'),snap=>{
+ for(const day of VOTE_DAYS.filter(d=>(state.scoreClosing?.closedAt?.toMillis?.()??Date.now())>=d.deadline))listen('participation-'+day.key,collection(db,'participation',day.key,'people'),snap=>{
   state.attendance={...state.attendance,[day.key]:Object.fromEntries(snap.docs.map(d=>[d.id,true]))};state.attendanceReady={...state.attendanceReady,[day.key]:true};
  },true);
  if(lazy.chat)listen('chat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(PAGE_SIZE)),snapshot=>{
@@ -104,6 +106,7 @@ function syncData(){
  pool.sync(specs);
 }
 export function setView(view){if(currentView===view)return;currentView=view;syncData();}
+export function refreshTime(){syncData();}
 export function loadCasePhoto(id,retry=false){if(retry)delete state.photoErrors[id];if(state.photoErrors[id]&&!retry)return Promise.resolve();return photos.load(id);}
 export function retrySync(){pool.stop();quotaBlocked=false;state.error='';syncData();emit();}
 export function reportError(error){if(error.code==='resource-exhausted')failed(error);}
@@ -175,7 +178,8 @@ function admin(){member();if(!state.admin)throw Error('Esta ação é exclusiva 
 export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Agora';}
 const stamp=()=>new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const created=data=>({...data,at:stamp(),createdAt:serverTimestamp()});
-export async function addPoints(data){admin();return addDoc(collection(db,'points'),created(data));}
+export async function addPoints(data){admin();const ref=doc(collection(db,'points'));await runTransaction(db,async tx=>{const closed=await tx.get(doc(db,'scoreClosures','main'));if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,created(data));});return ref;}
+export async function closeScores(){admin();await runTransaction(db,async tx=>{const ref=doc(db,'scoreClosures','main'),closed=await tx.get(ref);if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,{closedBy:state.me,closedAt:serverTimestamp()});});}
 const financeCollection=type=>({expense:'expenses',payment:'payments',budget:'settings'})[type];
 async function financeWrite(type,id,changes,expectedVersion){
  member();const ref=id?doc(db,financeCollection(type),id):doc(collection(db,financeCollection(type)));
@@ -246,9 +250,10 @@ export async function removePix(){member();await deleteDoc(doc(db,'pixKeys',stat
 export async function submitTask(data){member();return addDoc(collection(db,'tasks'),created({...data,who:state.me,status:'pend'}));}
 export async function reviewTask(id,approve){
  admin();await runTransaction(db,async tx=>{
+  const closed=await tx.get(doc(db,'scoreClosures','main'));
   const ref=doc(db,'tasks',id),snap=await tx.get(ref);if(!snap.exists()||snap.data().status!=='pend')throw Error('Esta tarefa já foi julgada.');
   const task=snap.data();tx.update(ref,{status:approve?'ok':'no'});
-  if(approve)tx.set(doc(db,'points',`task_${id}`),created({who:task.who,d:task.d,why:task.why,kind:'aux'}));
+  if(approve&&!closed.exists())tx.set(doc(db,'points',`task_${id}`),created({who:task.who,d:task.d,why:task.why,kind:'aux'}));
  });
 }
 export async function addCase(data,photo=''){
@@ -260,8 +265,9 @@ export async function addCase(data,photo=''){
 }
 export async function judgeCase(id,condemn){
  admin();await runTransaction(db,async tx=>{
+  const closed=await tx.get(doc(db,'scoreClosures','main'));
   const ref=doc(db,'cases',id),snap=await tx.get(ref);if(!snap.exists()||snap.data().status!=='pend')throw Error('Esta denúncia já foi julgada.');
-  if(condemn){tx.update(ref,{status:'ok'});tx.set(doc(db,'points',`case_${id}`),created({who:snap.data().who,d:-15,why:'Infração da monogamia (Mural)',kind:'inf'}));}
+  if(condemn){tx.update(ref,{status:'ok'});if(!closed.exists())tx.set(doc(db,'points',`case_${id}`),created({who:snap.data().who,d:-15,why:'Infração da monogamia (Mural)',kind:'inf'}));}
   else {tx.delete(ref);if(snap.data().hasPhoto)tx.delete(doc(db,'casePhotos',id));}
  });
 }
@@ -276,11 +282,11 @@ export async function deleteChat(id){admin();await deleteDoc(doc(db,'chat',id));
 export async function setBudget(budget){admin();const snap=await getDocFromServer(doc(db,'settings','main'));return financeWrite('budget','main',{budget},snap.data().version);}
 export async function addSession(data){admin();return addDoc(collection(db,'agenda'),data);}
 export async function vote(ballot){
- member();if(!votingOpen())throw Error("A votação abre de quinta a domingo da viagem, até meio-dia (São Paulo).");
+ member();if(!votingOpen())throw Error(Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':"A votação abre de quinta a domingo da viagem, até meio-dia (São Paulo).");
  const key=dayKey(),uid=auth.currentUser.uid,id=state.me;
  const total=doc(db,'querido',key),marker=doc(db,'querido',key,'voters',uid);
  const delta=applyBallot(undefined,ballot,id);
- if((state.qvoted[key]||[]).includes(id))throw Error('Você já votou hoje. Amanhã abre de novo.');
+ if((state.qvoted[key]||[]).includes(id))throw Error(alreadyVotedMessage());
  // Os incrementos são calculados no servidor: votos simultâneos não partem de
  // uma contagem antiga. O marcador e todos os incrementos são uma única escrita atômica.
  const batch=writeBatch(db);
@@ -289,7 +295,7 @@ export async function vote(ballot){
  batch.set(doc(db,"participation",key,"people",id),{voted:true});
  try{await batch.commit();}
  catch(e){
-  if(e.code==='permission-denied' && (await getDocFromServer(marker)).exists())throw Error('Você já votou hoje. Amanhã abre de novo.');
+  if(e.code==='permission-denied' && (await getDocFromServer(marker)).exists())throw Error(alreadyVotedMessage());
   throw e;
  }
 }

@@ -31,6 +31,8 @@ const {context}=require('./firebase-context.cjs');
  add('ADM lança para terceiros',build('payment',{user:'bruno',admin:true}).t);
  add('pagamento antes da viagem',build('payment',{time:'2026-10-30T12:00:00Z',patch:{paidOn:'2026-10-29'}}).t);
  add('gasto novo auditado',build('expense').t);
+ add('categoria Colocação',build('expense',{patch:{cat:'colocacao'}}).t);
+ add('categoria Outros',build('expense',{patch:{cat:'outros'}}).t);
  add('autor edita gasto',build('expense',{method:'update',patch:{title:'Mercado corrigido'}}).t);
  add('cancela sem apagar',build('expense',{method:'update',patch:{status:'cancelled'}}).t);
  add('terceiro não edita gasto',build('expense',{user:'luan',method:'update',before:{...build('expense',{method:'update'}).before,by:'ob'},expectation:'DENY'}).t);

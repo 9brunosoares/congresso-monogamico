@@ -54,7 +54,7 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   await fs.writeFile(backendPath,source);
   const api=await import(pathToFileURL(backendPath).href);await api.start(next=>{state=next});await flush();await flush();
   assert(state.ready);assert.equal(cacheSettings.localCache.kind,'persistent');assert(cacheSettings.localCache.tabManager.multi);
-  assert.deepEqual(active().map(x=>x.ref.path).sort(),['agenda','cases','expenses','financeClosings/main','payments','points','settings/main']);
+  assert.deepEqual(active().map(x=>x.ref.path).sort(),['agenda','cases','expenses','financeClosings/main','payments','points','scoreClosures/main','settings/main']);
   assert.equal(gets.filter(x=>typeof x==='string'&&x.startsWith('casePhotos/')).length,0);
   const coreCount=listeners.length;api.setView('fofoca');await flush();assert.equal(listeners.length,coreCount+1);
   const chatQuery=active().find(x=>x.ref.path==='chat').ref;assert(chatQuery.filters.some(f=>f.limit===50));assert.equal(state.chat.length,50);assert(state.chatHasMore);
@@ -70,8 +70,10 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   api.setView('placar');await flush();const taskQuery=active().find(x=>x.ref.path==='tasks').ref;assert(taskQuery.filters.some(f=>f.where?.[0]==='who'&&f.where[2]==='bruno'));
   Date.now=()=>Date.parse('2026-11-19T11:00:00-03:00');api.setView('querido');await flush();
   assert(active().some(x=>x.ref.path.startsWith('querido/')));assert(!active().some(x=>x.ref.path.startsWith('participation/')));
+  assert(!active().some(x=>/^querido\/[^/]+$/.test(x.ref.path)));
   Date.now=()=>Date.parse('2026-11-19T12:00:01-03:00');api.setView('inicio');await flush();
   assert.equal(active().filter(x=>x.ref.path.startsWith('participation/')).length,1);assert.equal(Object.keys(state.attendanceReady).length,1);
+  api.setView('querido');await flush();assert(active().some(x=>/^querido\/[^/]+$/.test(x.ref.path)));
   globalThis.document.hidden=true;handlers.visibilitychange();const pause=[...timers.values()].find(t=>t.ms===60000);assert(pause);pause.fn();assert.equal(active().length,0);
   globalThis.document.hidden=false;handlers.visibilitychange();await flush();assert(active().length>0);
   active()[0].fail({code:'resource-exhausted'});assert.equal(active().length,0);assert(state.error.includes('limite'));

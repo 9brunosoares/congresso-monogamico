@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {ALL,PEOPLE,P,EMOJIS} from '../roster.js';
-import {dayKey,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingOpen,missedVotePoints} from '../shared.js';
+import {dayKey,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
 
 test('PIN aceita exatamente seis algarismos',()=>{
  for(const pin of ['000000','123456','098765'])assert.doesNotThrow(()=>validatePin(pin));
@@ -38,7 +38,7 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={};const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
+ const nodes={};const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html};
 }
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
@@ -102,4 +102,25 @@ test('fechamento oculta lançamentos e exibe relatório e confirmações',()=>{
  const {context,nodes}=ui();vm.runInContext("S={...S,me:'ob',ready:true,payments:[],closing:closingSnapshot([{id:'test',title:'Casa',amount:140,payer:'pig',split:ALL}],[],14000,{pig:{type:'email',value:'pix@example.com'}})};tab='contas';render()",context);
  assert(!nodes['#root'].innerHTML.includes('id=\"quickExp\"'));assert(nodes['#root'].innerHTML.includes('Acerto final'));
  vm.runInContext("tab='fechamento';render()",context);assert(nodes['#root'].innerHTML.includes('Copiar relatório'));assert(nodes['#root'].innerHTML.includes('Confirmar pagamento'));assert(nodes['#root'].innerHTML.includes('pix@example.com'));
+});
+test('resultado fica oculto mesmo com cache até meio-dia; domingo sem promessa de amanhã',()=>{
+ const previous=Date.now;
+ try{
+  Date.now=()=>Date.parse('2026-11-19T11:59:59-03:00');const {context,nodes}=ui(),key=dayKey();
+  vm.runInContext(`S={...S,me:'ob',ready:true,loaded:{'votes-${key}':true},qvoted:{'${key}':['ob']},querido:{'${key}':{bruno:{'❤️':13}}}};tab='querido';render()`,context);
+  assert(!nodes['#root'].innerHTML.includes('class="qres'));assert(nodes['#root'].innerHTML.includes('revelado ao meio-dia'));
+  Date.now=()=>Date.parse('2026-11-19T12:00:00-03:00');vm.runInContext('render()',context);assert(nodes['#root'].innerHTML.includes('Resultado de 19/11'));assert(nodes['#root'].innerHTML.includes('class="qres'));
+  Date.now=()=>Date.parse('2026-11-22T10:00:00-03:00');const final=dayKey();vm.runInContext(`S.qvoted={'${final}':['ob']};render()`,context);assert(nodes['#root'].innerHTML.includes('Esta foi a última votação do congresso.'));assert(!nodes['#root'].innerHTML.includes('Amanhã'));
+ }finally{Date.now=previous;}
+});
+test('placar congelado não ganha multa de domingo; CPF padrão e novas categorias',()=>{
+ const closeAt=Date.parse('2026-11-22T09:00:00-03:00'),later=Date.parse('2026-11-22T13:00:00-03:00');
+ const before=scoringPoints([],{},undefined,{closedAt:{toMillis:()=>closeAt}},later);
+ assert.equal(before.length,42);assert(!before.some(p=>p.id.includes(VOTE_DAYS.at(-1).key)));
+ assert.equal(scoringPoints([],{},undefined,null,later).length,56);
+ assert.equal(Object.keys(PIX_TYPES)[0],'cpf');
+ const {context,nodes}=ui();vm.runInContext("S={...S,me:'bruno',admin:true,ready:true,scoreClosing:{closedAt:{toMillis:()=>Date.now()}}};tab='placar';render()",context);
+ assert(!nodes['#root'].innerHTML.includes('id="givePts"'));assert(nodes['#root'].innerHTML.includes('Placar encerrado.'));
+ assert(vm.runInContext("CATS.some(c=>c.name==='Colocação')&&CATS.some(c=>c.name==='Outros')",context));
+ assert.equal(notice('Escolha sua foto primeiro'),'Escolha sua foto primeiro.');assert.equal(notice('Escolha sua foto primeiro.'),'Escolha sua foto primeiro.');
 });

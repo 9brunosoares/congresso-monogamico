@@ -1,10 +1,10 @@
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030a';
-import {PIX_TYPES} from './pix.js';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030b';
+import {PIX_TYPES} from './pix.js?v=20261030b';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js?v=20261029b';
-import * as backend from './backend.js?v=20261030a';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030b';
+import * as backend from './backend.js?v=20261030b';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -29,6 +29,8 @@ const CATS = [
   {id:"bebida",name:"Bebidas"},
   {id:"transporte",name:"Transporte"},
   {id:"atividades",name:"Atividades e festa"},
+  {id:"colocacao",name:"Colocação"},
+  {id:"outros",name:"Outros"},
 ];
 
 let S = {me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,error:''};
@@ -52,14 +54,14 @@ const photoStyle = id => {
 };
 const av = (id,cls="") => `<span class="av ${cls}" aria-hidden="true">${esc(P[id].nick[0])}<img src="img/${id}.jpg" style="${photoStyle(id)}" alt="" onerror="this.remove()"></span>`;
 const isAdm = () => S.me && S.admin;
-const allPoints = () => [...S.points,...missedVotePoints(S.attendance).filter(p=>!S.attendanceReady||S.attendanceReady[p.id.split('_')[1]])];
+const allPoints = () => scoringPoints(S.points,S.attendance,S.attendanceReady,S.scoreClosing);
 const score = id => allPoints().filter(x=>x.who===id).reduce((a,x)=>a+x.d,0);
 const ranking = () => ALL.map(id=>({id,s:score(id),n:allPoints().filter(x=>x.who===id).length})).sort((a,b)=>b.s-a.s||P[a.id].nick.localeCompare(P[b.id].nick));
 const pts = d => `<span class="pts ${d<0?"neg":"pos"}">${d>0?"+":""}${d}</span>`;
 const fmtTime = ms => new Date(ms).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 const dayOf = ms => DAYS.find(x=>x.d===new Date(ms).getDate());
 
-function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=notice(msg); document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
 
 /* ===================== CONTAS ===================== */
 function balances(){
@@ -99,8 +101,8 @@ function viewLogin(){
   $('#pick').onclick=e=>{const b=e.target.closest('button');if(!b)return;sel=b.dataset.id;document.querySelectorAll('#pick button').forEach(x=>x.setAttribute('aria-pressed',x===b));};
   $('#newAccount').onchange=()=>{const create=$('#newAccount').checked;$('#confirmPin').style.display=create?'flex':'none';$('#pinAgain').required=create;$('#pin').autocomplete=create?'new-password':'current-password';$('#enter').textContent=create?'Criar PIN e entrar':'Entrar no congresso';};
   $('#loginForm').onsubmit=e=>{e.preventDefault();const pin=$('#pin').value,create=$('#newAccount').checked;
-    if(!sel){toast('Escolha sua foto primeiro');return;}
-    if(create && pin!==$('#pinAgain').value){toast('Os dois PINs precisam ser iguais');return;}
+    if(!sel){toast('Escolha sua foto primeiro.');return;}
+    if(create && pin!==$('#pinAgain').value){toast('Os dois PINs precisam ser iguais.');return;}
     act($('#enter'),()=>backend.login(sel,pin,create));
   };
 }
@@ -143,7 +145,7 @@ function viewInicio(){
 
   ${(()=>{const d=dayKey(); const done=(S.qvoted[d]||[]).includes(S.me);
     return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
-    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${done?"Você já votou hoje. Os votos são anônimos.":votingOpen()?"Vote até meio-dia. Quem não preencher perde 5 pontos.":"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
+    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${done?(dayKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?(S.scoreClosing?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
 
   <div class="sec-h"><h3>Seu placar</h3><button class="link" data-go="placar" type="button">Ranking completo</button></div>
   <div class="card row">
@@ -190,7 +192,8 @@ function viewPlacar(){
   const approvals=tasks.length?`<div class="sec-h"><h3>${isAdm()?'Tarefas para aprovar':'Minhas tarefas'}</h3></div><div class="card stack">${tasks.map(t=>`<div><b>${esc(first(t.who))}</b> · ${esc(t.why)} (+${t.d})<div class="muted">${t.status==='pend'?'Aguardando aprovação':t.status==='ok'?'Aprovada':'Não aprovada'}</div>${isAdm()?`<button class="btn sm" data-task="${esc(t.id)}" data-approve="yes" type="button">Aprovar</button> <button class="btn sm ghost" data-task="${esc(t.id)}" data-approve="no" type="button">Recusar</button>`:''}</div>`).join('')}</div>`:'';
   return `
   <div class="card">${podium(rk)}</div>
-  ${isAdm()?`<div class="fab-row" style="margin-top:12px"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`:`<button class="btn ghost block" style="margin-top:12px" id="quickReport" type="button">Fiz uma tarefa (vai para aprovação)</button>`}
+  ${isAdm()?(!S.scoreClosing?`<div class="fab-row" style="margin-top:12px"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`:''):`<button class="btn ghost block" style="margin-top:12px" id="quickReport" type="button">Fiz uma tarefa (vai para aprovação)</button>`}
+  ${S.scoreClosing?'<p class="muted" style="font-size:13px">Placar encerrado.</p>':isAdm()?'<button class="link" style="margin-top:12px;font-size:13px" id="closeScores" type="button">Encerrar placar</button>':''}
   ${approvals}<div class="sec-h"><h3>Classificação</h3><span class="muted" style="font-size:13px">${ALL.length} congressistas</span></div>
   <div class="card rank" style="padding-block:4px">${rk.map((r,i)=>`<div class="rk ${r.id===S.me?"me-row":""}"><span class="pos">${i+1}</span>${av(r.id)}<div><div class="nm">${esc(P[r.id].nick)}</div><div class="sub">${r.n} lançamentos</div></div><span class="score">${r.s}</span></div>`).join("")}</div>
   <div class="sec-h"><h3>Últimos lançamentos</h3></div>
@@ -255,8 +258,8 @@ function caseCard(item,pending=false){
  const photo=S.casePhotos?.[item.id];
  return `<article class="shame">
  ${photo?`<img class="case-photo" src="${esc(photo)}" alt="Foto da denúncia contra ${esc(first(item.who))}" loading="lazy">`:item.hasPhoto?`<div class="case-photo-placeholder" ${S.photoErrors?.[item.id]?'':`data-photo-id="${esc(item.id)}"`}>${av(item.who,'lg')}${S.photoErrors?.[item.id]?`<button class="link" data-photo-retry="${esc(item.id)}" type="button">Tentar carregar foto</button>`:'<span class="muted">Carregando foto…</span>'}</div>`:av(item.who,'xl')}
- <h3>${esc(item.what)}</h3><div class="row" style="margin-top:10px"><b class="grow">${esc(first(item.who))}</b>${pending?'':pts(-15)}</div>
- ${pending?`<div class="fab-row" style="margin-top:14px"><button class="btn sm seal" data-judge="${esc(item.id)}" data-v="ok" type="button">Condenar (−15)</button><button class="btn sm ghost" data-judge="${esc(item.id)}" data-v="no" type="button">Absolver</button></div>`:''}
+ <h3>${esc(item.what)}</h3><div class="row" style="margin-top:10px"><b class="grow">${esc(first(item.who))}</b>${pending?'':!S.scoreClosing||S.points.some(p=>p.id==='case_'+item.id)?pts(-15):''}</div>
+ ${pending?`<div class="fab-row" style="margin-top:14px"><button class="btn sm seal" data-judge="${esc(item.id)}" data-v="ok" type="button">${S.scoreClosing?'Condenar':'Condenar (−15)'}</button><button class="btn sm ghost" data-judge="${esc(item.id)}" data-v="no" type="button">Absolver</button></div>`:''}
  </article>`;
 }
 function viewMural(){
@@ -276,7 +279,7 @@ function viewTribunal(){
 function todayNum(){ const t=now(); const d=new Date(t).getDate(); return DAYS.some(x=>x.d===d)?d:null; }
 
 function viewQuerido(){
-  const d = dayKey();
+  const revealed=resultDay(),d = revealed?.key||dayKey();
   if(!S.querido[d]) S.querido[d] = Object.fromEntries(ALL.map(id=>[id,{}]));
   const voted = (S.qvoted[d]||[]).includes(S.me);
   const res = S.querido[d];
@@ -287,20 +290,20 @@ function viewQuerido(){
   const form = voted || !votingOpen() ? "" : `
     <div class="card"><div class="eyebrow">Votação de ${new Date().toLocaleDateString("pt-BR")}</div>
       <h2 class="qtitle">Dê um emoji para cada congressista</h2>
-      <p class="muted" style="margin:6px 0 0;font-size:14px">Vote até meio-dia (São Paulo). Não preencher custa 5 pontos. As escolhas são anônimas.</p>
+      <p class="muted" style="margin:6px 0 0;font-size:14px">Vote até meio-dia (São Paulo). ${S.scoreClosing?'':'Não preencher custa 5 pontos. '}As escolhas são anônimas.</p>
     </div>
     <div class="card" style="margin-top:12px;padding-block:4px">${others.map(id=>`<div class="qrow">
       <div class="row">${av(id,"sm")}<b class="grow">${esc(P[id].nick)}</b>${qDraft[id]?`<span class="qpick">${qDraft[id]}</span>`:""}</div>
       <div class="emo" role="group" aria-label="Emoji para ${esc(P[id].nick)}">${EMOJIS.map(em=>`<button type="button" data-q="${id}" data-em="${em}" aria-pressed="${qDraft[id]===em}">${em}</button>`).join("")}</div>
     </div>`).join("")}</div>
     <button class="btn seal block" style="margin-top:14px" id="qSend" type="button">Enviar votos (${Object.keys(qDraft).filter(k=>others.includes(k)).length} de ${others.length})</button>`;
-  const results = `
-    <div class="sec-h"><h3>Resultado de hoje</h3><span class="muted" style="font-size:13px">${S.voterCount} votantes</span></div>
+  const results = !revealed?'':!S.loaded?.['votes-'+d]?'<p role="status" class="muted">Carregando resultado…</p>':`
+    <div class="sec-h"><h3>Resultado de ${revealed.day}/11</h3><span class="muted" style="font-size:13px">${S.voterCount} votantes</span></div>
     ${highlights?`<div class="card qhls">${highlights}</div>`:""}
     <div class="card" style="margin-top:12px;padding-block:4px">${ALL.slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
       return `<div class="qres ${id===S.me?"me-row":""}">${av(id)}<div style="min-width:0"><div class="nm">${esc(P[id].nick)}</div><div class="qchips">${chips||'<span class="muted" style="font-size:13px">sem votos ainda</span>'}</div></div><span class="muted num" style="font-size:13px">${total(id)}</span></div>`}).join("")}</div>`;
-  return (!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>De quinta, 19/11, a domingo, 22/11, da meia-noite até antes das 12h (São Paulo).</p><p class="muted">Não preencher até meio-dia: −5 pontos por dia.</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">Seus votos de hoje foram enviados.</div></div>`:form) + results;
+  return (!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>${Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'De 19 a 22/11, pela manhã até meio-dia (São Paulo).'}</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${dayKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos de hoje foram enviados.'}</div></div>`:form) + (!revealed&&VOTE_DAYS.some(v=>v.key===dayKey())?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'') + results;
 }
 
 function viewFofoca(){
@@ -340,10 +343,13 @@ function sheetPoints(neg){
  });});
 }
 function sheetTask(){
- sheet(`<h3>Fiz uma tarefa</h3><p class="muted">Um organizador aprova antes de os pontos entrarem no placar.</p><div class="stack">
+ sheet(`<h3>Fiz uma tarefa</h3><p class="muted">${S.scoreClosing?'Um organizador confirma a tarefa.':'Um organizador aprova antes de os pontos entrarem no placar.'}</p><div class="stack">
  <label class="f">Tarefa<select id="tkWhy">${RULES.plus.filter(o=>typeof o[1]==='number').map(([n,v])=>`<option value="${v}">${n} (+${v})</option>`).join('')}</select></label>
  <button class="btn block" id="tkOk" type="button">Enviar para aprovação</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
  s.querySelector('#tkOk').onclick=()=>act(s.querySelector('#tkOk'),async()=>{const w=s.querySelector('#tkWhy');await backend.submitTask({d:+w.value,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,'')});s.remove();toast('Tarefa enviada para aprovação');});});
+}
+function sheetCloseScores(){
+ sheet('<h3>Encerrar placar?</h3><p>A pontuação e a classificação ficarão congeladas. O restante do app continua funcionando.</p><div class="stack"><button class="btn block" id="scoreCloseOk" type="button">Encerrar placar</button><button class="btn ghost block" data-close type="button">Voltar</button></div>',s=>{s.querySelector('#scoreCloseOk').onclick=()=>act(s.querySelector('#scoreCloseOk'),async()=>{await backend.closeScores();s.remove();toast('Placar encerrado.');});});
 }
 function sheetExpense(expense=null){
  let split=new Set(expense?.split||ALL);
@@ -442,7 +448,7 @@ function sheetMe(){
  sheet(`<div class="badge" style="margin-bottom:14px"><div class="lanyard"><span>CREDENCIAL</span><span>${isAdm()?'ORGANIZAÇÃO':'CONGRESSISTA'}</span></div>
  <div class="body row">${av(S.me,'xl')}<div><h3 style="margin:0">${esc(first(S.me))}</h3><div class="muted">${score(S.me)} pontos</div></div></div></div>
  <div class="stack">${isAdm()?`<div class="eyebrow">Painel do ADM</div>
- <button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>
+ ${S.scoreClosing?'':'<button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>'}
  <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias</button>${S.closing?'':'<button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>'}`:''}
  <button class="btn ghost block" data-a="out" type="button">Sair / trocar de congressista</button></div>`,s=>{
  s.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
@@ -524,7 +530,7 @@ document.addEventListener('click',e=>{
  const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
- ({closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
+ ({closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
  qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
  clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Demonstração encerrada');}})[id]?.();
 });
@@ -542,7 +548,7 @@ document.addEventListener('submit',e=>{
  act(e.target.querySelector('button'),async()=>{await backend.sendChat(text);if($('#chatIn')?.value.trim()===text)$('#chatIn').value='';$('#chatIn')?.focus();});
 });
 let votingPhase=votingOpen();
-setInterval(()=>{tick();const phase=votingOpen();if(phase!==votingPhase){votingPhase=phase;render();}},1000);
+setInterval(()=>{tick();const phase=votingOpen();if(phase!==votingPhase){votingPhase=phase;backend.refreshTime?.();render();}},1000);
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;

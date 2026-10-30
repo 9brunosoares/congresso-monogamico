@@ -60,6 +60,23 @@ const {context}=require('./firebase-context.cjs');
   for(const method of ['create','update'])cases.push(pixTest(method,'bruno',data,'DENY'));
  }
  for(const data of [{type:'cpf',value:'52998224725'},{type:'telefone',value:'+5511999991234'},{type:'aleatoria',value:'12345678-abcd-1234-abcd-123456789012'}])cases.push(pixTest('create','bruno',data));
+ for(const [time,expectation] of [['2026-11-19T11:59:59-03:00','DENY'],['2026-11-19T12:00:00-03:00','ALLOW'],['2026-11-19T20:00:00-03:00','ALLOW']]){
+  for(const endpoint of [base,prefix+'/participation/'+key+'/people/bruno']){
+   const t=make('bruno',first);t.expectation=expectation;t.request.method='get';t.request.time=new Date(time).toISOString();t.request.path=endpoint;t.resource={data:first};cases.push(t);
+  }
+ }
+ const adminMorning=make('bruno',first);adminMorning.request.method='get';adminMorning.expectation='DENY';adminMorning.functionMocks.push(mock('exists',prefix+'/admins/'+uid,true));cases.push(adminMorning);
+ function scoreCase(method,admin,closed=false){
+  return {expectation:'ALLOW',request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path:prefix+'/scoreClosures/main',method,resource:{data:{closedAt:new Date(testTime).toISOString(),closedBy:'bruno'}}},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,admin),mock('exists',prefix+'/scoreClosures/main',closed)]};
+ }
+ cases.push(scoreCase('create',true));const memberScore=scoreCase('create',false);memberScore.expectation='DENY';cases.push(memberScore);
+ for(const method of ['update','delete']){const t=scoreCase(method,true,true);t.expectation='DENY';cases.push(t);}
+ for(const closed of [false,true]){
+  for(const method of ['create','update','delete']){
+   const t=scoreCase(method,true,closed);t.expectation=closed?'DENY':'ALLOW';t.request.path=prefix+'/points/example';
+   const point={who:'bruno',d:5,why:'Tarefa',kind:'aux',at:'19/11 11:59',createdAt:new Date(testTime).toISOString()};t.request.resource.data=point;t.resource={data:point};cases.push(t);
+  }
+ }
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});

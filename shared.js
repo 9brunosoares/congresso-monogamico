@@ -23,6 +23,18 @@ export const VOTE_DAYS=[19,20,21,22].map(d=>{
  return {key:dayKey(start),day:d,start,deadline:start+12*3600000};
 });
 export function votingOpen(at=Date.now()){return VOTE_DAYS.some(d=>at>=d.start&&at<d.deadline);}
+export function resultDay(at=Date.now()){
+ const today=VOTE_DAYS.find(d=>d.key===dayKey(at));
+ return today?(at>=today.deadline?today:null):at>=VOTE_DAYS.at(-1).deadline?VOTE_DAYS.at(-1):null;
+}
+export function alreadyVotedMessage(at=Date.now()){
+ return dayKey(at)===VOTE_DAYS.at(-1).key||at>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'Você já votou hoje. Amanhã abre de novo.';
+}
+export function scoringPoints(points=[],attendance={},ready,closure,at=Date.now()){
+ const cutoff=closure?.closedAt?.toMillis?.()??at;
+ return [...points.filter(p=>!closure||(p.createdAt?.toMillis?.()||0)<=cutoff),...missedVotePoints(attendance,cutoff).filter(p=>!ready||ready[p.id.split('_')[1]])];
+}
+export function notice(text){const value=String(text).trim().replace(/…$/,'');return /[.!?]$/.test(value)?value:value+'.';}
 export function missedVotePoints(attendance={},at=Date.now()){
  return VOTE_DAYS.filter(d=>at>=d.deadline).flatMap(d=>ALL.filter(id=>!attendance[d.key]?.[id]).map(who=>({id:`missed_${d.key}_${who}`,who,d:-5,kind:'inf',why:'Queridômetro não preenchido até meio-dia',at:`${d.day}/11/2026, 12:00`,createdAt:{toMillis:()=>d.deadline}})));
 }

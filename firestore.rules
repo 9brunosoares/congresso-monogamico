@@ -127,15 +127,22 @@ service cloud.firestore {
     && d.d is int && d.d != 0 && d.d >= -100 && d.d <= 100
     && text(d.why,200) && d.kind in ['aux','jogo','inf'] && text(d.at,40) && d.createdAt is timestamp;
   }
+  function scoringOpen() { return !exists(/databases/$(database)/documents/scoreClosures/main); }
+  match /scoreClosures/{id} {
+   allow read: if isMember();
+   allow create: if id == 'main' && isAdmin() && only(request.resource.data,['closedAt','closedBy'])
+    && request.resource.data.closedAt is timestamp && request.resource.data.closedAt == request.time && request.resource.data.closedBy == personId();
+   allow update, delete: if false;
+  }
   match /points/{id} {
    allow read: if isMember();
-   allow create: if isAdmin() && isValidPoint(request.resource.data) && fresh(request.resource.data);
-   allow update: if isAdmin() && isValidPoint(request.resource.data) && sameCreation();
-   allow delete: if isAdmin();
+   allow create: if isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && fresh(request.resource.data);
+   allow update: if isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && sameCreation();
+   allow delete: if isAdmin() && scoringOpen();
   }
   function isValidExpense(d) {
    return only(d,['title','cat','amount','amountCents','by','payer','split','at','createdAt','status','version','updatedAt','updatedBy']) && text(d.title,120)
-    && d.cat in ['casa','mercado','bebida','transporte','atividades']
+    && d.cat in ['casa','mercado','bebida','transporte','atividades','colocacao','outros']
     && d.amount is number && d.amount > 0 && d.amount <= 1000000 && d.payer in ids()
     && d.amount == int(d.amount * 100 + 0.5) / 100.0
     && d.amountCents is int && d.amountCents > 0 && d.amountCents <= 100000000 && d.amount == d.amountCents / 100.0
@@ -294,6 +301,9 @@ service cloud.firestore {
    allow delete: if isAdmin();
   }
   function isToday(day) { return day == string(int((request.time.toMillis() - 10800000) / 86400000)); }
+  function resultsReleased(day) {
+   return day in ['20776','20777','20778','20779'] && request.time.toMillis() >= int(day) * 86400000 + 54000000;
+  }
   function votingOpen() {
    let local=request.time.toMillis()-10800000;
    return local >= 1795046400000 && local < 1795392000000 && local % 86400000 < 43200000;
@@ -335,7 +345,7 @@ service cloud.firestore {
     && getAfter(/databases/$(database)/documents/participation/$(day)/people/$(personId())).data == {'voted':true};
   }
   match /querido/{day} {
-   allow get: if isMember();
+   allow get: if isMember() && resultsReleased(day);
    allow list, delete: if false;
    allow create, update: if isMember() && newVoter(day)
     && isValidVoteDay(request.resource.data,request.method == 'create' ? emptyDay() : resource.data,day);
@@ -349,7 +359,7 @@ service cloud.firestore {
   }
   // Participação registra apenas a entrega, nunca os emojis escolhidos.
   match /participation/{day}/people/{id} {
-   allow read: if isMember();
+   allow read: if isMember() && resultsReleased(day);
    allow create: if isMember() && id == personId() && isToday(day) && votingOpen()
     && request.resource.data == {'voted':true}
     && !exists(/databases/$(database)/documents/querido/$(day)/voters/$(request.auth.uid))
