@@ -7,33 +7,28 @@ export function devicePlatform(nav){
  return /Android/i.test(nav.userAgent)?'android':'desktop';
 }
 const shareIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9H5v12h14V9h-3M12 16V2M7 7l5-5 5 5"/></svg>';
-const addIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 7v10M7 12h10"/></svg>';
 export function installationMarkup(platform,promptAvailable=false,installed=false,desktop=false){
  const ios=platform==='ios';
  const steps=ios?[
-  ['Abra no Safari','Abra este link no Safari do seu iPhone. Se veio pelo WhatsApp ou Instagram, use o menu para abrir no navegador.','Safari'],
-  ['Toque em Compartilhar','Procure o quadrado com a seta para cima. Dependendo da versão do Safari, ele fica dentro do menu da página.',shareIcon+'Compartilhar'],
-  ['Adicione à Tela de Início','Escolha “Adicionar à Tela de Início”. Se aparecer “Abrir como App da Web”, deixe ativado. Depois toque em “Adicionar”.',addIcon+'Adicionar à Tela de Início'],
-  ['Abra pelo novo ícone','Volte à tela inicial do celular e toque em Congresso. Sua credencial abre por lá.','home']
+  ['Abra no Safari',`${shareIcon}Toque em Compartilhar.`],
+  ['Adicione à Tela de Início','Mantenha “Abrir como App da Web” ativado, se aparecer.'],
+  ['Abra Congresso pelo ícone','Na tela inicial do celular.']
  ]:[
-  ['Abra no Chrome','Abra este link no Chrome do seu Android. Se veio pelo WhatsApp ou Instagram, use o menu para abrir no navegador.','Chrome'],
-  ['Abra o menu ⋮','Toque nos três pontos do navegador. Escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.','⋮ Menu do Chrome'],
-  ['Confirme a instalação','Toque em “Instalar” ou confirme “Adicionar”. O nome e as opções podem variar conforme o celular.',addIcon+'Instalar aplicativo'],
-  ['Abra pelo novo ícone','Na tela inicial ou na lista de aplicativos, toque em Congresso para abrir sua credencial.','home']
+  ['Abra no Chrome','Toque no menu ⋮.'],
+  ['Instale o aplicativo','Escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.'],
+  ['Abra Congresso pelo ícone','Na tela inicial ou na lista de aplicativos.']
  ];
  return `<main class="app install-page">
-  <section class="badge install-badge"><div class="lanyard"><span>XVI CONGRESSO</span><span>18—22 NOV</span></div><div class="body">
-   <div class="install-brand"><img src="icon-192.png" width="64" height="64" alt="Ícone do Congresso"><span class="eyebrow">Sua credencial<br>sempre à mão</span></div>
-   <h1>O Congresso,<br>na sua <em>tela inicial.</em></h1>
-   <p class="muted">Adicione o aplicativo ao celular. Depois, abra pelo ícone Congresso para entrar.</p>
-  </div></section>
-  ${desktop?'<p class="install-desktop">Está no computador? Abra este endereço no celular e siga os passos abaixo.</p>':''}
+  <p class="install-label">CONGRESSO · INSTALAÇÃO</p>
+  <h1>Você está<br>no navegador.</h1>
+  <p class="install-intro">Para entrar, adicione o Congresso à tela inicial.</p>
+  ${desktop?'<p class="install-desktop">Abra este link no celular.</p>':''}
   <div class="seg seg2 install-platform" role="group" aria-label="Escolha seu celular"><button type="button" data-platform="ios" aria-pressed="${ios}">iPhone / iPad</button><button type="button" data-platform="android" aria-pressed="${!ios}">Android</button></div>
-  ${!ios&&promptAvailable?'<button class="btn seal block" type="button" id="installNow">Instalar Congresso</button><p class="muted install-small">Ou siga o passo a passo abaixo.</p>':''}
-  <ol class="install-steps">${steps.map(([title,description,action],i)=>`<li><span class="install-number" aria-hidden="true">${i+1}</span><div><h2>${title}</h2><p>${description}</p>${action==='home'?'<div class="install-home"><img src="icon-192.png" width="44" height="44" alt=""><span>Congresso</span><span class="install-arrow" aria-hidden="true">↗</span></div>':`<div class="install-action">${action}</div>`}</div></li>`).join('')}</ol>
-  <div class="card install-finish"><b>Já adicionou?</b><p>Saia do navegador e abra <strong>Congresso</strong> pelo ícone no celular. O login aparece no aplicativo.</p></div>
-  <div class="install-link"><span>9brunosoares.github.io/congresso-monogamico/</span><button type="button" class="link" id="copyInstallLink">Copiar link</button></div>
-  <p class="install-small muted" role="status" id="installStatus">${installed?'Instalação concluída. Agora abra Congresso pelo ícone no celular.':''}</p>
+  ${!ios&&promptAvailable?'<button class="btn seal block" type="button" id="installNow">Instalar Congresso</button>':''}
+  <ol class="install-steps">${steps.map(([title,description],i)=>`<li><span class="install-number" aria-hidden="true">${i+1}</span><div><h2>${title}</h2><p>${description}</p></div></li>`).join('')}</ol>
+  <p class="install-note">O login abre somente pelo ícone no celular.</p>
+  <button type="button" class="link" id="copyInstallLink">Copiar link</button>
+  <p class="install-status" role="status" id="installStatus">${installed?'Instalação concluída. Abra pelo ícone Congresso.':''}</p>
  </main>`;
 }
 export function initializeInstallation(env,loadApp){

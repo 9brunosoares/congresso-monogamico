@@ -255,27 +255,20 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 
 .btn[aria-busy="true"]{display:flex;align-items:center;justify-content:center;gap:8px}.btn .union-loader{zoom:.48}
 .mural-alert{border:2px solid var(--seal);color:var(--seal);font-weight:800}
-.install-page{padding-top:24px;padding-bottom:max(28px,env(safe-area-inset-bottom,0px))}
-.install-badge h1{font-size:38px;line-height:1.04;letter-spacing:-.03em}
-.install-badge .body>p{margin-bottom:0}
-.install-brand{display:flex;align-items:center;gap:14px;margin-bottom:22px}
-.install-brand img{border-radius:16px;flex:none}
-.install-desktop{font-size:14px;padding:12px 0;margin:0;color:var(--muted)}
-.install-platform{margin:20px 0}
-.install-steps{list-style:none;padding:0;margin:24px 0;counter-reset:install}
-.install-steps li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:14px;padding:0 0 24px;position:relative}
-.install-steps li:not(:last-child):before{content:"";position:absolute;left:14px;top:38px;bottom:8px;width:1px;background:var(--line)}
-.install-number{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:var(--seal);color:var(--on-seal);font:700 13px var(--f-mono)}
-.install-steps h2{font-size:21px;margin:3px 0 8px}
-.install-steps p{color:var(--muted);font-size:15px;margin:0 0 12px}
-.install-action{display:inline-flex;align-items:center;gap:9px;padding:9px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:700;max-width:100%}
-.install-action svg{width:20px;height:20px;fill:none;stroke:var(--seal);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.install-home{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:700}
-.install-home img{border-radius:11px}.install-arrow{color:var(--seal);font-size:24px}
-.install-finish{border-color:var(--seal)}.install-finish>b{color:var(--seal)}.install-finish p{margin:6px 0 0;font-size:14px}
-.install-link{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:20px 0 0;font-size:12px;color:var(--muted)}
-.install-link span{overflow-wrap:anywhere;flex:1;min-width:180px}.install-small{font-size:13px;margin:12px 0}
-
+.install-page{max-width:430px;padding-top:max(48px,env(safe-area-inset-top,0px));padding-bottom:28px}
+.install-label{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--seal);margin:0 0 20px}
+.install-page h1{font-size:36px;font-weight:800;letter-spacing:-.03em;line-height:1.06}
+.install-intro{font-size:16px;color:var(--muted);margin:14px 0 0;max-width:300px}
+.install-desktop{font-size:13px;color:var(--muted);margin:10px 0 0}
+.install-platform{margin:26px 0}
+.install-steps{list-style:none;padding:0;margin:28px 0 12px}
+.install-steps li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;padding-bottom:22px}
+.install-number{width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:var(--seal);color:var(--on-seal);font:700 11px var(--f-mono)}
+.install-steps h2{font-size:17px;line-height:1.3;margin:1px 0 5px}
+.install-steps p{color:var(--muted);font-size:14px;margin:0;line-height:1.4}
+.install-steps svg{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:6px;fill:none;stroke:var(--seal);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.install-note{border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:13px;margin:0 0 10px}
+.install-status{font-size:13px;color:var(--muted);margin:10px 0 0}
 </style>
 
 <style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}</style>
@@ -284,7 +277,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261029c"></script>
+<script type="module" src="install.js?v=20261029d"></script>
 
 </body>
 </html>

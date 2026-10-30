@@ -155,3 +155,6 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Animação final: dois anéis diagonais com pedras, cadeado vermelho mais abaixo e à esquerda, fechadura, haste reta elevada com brecha só à direita. Lado esquerdo sempre conectado. Movimento de encaixe mantido; sem arquivos de imagem adicionais, respeita redução de movimento.
 - `app.js` foi extraído do módulo inline sem alterar fluxos/dados; loader aparece na abertura e pequeno nos botões de envio. Referências de módulos versionadas para evitar mistura de cache de versões.
 - Testes: `node --test tests/*.test.js` (12 cenários; inclui detecção iPad, navegador bloqueado, modo app liberado, instruções e instalação sem bypass). Verificação visual no navegador em largura de 390px.
+
+### Tutorial simplificado
+- A pedido do Bruno, tela do navegador reduzida a “Você está no navegador.”, instrução de instalação e três passos curtos. Sem crachá, slogan, fotos, simulação de tela inicial ou textos longos. Mantém vermelho, tipografia, escolha iOS/Android e regra de abrir o login somente pelo ícone.
