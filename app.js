@@ -1,12 +1,14 @@
 import {prepareReportPhoto} from './report-photo.js';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers} from './finance.js';
+import {PIX_TYPES} from './pix.js';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
 import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js?v=20261029b';
-import * as backend from './backend.js?v=20261029h';
+import * as backend from './backend.js?v=20261029i';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
-// Viagem: quarta 18 à noite até domingo 22/11/2026 pela manhã.
+// Viagem: quarta 18 à noite até domingo 22/11/2026 no começo da tarde.
 const DAYS = [
   {d:18, wd:"Qua", title:"Chegadas"},
   {d:19, wd:"Qui", title:"Home office"},
@@ -22,11 +24,11 @@ const RULES = {
 };
 
 const CATS = [
-  {id:"casa",name:"Casa",budget:6500},
-  {id:"mercado",name:"Mercado",budget:2000},
-  {id:"bebida",name:"Bebidas",budget:1500},
-  {id:"transporte",name:"Transporte",budget:800},
-  {id:"atividades",name:"Atividades e festa",budget:1200},
+  {id:"casa",name:"Casa"},
+  {id:"mercado",name:"Mercado"},
+  {id:"bebida",name:"Bebidas"},
+  {id:"transporte",name:"Transporte"},
+  {id:"atividades",name:"Atividades e festa"},
 ];
 
 let S = {me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,error:''};
@@ -61,20 +63,10 @@ function toast(msg){ const t=document.createElement("div"); t.className="toast";
 
 /* ===================== CONTAS ===================== */
 function balances(){
-  const b = Object.fromEntries(ALL.map(id=>[id,0]));
-  S.exps.forEach(e=>{ const share=e.amount/e.split.length; b[e.payer]+=e.amount; e.split.forEach(id=>b[id]-=share); });
-  return b;
+  return Object.fromEntries(Object.entries(ledgerBalances(S.exps)).map(([id,cents])=>[id,cents/100]));
 }
 function settle(){
-  const b = balances();
-  const cred = ALL.filter(id=>b[id]>0.005).map(id=>({id,v:b[id]})).sort((a,c)=>c.v-a.v);
-  const debt = ALL.filter(id=>b[id]<-0.005).map(id=>({id,v:-b[id]})).sort((a,c)=>c.v-a.v);
-  const out=[]; let i=0,j=0;
-  while(i<debt.length && j<cred.length){
-    const v=Math.min(debt[i].v,cred[j].v); out.push({from:debt[i].id,to:cred[j].id,v});
-    debt[i].v-=v; cred[j].v-=v; if(debt[i].v<0.01)i++; if(cred[j].v<0.01)j++;
-  }
-  return out;
+  return simplifiedTransfers(ledgerBalances(S.exps)).map(x=>({...x,v:x.amountCents/100}));
 }
 
 /* ===================== TELAS ===================== */
@@ -212,7 +204,7 @@ function viewPlacar(){
 
 function viewContas(){
   const seg = `<div class="seg" role="tablist">${[["despesas","Gastos"],["acerto","Quem paga quem"],["orcamento","Orçamento"]].map(([k,l])=>`<button type="button" data-seg="${k}" aria-pressed="${contasSeg===k}">${l}</button>`).join("")}</div>`;
-  const total=S.exps.reduce((a,e)=>a+e.amount,0);
+  const total=S.exps.reduce((a,e)=>a+expenseCents(e),0)/100;
   let body="";
   if(contasSeg==="despesas"){
     const b=balances()[S.me];
@@ -223,8 +215,8 @@ function viewContas(){
   }
   if(contasSeg==="acerto"){
     const st=settle(), b=balances();
-    body=`<p class="muted" style="font-size:14px;margin:14px 0 0">O menor número de Pix possível para zerar tudo no check-out.</p>
-    <div class="card" style="margin-top:10px;padding-block:4px">${st.length?st.map(x=>`<div class="settle" style="${x.from===S.me||x.to===S.me?"font-weight:700":""}">${av(x.from,"sm")}<span>${esc(first(x.from))}</span><span class="arrow">→</span><span>${av(x.to,"sm")} ${esc(first(x.to))}</span><span class="money">${brl(x.v)}</span></div>`).join(""):`<div class="empty">Tudo acertado.</div>`}</div>
+    body=`<p class="muted" style="font-size:14px;margin:14px 0 0">Sugestão de Pix para acertar os saldos. Pagamentos feitos no banco ainda não são registrados aqui.</p>
+    <div class="card" style="margin-top:10px;padding-block:4px">${st.length?st.map(x=>`<div><div class="settle" style="${x.from===S.me||x.to===S.me?"font-weight:700":""}">${av(x.from,"sm")}<span>${esc(first(x.from))}</span><span class="arrow">→</span><span>${av(x.to,"sm")} ${esc(first(x.to))}</span><span class="money">${brl(x.v)}</span></div>${S.pixKeys?.[x.to]?`<button class="link" style="margin-bottom:12px" type="button" data-pix="${x.to}">Chave Pix de ${esc(first(x.to))}</button>`:''}</div>`).join(""):`<div class="empty">Tudo acertado.</div>`}</div>
     <div class="sec-h"><h3>Saldo de cada um</h3></div>
     <div class="card" style="padding-block:6px">${ALL.map(id=>({id,v:b[id]})).sort((a,c)=>c.v-a.v).map(r=>`<div class="bal">${av(r.id,"sm")}<span>${esc(P[r.id].nick)}</span><span class="money ${r.v>=0?"pos":"neg"}">${r.v>=0?"+":"−"} ${brl(Math.abs(r.v))}</span></div>`).join("")}</div>`;
   }
@@ -239,9 +231,9 @@ function viewContas(){
       ${isAdm()?`<button class="btn sm ghost" style="margin-top:12px" id="editBudget" type="button">Ajustar orçamento (ADM)</button>`:""}
     </div>
     <div class="sec-h"><h3>Por categoria</h3></div>
-    <div class="card" style="padding-block:4px">${CATS.map(c=>{const s=S.exps.filter(e=>e.cat===c.id).reduce((a,e)=>a+e.amount,0);return `<div class="cat"><b>${c.name}</b><span class="money" style="font-size:14px">${brl0(s)} <span class="muted" style="font-weight:500">/ ${brl0(c.budget)}</span></span><div class="bar ${s>c.budget?"over":""}"><i style="width:${Math.min(100,s/c.budget*100)}%"></i></div></div>`}).join("")}</div>`;
+    <div class="card" style="padding-block:4px">${CATS.map(c=>{const s=S.exps.filter(e=>e.cat===c.id).reduce((a,e)=>a+expenseCents(e),0)/100;return `<div class="cat"><b>${c.name}</b><span class="money" style="font-size:14px">${brl(s)}</span></div>`}).join("")}</div>`;
   }
-  return seg+body;
+  return seg+`<div style="margin-top:12px"><button class="link" id="myPix" type="button" ${S.loaded?.pix?'':'disabled'}>Minha chave Pix</button></div>`+body;
 }
 
 function caseCard(item,pending=false){
@@ -352,11 +344,24 @@ function sheetExpense(){
  s.querySelector('#exS').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.id;split.has(id)?split.delete(id):split.add(id);sync();};
  s.querySelector('#exAll').onclick=()=>{split=split.size?new Set():new Set(ALL);sync();};
  s.querySelector('#exOk').onclick=()=>act(s.querySelector('#exOk'),async()=>{
- const title=s.querySelector('#exT').value.trim(),amount=Number(s.querySelector('#exV').value.replace(',','.'));
- if(!title||!Number.isFinite(amount)||amount<=0||amount>1000000)throw Error('Preencha o gasto e um valor válido.');
+ const title=s.querySelector('#exT').value.trim(),amount=s.querySelector('#exV').value;
+ if(!title)throw Error('Preencha a descrição do gasto.');moneyToCents(amount);
  if(!split.size)throw Error('Escolha com quem dividir.');
  await backend.addExpense({title,amount,payer:s.querySelector('#exP').value,cat:s.querySelector('#exC').value,split:[...split]});s.remove();toast('Gasto lançado');
  });});
+}
+function sheetPix(id=S.me){
+ const key=S.pixKeys?.[id],own=id===S.me;
+ if(!own){
+  if(!key)return toast('Chave Pix ainda não cadastrada.');
+  sheet(`<h3>Pix de ${esc(first(id))}</h3><div class="stack"><label class="f">${esc(PIX_TYPES[key.type])}<input id="pixCopyValue" readonly value="${esc(key.value)}"></label><p class="muted">Confira o destinatário no banco antes de pagar.</p><button class="btn block" id="pixCopy" type="button">Copiar chave</button><button class="btn ghost block" data-close type="button">Fechar</button></div>`,s=>{
+   s.querySelector('#pixCopy').onclick=()=>act(s.querySelector('#pixCopy'),async()=>{if(navigator.clipboard){await navigator.clipboard.writeText(key.value);toast('Chave copiada');}else{s.querySelector('#pixCopyValue').select();toast('Selecione e copie a chave.');}});
+  });return;
+ }
+ sheet(`<h3>Minha chave Pix</h3><div class="stack"><p class="muted">Visível aos participantes para o acerto de contas.</p><label class="f">Tipo<select id="pixType">${Object.entries(PIX_TYPES).map(([type,label])=>`<option value="${type}" ${key?.type===type?'selected':''}>${label}</option>`).join('')}</select></label><label class="f">Chave<input id="pixValue" maxlength="77" autocapitalize="none" autocomplete="off" value="${esc(key?.value||'')}"></label><button class="btn block" id="pixSave" type="button">Salvar chave</button>${key?'<button class="btn ghost block" id="pixRemove" type="button">Remover chave</button>':''}<button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+  s.querySelector('#pixSave').onclick=()=>act(s.querySelector('#pixSave'),async()=>{await backend.savePix(s.querySelector('#pixType').value,s.querySelector('#pixValue').value);s.remove();toast('Chave Pix salva');});
+  if(key)s.querySelector('#pixRemove').onclick=()=>act(s.querySelector('#pixRemove'),async()=>{await backend.removePix();s.remove();toast('Chave Pix removida');});
+ });
 }
 function sheetReport(){
  let photo='',photoJob=0;
@@ -461,11 +466,12 @@ document.addEventListener('click',e=>{
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}
  const q=e.target.closest('[data-q]');if(q){qDraft[q.dataset.q]=qDraft[q.dataset.q]===q.dataset.em?undefined:q.dataset.em;if(!qDraft[q.dataset.q])delete qDraft[q.dataset.q];const y=scrollY;render();scrollTo(0,y);return;}
  const sg=e.target.closest('[data-seg]');if(sg){contasSeg=sg.dataset.seg;render();return;}
+ const pk=e.target.closest('[data-pix]');if(pk){sheetPix(pk.dataset.pix);return;}
  const task=e.target.closest('[data-task]');if(task){act(task,async()=>{await backend.reviewTask(task.dataset.task,task.dataset.approve==='yes');toast('Tarefa julgada');});return;}
  const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
- ({retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
+ ({myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
  qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
  clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Demonstração encerrada');}})[id]?.();
 });

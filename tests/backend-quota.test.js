@@ -60,6 +60,8 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   const chatQuery=active().find(x=>x.ref.path==='chat').ref;assert(chatQuery.filters.some(f=>f.limit===50));assert.equal(state.chat.length,50);assert(state.chatHasMore);
   await api.loadOlderChat();assert(gets.some(ref=>ref.path==='chat'&&ref.filters.some(f=>f.after)));assert(!state.chatHasMore);
   for(let i=0;i<20;i++)api.setView('fofoca');assert.equal(listeners.length,coreCount+1);
+  api.setView('contas');await flush();assert(active().some(x=>x.ref.path==='pixKeys'));assert(state.loaded.pix);
+  api.setView('inicio');await flush();assert(!active().some(x=>x.ref.path==='pixKeys'));
   api.setView('mural');await flush();assert(!active().some(x=>x.ref.path==='chat'));assert.equal(state.shame.length,12);
   assert.equal(gets.filter(x=>typeof x==='string'&&x.startsWith('casePhotos/')).length,0);
   await Promise.all([api.loadCasePhoto('case1'),api.loadCasePhoto('case1')]);await api.loadCasePhoto('case1');

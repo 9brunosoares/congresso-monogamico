@@ -3,6 +3,8 @@ rules_version = '2';
 // admin bool (campos de identidade imutáveis, salvo primeiro vínculo de uid).
 // admins/{uid}: id oficial string<=20; criado apenas no primeiro vínculo de ADM.
 // settings/main: budget number 0..1000000.
+// pixKeys/{id}: type enum e value string1..77; titular escreve, grupo lê.
+// expenses: amountCents int1..100000000 e by oficial opcionais para clientes legados.
 // agenda/{id}: d int18..22, t HH:mm, title<=120, place<=100, pts int0..100,
 // prep<=500, note<=500, start/end epoch millis (sessão de até 24h).
 // points/{id}: who oficial, d int -100..100, why<=200, kind aux|jogo|inf,
@@ -65,6 +67,18 @@ service cloud.firestore {
    allow create, update: if id == 'main' && isAdmin() && isValidSettings(request.resource.data);
    allow delete: if false;
   }
+  function isValidPix(d) {
+   return only(d,['type','value']) && text(d.value,77)
+    && (d.type == 'aleatoria' && d.value.matches('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+     || d.type == 'cpf' && d.value.matches('[0-9]{11}')
+     || d.type == 'telefone' && d.value.matches('[+][1-9][0-9]{9,14}')
+     || d.type == 'email' && d.value.matches('[^ @]+@[^ @]+[.][^ @]+'));
+  }
+  match /pixKeys/{id} {
+   allow read: if isMember();
+   allow create, update: if isMember() && id == personId() && isValidPix(request.resource.data);
+   allow delete: if isMember() && id == personId();
+  }
   function isValidAgenda(d) {
    return only(d,['d','t','title','place','pts','prep','note','start','end'])
     && d.d is int && d.d >= 18 && d.d <= 22 && d.t is string && d.t.matches('([01][0-9]|2[0-3]):[0-5][0-9]')
@@ -90,16 +104,22 @@ service cloud.firestore {
    allow delete: if isAdmin();
   }
   function isValidExpense(d) {
-   return only(d,['title','cat','amount','payer','split','at','createdAt']) && text(d.title,120)
+   return d.keys().hasAll(['title','cat','amount','payer','split','at','createdAt'])
+    && d.keys().hasOnly(['title','cat','amount','amountCents','by','payer','split','at','createdAt']) && text(d.title,120)
     && d.cat in ['casa','mercado','bebida','transporte','atividades']
     && d.amount is number && d.amount > 0 && d.amount <= 1000000 && d.payer in ids()
+    && d.amount == int(d.amount * 100 + 0.5) / 100.0
+    && (!d.keys().hasAny(['amountCents']) || (d.amountCents is int && d.amountCents > 0 && d.amountCents <= 100000000 && d.amount == d.amountCents / 100.0))
+    && (!d.keys().hasAny(['by']) || d.by in ids())
     && d.split is list && d.split.size() > 0 && d.split.size() <= 14
     && d.split.toSet().size() == d.split.size() && d.split.hasOnly(ids()) && text(d.at,40) && d.createdAt is timestamp;
   }
   match /expenses/{id} {
    allow read: if isMember();
-   allow create: if isMember() && isValidExpense(request.resource.data) && fresh(request.resource.data);
-   allow update: if isAdmin() && isValidExpense(request.resource.data) && sameCreation();
+   allow create: if isMember() && isValidExpense(request.resource.data) && fresh(request.resource.data)
+    && (!request.resource.data.keys().hasAny(['by']) || request.resource.data.by == personId());
+   allow update: if isAdmin() && isValidExpense(request.resource.data) && sameCreation()
+    && request.resource.data.get('by',null) == resource.data.get('by',null);
    allow delete: if isAdmin();
   }
   function isValidCase(d) {

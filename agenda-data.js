@@ -1,4 +1,4 @@
-// Programação provisória informada pelo Bruno. Horários sugeridos, a confirmar.
+// Chegada quarta, 18/11 à noite; saída domingo, 22/11 no começo da tarde. Horários sugeridos, a confirmar.
 export const INITIAL_AGENDA = [
   {
     "d": 18,
@@ -218,20 +218,20 @@ export const INITIAL_AGENDA = [
   },
   {
     "d": 22,
-    "t": "09:30",
+    "t": "14:00",
     "title": "Volta para São Paulo",
     "place": "Casa",
     "prep": "",
-    "note": "Saída da casa no domingo de manhã; horário a confirmar.",
+    "note": "Saída da casa no começo da tarde; horário exato a confirmar.",
     "pts": 0
   },
   {
     "d": 22,
     "t": "12:30",
     "title": "Almoço",
-    "place": "São Paulo / retorno",
+    "place": "Casa",
     "prep": "",
-    "note": "Após a saída da casa; refeição no trajeto ou em São Paulo, sem encontro coletivo definido.",
+    "note": "Antes da saída para São Paulo.",
     "pts": 0
   },
   {

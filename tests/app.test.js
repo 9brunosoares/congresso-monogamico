@@ -1,4 +1,6 @@
 import test from 'node:test';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers} from '../finance.js';
+import {PIX_TYPES} from '../pix.js';
 import {prepareReportPhoto} from '../report-photo.js';
 import {bindAgendaSwipe,adjacentDay} from '../agenda-gesture.js';
 import assert from 'node:assert/strict';
@@ -36,7 +38,7 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={};const context={prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,Date,Intl,console,backend:{},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
+ const nodes={};const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,PIX_TYPES,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,Date,Intl,console,backend:{},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html};
 }
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
@@ -89,4 +91,10 @@ test('Fofoca só tem chat; mural não expõe pendentes e usa foto ou avatar',()=
 test('orçamento zero não mostra NaN ou Infinity',()=>{
  const {context,nodes}=ui();vm.runInContext("S={...S,me:'bruno',ready:true,budget:0};tab='contas';contasSeg='orcamento';render()",context);
  assert(!nodes['#root'].innerHTML.includes('NaN'));assert(!nodes['#root'].innerHTML.includes('Infinity'));assert(nodes['#root'].innerHTML.includes('Orçamento não definido'));
+});
+
+test('orçamento é visível a membros e acerto mostra acesso à chave Pix',()=>{
+ const {context,nodes}=ui();vm.runInContext("S={...S,me:'ob',admin:false,ready:true,budget:14000,loaded:{pix:true},pixKeys:{pig:{type:'email',value:'teste@example.com'}},exps:[{id:'rental-2026',title:'Locação da casa',cat:'casa',payer:'pig',amount:2640,amountCents:264000,split:ALL}]};tab='contas';contasSeg='orcamento';render()",context);
+ assert(nodes['#root'].innerHTML.includes('14.000'));assert(nodes['#root'].innerHTML.includes('1.000 previstos'));assert(!nodes['#root'].innerHTML.includes('Ajustar orçamento (ADM)'));
+ vm.runInContext("contasSeg='acerto';render()",context);assert(nodes['#root'].innerHTML.includes('data-pix=\"pig\"'));assert(nodes['#root'].innerHTML.includes('ainda não são registrados'));
 });

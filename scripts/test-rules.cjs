@@ -49,6 +49,17 @@ const {context}=require('./firebase-context.cjs');
  for(const [status,admin,expectation] of [['pend',false,'DENY'],['pend',true,'ALLOW'],['ok',false,'ALLOW']]){
   const sample=photoTest('get',photo,status,admin,expectation,true);sample.request.path=casePath;sample.resource={data:{...caseData,status}};cases.push(sample);
  }
+ function pixTest(method,id='bruno',data={type:'email',value:'teste@example.com'},expectation='ALLOW'){
+  return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path:prefix+'/pixKeys/'+id,method,resource:{data}},resource:{data:{type:'email',value:'antes@example.com'}},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,true)]};
+ }
+ for(const method of ['create','update','delete','get','list'])cases.push(pixTest(method));
+ for(const method of ['create','update','delete'])cases.push(pixTest(method,'ob',undefined,'DENY'));
+ cases.push(pixTest('get','ob'));
+ for(const method of ['get','list']){const guest=pixTest(method,'ob',undefined,'DENY');guest.request.auth=null;cases.push(guest);}
+ for(const data of [{type:'email',value:'x'},{type:'email',value:'a'.repeat(78)+'@e.com'},{type:'email',value:3},{type:'email'},{type:'email',value:'a@b.com',admin:true},{type:'other',value:'a@b.com'}]){
+  for(const method of ['create','update'])cases.push(pixTest(method,'bruno',data,'DENY'));
+ }
+ for(const data of [{type:'cpf',value:'52998224725'},{type:'telefone',value:'+5511999991234'},{type:'aleatoria',value:'12345678-abcd-1234-abcd-123456789012'}])cases.push(pixTest('create','bruno',data));
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});

@@ -1,3 +1,5 @@
+import {moneyToCents} from './finance.js';
+import {normalizePix} from './pix.js';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -10,7 +12,7 @@ import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen } 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
 const db=initializeFirestore(app,{localCache:typeof indexedDB==='undefined'?memoryLocalCache():persistentLocalCache({tabManager:persistentMultipleTabManager(),cacheSizeBytes:40*1024*1024})});
-const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],hasMural:false,casePhotos:{},photoErrors:{},chat:[],chatHasMore:false,chatLoadingOlder:false,muralHasMore:false,muralLoadingOlder:false,tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},attendanceReady:{},loaded:{},agenda:[],error:''});
+const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],hasMural:false,casePhotos:{},photoErrors:{},chat:[],chatHasMore:false,chatLoadingOlder:false,muralHasMore:false,muralLoadingOlder:false,pixKeys:{},tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},attendanceReady:{},loaded:{},agenda:[],error:''});
 let state=emptyState(), notify=()=>{}, generation=0,currentDay=dayKey(),currentView='inicio',sessionReady=false,paused=false,quotaBlocked=false;
 let firstSnapshots=new Set(),required=new Set(),chatHead=[],chatOlder=[],chatCursor=null,muralHead=[],muralOlder=[],muralCursor=null,backgroundTimer;
 const PAGE_SIZE=50;
@@ -77,6 +79,7 @@ function syncData(){
   if(!chatOlder.length){chatCursor=snapshot.docs.at(-1)||null;state.chatHasMore=snapshot.size===PAGE_SIZE;}
   publishChat();
  });
+ if(currentView==='contas')listen('pix',collection(db,'pixKeys'),snap=>{state.pixKeys=Object.fromEntries(snap.docs.map(d=>[d.id,d.data()]))});
  if(lazy.tasks)listen('tasks',query(collection(db,'tasks'),where(state.admin?'status':'who','==',state.admin?'pend':state.me)),snap=>{state.tasks=rows(snap)});
  if(lazy.cases){
   const ref=currentView==='mural'?query(collection(db,'cases'),where('status','==','ok'),orderBy('createdAt','desc'),limit(12)):query(collection(db,'cases'),where('status','==','pend'));
@@ -165,7 +168,9 @@ export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate
 const stamp=()=>new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const created=data=>({...data,at:stamp(),createdAt:serverTimestamp()});
 export async function addPoints(data){admin();return addDoc(collection(db,'points'),created(data));}
-export async function addExpense(data){member();return addDoc(collection(db,'expenses'),created({...data,amount:Math.round(data.amount*100)/100}));}
+export async function addExpense(data){member();const amountCents=moneyToCents(data.amount);return addDoc(collection(db,'expenses'),created({...data,amount:amountCents/100,amountCents,by:state.me}));}
+export async function savePix(type,value){member();await setDoc(doc(db,'pixKeys',state.me),normalizePix(type,value));}
+export async function removePix(){member();await deleteDoc(doc(db,'pixKeys',state.me));}
 export async function submitTask(data){member();return addDoc(collection(db,'tasks'),created({...data,who:state.me,status:'pend'}));}
 export async function reviewTask(id,approve){
  admin();await runTransaction(db,async tx=>{

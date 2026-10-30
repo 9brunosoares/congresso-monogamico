@@ -4,7 +4,7 @@ Documento de contexto para o próximo agente (Codex). Leia tudo antes de mexer n
 
 ## 1. O projeto
 
-O **Congresso Monogâmico** é uma viagem recorrente entre amigos, de quarta à noite até domingo de manhã, e a próxima é a 16ª ("XVI"). O app é um web app (PWA) que cada participante instala na tela inicial do iPhone. Ele precisa oferecer:
+O **Congresso Monogâmico** é uma viagem recorrente entre amigos, de quarta à noite até domingo no começo da tarde, e a próxima é a 16ª ("XVI"). O app é um web app (PWA) que cada participante instala na tela inicial do iPhone. Ele precisa oferecer:
 
 - **Login individual:** cada congressista tem o seu.
 - **Programação de quarta a domingo:** próxima sessão, contagem regressiva e se ela exige preparação.
@@ -76,7 +76,7 @@ Usar apenas `nick` (apelido); não há campo de nome completo. O `id` é o apeli
 - `RULES`: tabela de pontos. Soma: louça +5, lixo +5, cozinhar +10, repor gelo +3, jogos +10 a +20. Tira: lixo no chão −5, louça suja −5, atraso −3, sem look temático −5, infração da monogamia −15.
 - `CATS`: categorias de gasto com orçamento (casa, mercado, bebida, transporte, atividades).
 - `EMOJIS`: os 8 emojis do queridômetro.
-- `settle()`: algoritmo guloso que casa o maior devedor com o maior credor para minimizar os Pix.
+- `settle()`: algoritmo guloso que casa devedores e credores para reduzir transferências; não garante mínimo global.
 
 ### Navegação (barra inferior, 6 abas)
 Início · Agenda · Placar · Queridômetro · Contas · Fofoca. Fofoca contém somente o chat anônimo. O Mural da Vergonha é uma tela auxiliar, acessada pelo destaque na home apenas quando há condenados. O julgamento de pendentes fica no painel ADM. **Seis é o limite** do que cabe no iPhone; se entrar outra seção grande, reorganize o menu.
@@ -117,10 +117,10 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Testes locais (sete cenários): `node --test tests/*.test.js`. Diagnóstico de regras sem gravações: `node scripts/test-rules.cjs` (nove cenários com data e documentos simulados, usando o texto exato das regras; complementado pelo teste real do backend).
 - Teste integrado: `node scripts/verify-firebase.cjs`. **Somente antes de os apelidos Bruno, OB e Luan terem sido cadastrados por pessoas reais**: recusa perfis/contas já usados. Cria contas e registros temporários, usa o backend real em sessões separadas, verifica permissões e limpa somente seus próprios dados no `finally`. Não executar sobre votos reais do dia.
 - Scripts administrativos usam a autenticação local do CLI em memória; não geram chaves de serviço nem imprimem tokens. `.private/`, logs, `.env*` e `node_modules/` estão ignorados pelo Git.
-- Datas informadas: chegada quarta à noite, 18/11/2026; quinta de home office; feriado sexta 20/11; retorno domingo 22/11 pela manhã.
+- Datas confirmadas: chegada quarta à noite, 18/11/2026; quinta de home office na casa; feriado sexta 20/11; retorno domingo 22/11 no começo da tarde. Bruno corrigiu explicitamente a informação desatualizada de chegada em 19/11: NÃO mover a chegada para quinta.
 - Programação provisória: quinta pizza e jogos de tabuleiro; sexta circuito e Quiz dos especialistas; sábado guerra de bexiga e lona, mais retrospectiva individual com objeto pessoal à noite; domingo Oscar do Congresso e volta para São Paulo.
-- Café da manhã, almoço e janta cadastrados nos cinco dias. Quarta café/almoço indicados antes da chegada; domingo almoço/janta indicados após a saída, sem encontro coletivo definido. Horários são sugestões, não foram confirmados pelo Bruno.
-- Orçamento definitivo e horários ainda pendentes. Não inventar valores ou horários como se fossem confirmados.
+- Café da manhã, almoço e janta cadastrados nos cinco dias. Quarta café/almoço antes da chegada; domingo almoço na casa e janta após o retorno. Horários são sugestões: chegada 20h e saída 14h representam noite/começo da tarde, sem confirmação da hora exata.
+- Orçamento estimado aprovado: R$14.000 (R$1.000 por cada um dos 14, incluindo ADMs). Locação real R$2.640 paga por Pig, dividida por todos. Não inventar outros valores ou horários confirmados.
 - Fase de testes até a divulgação perto da viagem: Bruno pode pedir limpeza. Não apagar registros agora nem automaticamente; quando solicitado, manter contas/PINs e programação salvo pedido diferente. Chat e votos não podem ser filtrados por autor, pois são anônimos; limpar essas áreas por dia ou integralmente, conforme o pedido.
 - FCM/notificações são opcionais e não foram ativadas.
 - Anonimato: o app não guarda autor nas mensagens nem ligação entre votante e emojis. Não prometer sigilo absoluto contra administradores de infraestrutura, que podem alterar código/regras e observar tráfego/eventos.
@@ -190,3 +190,13 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Proteção de envio duplicado conserva trava por ação mesmo se uma atualização reconstruir o botão. Orçamento zero exibe estado correto, sem NaN/Infinity.
 - scripts/audit-usage.cjs é somente leitura: contagens por coleção, prova de disponibilidade do índice e métricas Monitoring das últimas24h. São métricas aproximadas; essa janela não é o dia de quota do Pacífico. Null é indisponível, nunca presumir zero. Não há automação recorrente.
 - Verificação: 23 testes locais, incluindo backend real com SDK simulado contando consultas, páginas com cursor, cache/deduplicação de fotos, pausa/resume, erro de quota e datas de participação. SDK13.1.0 real carrega no navegador sem erros. Não executar verify-firebase.cjs sobre contas reais; o teste destrutivo continua apenas para ambiente ainda não usado. As regras não mudaram nesta revisão; índice novo deve estar pronto antes de publicar.
+
+## Contas, Pix e correção das datas (29/10/2026)
+- Esta seção substitui referências históricas a orçamento R$12.000 e limites fictícios por categoria. Orçamento R$14.000 visível a todos; só ADM altera. Categoria mostra gasto real, sem inventar limites individuais.
+- `finance.js`: cálculo em centavos inteiros; restos de um centavo distribuídos deterministicamente pelo ID do gasto e ordem oficial do roster. Não mudar essa convenção sem migração, pois alteraria rateios existentes. Todos os centavos são preservados; sugestões de transferência zeram o saldo matemático do ledger. Novos lançamentos recusam mais de duas casas decimais.
+- expenses: campos anteriores + `amountCents` e `by` (apelido de quem lançou). O backend novo sempre os grava; regras aceitam esquema anterior para clientes em cache, validam consistência dos centavos e autoria quando presente, e impedem alteração de by. Leitura de registros anteriores converte amount para centavos. Isso não é uma trilha de auditoria completa.
+- `pixKeys/{id}`: somente `{type,value}`. Tipos aleatoria/cpf/telefone/email; até77 caracteres e validação de formato; CPF tem dígitos verificados no cliente. Titular cadastra/edita/remove; nem ADM altera chave alheia. Membros leem as chaves por pedido explícito de compartilhamento do Bruno. Sem nomes completos, contas bancárias ou credenciais. Não valida existência da chave/titular no banco.
+- Pix só sincroniza em Contas; Minha chave Pix abre formulário. Quem paga quem oferece consulta e cópia da chave do destinatário. Mostrar aviso para conferir destinatário no banco. Não envia Pix e NÃO registra pagamento bancário/reembolso já realizado.
+- Não afirmar equivalência completa com Splitwise: ainda faltam registro de quitações, histórico de alterações e rateio desigual/múltiplos pagadores num lançamento. Recomendar manter Splitwise durante o piloto.
+- `scripts/update-trip-finance.cjs`: sem --apply consulta apenas; com --apply faz backup privado e atualização idempotente. Locação única expenses/rental-2026, Pig pagador, R$2640/14; orçamento14000; altera só duas sessões de domingo (retorno14h, almoço na casa), preservando quarta, quinta e demais registros de uso. Recusa possível locação duplicada. Não usar sync-agenda para esta alteração parcial.
+- Validação: 30 testes locais (incluindo mil cenários de rateio e acerto em centavos) e 56 cenários do texto exato das regras no serviço oficial. Testes não criaram contas nem registros de uso na produção.
