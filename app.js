@@ -1,3 +1,4 @@
+import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
 import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js?v=20261029b';
 import * as backend from './backend.js?v=20261029b';
@@ -180,7 +181,7 @@ function viewPrograma(){
   return `
   <p class="muted" style="font-size:13px">Programação provisória de 18 a 22/11/2026. Horários sugeridos, sujeitos a ajuste.</p>
   <div class="days" role="tablist">${DAYS.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
-  <div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
+  <section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
   <div class="card" style="padding-block:4px">${items.map(a=>{
     const st = t>=a.end?"done":(t>=a.start?"now":"");
     return `<div class="slot ${st}"><time>${a.t}</time><div><h4>${esc(a.title)}</h4>
@@ -188,7 +189,7 @@ function viewPrograma(){
       <div class="meta">${st==="now"?'<span class="tag live">Agora</span>':""}${a.place?`<span class="tag">${esc(a.place)}</span>`:""}${a.pts?`<span class="pts">até ${a.pts} pts</span>`:""}${a.prep?`<span class="tag prepn">Preparação</span>`:""}</div>
       ${a.prep?`<div class="note"><b style="color:var(--ink)">Leve/prepare:</b> ${esc(a.prep)}</div>`:""}
     </div></div>`}).join("")}</div>
-  ${isAdm()?`<button class="btn ghost block" style="margin-top:12px" id="addAct" type="button">Adicionar sessão (ADM)</button>`:""}`;
+  </section>${isAdm()?`<button class="btn ghost block" style="margin-top:12px" id="addAct" type="button">Adicionar sessão (ADM)</button>`:""}`;
 }
 
 function viewPlacar(){
@@ -415,10 +416,17 @@ function render(){
   tick();
 }
 
+function selectAgendaDay(next){
+ if(next===day)return;
+ const y=scrollY;day=next;render();scrollTo(0,y);
+ const strip=$('.days'),selected=$(`[data-day="${day}"]`);
+ if(strip&&selected)strip.scrollTo({left:strip.scrollLeft+selected.getBoundingClientRect().left-strip.getBoundingClientRect().left-(strip.clientWidth-selected.offsetWidth)/2,behavior:'smooth'});
+}
+bindAgendaSwipe(document,()=>tab==='programa'&&S.ready&&!!S.me,direction=>selectAgendaDay(adjacentDay(DAYS.map(d=>d.d),day,direction)));
 document.addEventListener('click',e=>{
  if(e.target.closest('.scrim'))return;
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
- const d=e.target.closest('[data-day]');if(d){day=+d.dataset.day;render();return;}
+ const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}
  const fs=e.target.closest('[data-fseg]');if(fs){fofocaSeg=fs.dataset.fseg;render();return;}
  const q=e.target.closest('[data-q]');if(q){qDraft[q.dataset.q]=qDraft[q.dataset.q]===q.dataset.em?undefined:q.dataset.em;if(!qDraft[q.dataset.q])delete qDraft[q.dataset.q];const y=scrollY;render();scrollTo(0,y);return;}
  const sg=e.target.closest('[data-seg]');if(sg){contasSeg=sg.dataset.seg;render();return;}
