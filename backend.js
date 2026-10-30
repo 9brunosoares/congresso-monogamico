@@ -1,7 +1,7 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030d';
-import {normalizePix} from './pix.js?v=20261030d';
-import {normalizeOfficialLinks} from './official-links.js?v=20261030d';
-import {REACTIONS} from './mural-reactions.js?v=20261030d';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030e';
+import {normalizePix} from './pix.js?v=20261030e';
+import {normalizeOfficialLinks} from './official-links.js?v=20261030e';
+import {REACTIONS} from './mural-reactions.js?v=20261030e';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -9,7 +9,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030d';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030e';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -287,8 +287,8 @@ export async function judgeCase(id,condemn){
   else {tx.delete(ref);if(snap.data().hasPhoto)tx.delete(doc(db,'casePhotos',id));}
  });
 }
-export async function reactToCase(id,emoji){
- member();if(!REACTIONS.some(r=>r.emoji===emoji))throw Error('Escolha uma reação válida.');
+export async function setCaseReaction(id,emoji){
+ member();if(emoji!==null&&!REACTIONS.some(r=>r.emoji===emoji))throw Error('Escolha uma reação válida.');
  if(state.reactionPending?.[id])return;
  const version=generation,actor=state.me;
  state.reactionPending={...state.reactionPending,[id]:true};emit();
@@ -298,7 +298,9 @@ export async function reactToCase(id,emoji){
   if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
   if(!parent.exists()||parent.data().status!=='ok')throw Error('Esta publicação não está no mural.');
   const votes={...snap.data()?.votes};
-  if(votes[actor]===emoji)delete votes[actor];else votes[actor]=emoji;
+  // Salvar a escolha explícita é idempotente, inclusive após falha/reenvio.
+  if(emoji===null)delete votes[actor];else votes[actor]=emoji;
+  if(!snap.exists()&&emoji===null)return;
   tx.set(ref,{votes});
  });}finally{if(version===generation){state.reactionPending={...state.reactionPending,[id]:false};emit();}}
 }

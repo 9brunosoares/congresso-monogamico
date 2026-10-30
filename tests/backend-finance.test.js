@@ -73,15 +73,30 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   assert.equal(records.get('tasks/task-after').status,'ok');assert.equal(records.get('cases/case-after').status,'ok');
   assert.equal([...records.keys()].filter(k=>k.startsWith('points/')).length,pointsBefore);
   // Reações não dependem do placar nem das contas abertas e não geram pontos.
-  await api.reactToCase('case-after','😂');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😂'});
-  await api.reactToCase('case-after','😱');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😱'});
-  await auth('ob');await api.reactToCase('case-after','❤️');
+  await api.setCaseReaction('case-after','😂');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😂'});
+  await api.setCaseReaction('case-after','😱');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😱'});
+  await auth('ob');await api.setCaseReaction('case-after','❤️');
   assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😱',ob:'❤️'});
-  await api.reactToCase('case-after','❤️');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😱'});
+  await api.setCaseReaction('case-after','❤️');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😱',ob:'❤️'});
+  await api.setCaseReaction('case-after',null);assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😱'});
   records.set('cases/pending-reaction',{status:'pend'});
-  await assert.rejects(api.reactToCase('pending-reaction','😂'),/não está no mural/);
-  await assert.rejects(api.reactToCase('missing','😂'),/não está no mural/);
-  await assert.rejects(api.reactToCase('case-after','💔'),/válida/);
+  await assert.rejects(api.setCaseReaction('pending-reaction','😂'),/não está no mural/);
+  await assert.rejects(api.setCaseReaction('missing','😂'),/não está no mural/);
+  await assert.rejects(api.setCaseReaction('case-after','💔'),/válida/);
+  const transact=sdk.runTransaction;let reactionRace=true;
+  sdk.runTransaction=(db,fn)=>transact(db,tx=>fn({...tx,get:async ref=>{
+   const result=await tx.get(ref);
+   if(reactionRace&&ref.path==='caseReactions/case-after'){
+    reactionRace=false;records.set(ref.path,{votes:{...records.get(ref.path).votes,pig:'❤️'}});epoch++;
+   }
+   return result;
+  }}));
+  await api.setCaseReaction('case-after','👏');
+  assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😱',pig:'❤️',ob:'👏'});
+  sdk.runTransaction=async()=>{throw Error('Sem conexão.');};
+  await assert.rejects(api.setCaseReaction('case-after','😱'),/conexão/);assert.equal(state.reactionPending['case-after'],false);
+  sdk.runTransaction=transact;await api.setCaseReaction('case-after','👏');
+  assert.equal(records.get('caseReactions/case-after').votes.ob,'👏');
   assert.equal([...records.keys()].filter(k=>k.startsWith('points/')).length,pointsBefore);
  }finally{
   Date.now=saved.DateNow;for(const key of ['setInterval','window','document','sessionStorage']){if(saved[key]===undefined)delete globalThis[key];else globalThis[key]=saved[key]}if(online)Object.defineProperty(navigator,'onLine',online);else delete navigator.onLine;delete globalThis.__financeSDK;await Promise.all(files.map(f=>fs.rm(f,{force:true})));

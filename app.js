@@ -1,12 +1,12 @@
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030d';
-import {PIX_TYPES} from './pix.js?v=20261030d';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030d';
-import {REACTIONS} from './mural-reactions.js?v=20261030d';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030e';
+import {PIX_TYPES} from './pix.js?v=20261030e';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030e';
+import {REACTIONS} from './mural-reactions.js?v=20261030e';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030d';
-import * as backend from './backend.js?v=20261030d';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030e';
+import * as backend from './backend.js?v=20261030e';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -36,6 +36,7 @@ const CATS = [
 ];
 
 let S = {me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,error:''};
+let reactionPicker=null;
 
 /* Relógio de demonstração: começa na sexta, 20/11, 15:40 */
 const T0 = Date.now(), DEMO0 = new Date(2026,10,20,15,40).getTime();
@@ -260,10 +261,14 @@ function viewFinanceHistory(){
 
 function caseReactions(id){
  const votes=S.caseReactions?.[id]||{},loading=!S.loaded?.['reactions-'+id],busy=!!S.reactionPending?.[id];
- return `<div class="case-reactions" role="group" aria-label="Reações à publicação" ${busy?'aria-busy="true"':''}>${REACTIONS.map(({emoji,label})=>{
+ const options=REACTIONS.map(({emoji,label})=>{
   const count=Object.values(votes).filter(value=>value===emoji).length,selected=votes[S.me]===emoji;
-  return `<button class="case-reaction${selected?' selected':''}" data-react="${esc(id)}" data-emoji="${emoji}" type="button" aria-pressed="${selected}" aria-label="${label}: ${count}${selected?'. Sua reação. Toque para retirar.':'.'}" ${loading||busy?'disabled':''}><span aria-hidden="true">${emoji}</span>${count?`<span class="reaction-count" aria-hidden="true">${count}</span>`:''}</button>`;
- }).join('')}</div>`;
+  return {emoji,label,count,selected};
+ });
+ return `<div class="case-reaction-bar" ${busy?'aria-busy="true"':''}>
+ <div class="reaction-totals" aria-label="Reações recebidas">${options.filter(r=>r.count>0).map(r=>`<span class="reaction-total${r.selected?' mine':''}" aria-label="${r.label}: ${r.count}"><span aria-hidden="true">${r.emoji}</span><span aria-hidden="true">${r.count}</span></span>`).join('')}</div>
+ <button class="reaction-trigger${votes[S.me]?' selected':''}" data-reaction-picker="${esc(id)}" type="button" aria-label="${votes[S.me]?'Alterar reação':'Reagir'}" aria-expanded="${reactionPicker===id}" aria-controls="reaction-picker-${esc(id)}" ${loading||busy?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="12" r="8"/><path d="M8 14a4 4 0 0 0 6 0M8 10h.01M14 10h.01M20 3v6M17 6h6"/></svg></button>
+ ${reactionPicker===id?`<div class="reaction-picker" id="reaction-picker-${esc(id)}" role="group" aria-label="Escolha uma reação">${options.map(r=>`<button class="reaction-option${r.selected?' selected':''}" data-react="${esc(id)}" data-emoji="${r.emoji}" type="button" aria-pressed="${r.selected}" aria-label="${r.label}${r.selected?'. Sua reação. Toque para retirar.':'.'}" ${loading||busy?'disabled':''}>${r.emoji}</button>`).join('')}</div>`:''}</div>`;
 }
 function caseCard(item,pending=false){
  const photo=S.casePhotos?.[item.id];
@@ -513,7 +518,7 @@ const ICONS={
 };
 const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Queridômetro",contas:"Contas",fofoca:"Fofoca"};
 
-function go(t){ if(t==="tribunal"&&!isAdm())return;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
+function go(t){ if(t==="tribunal"&&!isAdm())return;reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
 
 function render(){
   backend.setView?.(tab);
@@ -543,9 +548,28 @@ function selectAgendaDay(next){
  if(strip&&selected)strip.scrollTo({left:strip.scrollLeft+selected.getBoundingClientRect().left-strip.getBoundingClientRect().left-(strip.clientWidth-selected.offsetWidth)/2,behavior:'smooth'});
 }
 bindAgendaSwipe(document,()=>tab==='programa'&&S.ready&&!!S.me,direction=>selectAgendaDay(adjacentDay(DAYS.map(d=>d.d),day,direction)));
+function showReactionPicker(id){const y=scrollY;reactionPicker=id;render();scrollTo(0,y);}
+let reactionHold,heldReaction=null,reactionTouch=null;
+document.addEventListener('pointerdown',e=>{
+ const button=e.target.closest('[data-reaction-picker]');
+ if(!button||button.disabled||e.button>0)return;
+ heldReaction=null;reactionTouch={x:e.clientX,y:e.clientY};
+ reactionHold=setTimeout(()=>{heldReaction=button.dataset.reactionPicker;showReactionPicker(heldReaction)},420);
+});
+function cancelReactionHold(){clearTimeout(reactionHold);reactionTouch=null;}
+document.addEventListener('pointermove',e=>{if(reactionTouch&&Math.hypot(e.clientX-reactionTouch.x,e.clientY-reactionTouch.y)>10)cancelReactionHold()});
+document.addEventListener('pointerup',cancelReactionHold);
+document.addEventListener('pointercancel',()=>{cancelReactionHold();heldReaction=null;});
+document.addEventListener('contextmenu',e=>{const button=e.target.closest('[data-reaction-picker]');if(button&&!button.disabled){e.preventDefault();cancelReactionHold();heldReaction=button.dataset.reactionPicker;showReactionPicker(heldReaction)}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&reactionPicker){const id=reactionPicker;showReactionPicker(null);document.querySelector(`[data-reaction-picker="${CSS.escape(id)}"]`)?.focus();}});
 document.addEventListener('click',e=>{
  if(e.target.closest('.scrim'))return;
- const reaction=e.target.closest('[data-react]');if(reaction){if(!reaction.disabled)backend.reactToCase(reaction.dataset.react,reaction.dataset.emoji).catch(error=>{backend.reportError(error);toast(backend.errorText(error));});return;}
+ // Abrir pelo timer recria o botão. O clique de soltar pode atingir o card,
+ // então consumi-lo também fora do botão evita fechar o seletor imediatamente.
+ if(heldReaction&&!e.target.closest('[data-react]')){heldReaction=null;return;}
+ const picker=e.target.closest('[data-reaction-picker]');if(picker){if(picker.disabled)return;showReactionPicker(reactionPicker===picker.dataset.reactionPicker?null:picker.dataset.reactionPicker);if(e.detail===0&&reactionPicker)document.querySelector('.reaction-option.selected, .reaction-option')?.focus();return;}
+ const reaction=e.target.closest('[data-react]');if(reaction){if(!reaction.disabled){const id=reaction.dataset.react,emoji=S.caseReactions?.[id]?.[S.me]===reaction.dataset.emoji?null:reaction.dataset.emoji;showReactionPicker(null);backend.setCaseReaction(id,emoji).catch(error=>{backend.reportError(error);toast(backend.errorText(error));});}return;}
+ if(reactionPicker&&!e.target.closest('.case-reaction-bar'))showReactionPicker(null);
  const pr=e.target.closest('[data-photo-retry]');if(pr){backend.loadCasePhoto(pr.dataset.photoRetry,true);return;}
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}

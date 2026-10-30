@@ -168,12 +168,23 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.0
 
 /* mural */
 .shame{position:relative;padding:16px;border-radius:18px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
-.case-reactions{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
-.case-reaction{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:44px;min-height:44px;padding:7px 9px;border:1px solid var(--line);border-radius:24px;background:transparent;color:var(--muted);font:inherit;cursor:pointer;font-size:20px}
-.case-reaction.selected{border-color:var(--seal);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--seal)}
-.case-reaction:focus-visible{outline:2px solid var(--seal);outline-offset:3px}
-.case-reaction:disabled{opacity:.5;cursor:default}
-.reaction-count{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+ .case-reaction-bar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;min-height:40px}
+.reaction-totals{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.reaction-total{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:20px;background:var(--surface-2);color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;line-height:1.4}
+.reaction-total>span:first-child{font-size:16px}
+.reaction-total.mine{color:var(--seal)}
+.reaction-trigger{display:grid;place-items:center;flex:none;width:40px;height:40px;margin-left:auto;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;user-select:none}
+.reaction-trigger svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.reaction-trigger.selected{color:var(--seal)}
+.reaction-trigger:hover{background:var(--surface-2)}
+.reaction-picker{position:absolute;right:0;bottom:calc(100% + 8px);z-index:5;display:flex;gap:2px;padding:6px;border:1px solid var(--line);border-radius:32px;background:var(--surface);box-shadow:0 8px 28px #0002;animation:reaction-appear .14s ease-out}
+.reaction-option{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:transparent;font-size:25px;cursor:pointer;touch-action:manipulation}
+.reaction-option.selected{background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--seal)}
+.reaction-option:hover{background:var(--surface-2)}
+.reaction-trigger:focus-visible,.reaction-option:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
+.reaction-trigger:disabled,.reaction-option:disabled{opacity:.45;cursor:default}
+@keyframes reaction-appear{from{opacity:0;transform:translateY(4px) scale(.97)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.reaction-picker{animation:none}}
 .shame .stamp{position:absolute;right:12px;top:12px;font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.12em;color:var(--seal);border:2px solid var(--seal);border-radius:6px;padding:2px 8px;transform:rotate(6deg)}
 .shame.pend .stamp{color:var(--muted);border-color:var(--muted)}
 .shame h4{margin:10px 0 4px;font-family:var(--f-display);font-size:20px}
@@ -299,7 +310,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261030d"></script>
+<script type="module" src="install.js?v=20261030e"></script>
 
 </body>
 </html>

@@ -40,21 +40,41 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={};const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
- vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
-test('mural mostra cinco reações, contagens e seleção; tribunal não permite reagir',()=>{
+test('mural discreto: só contagens positivas; opções aparecem ao abrir o seletor',()=>{
  const {context}=ui();
  vm.runInContext("S={...S,me:'bruno',caseReactions:{example:{bruno:'😂',ob:'😂',pig:'❤️'}},loaded:{'reactions-example':true}}",context);
- const html=vm.runInContext("caseCard({id:'example',who:'ob',what:'Teste',status:'ok'})",context);
- assert.equal((html.match(/data-react=/g)||[]).length,5);
- assert(html.includes('class="reaction-count" aria-hidden="true">2</span>'));
- assert.equal((html.match(/aria-pressed="true"/g)||[]).length,1);
- assert(!vm.runInContext("caseCard({id:'example',who:'ob',what:'Teste',status:'pend'},true)",context).includes('data-react='));
+ let html=vm.runInContext("caseCard({id:'example',who:'ob',what:'Teste',status:'ok'})",context);
+ assert(!html.includes('data-react='));assert(html.includes('data-reaction-picker="example"'));
+ assert.equal((html.match(/class="reaction-total[ "]/g)||[]).length,2);assert(html.includes('Rindo: 2'));assert(!html.includes('Palmas: 0'));
+ vm.runInContext("reactionPicker='example'",context);html=vm.runInContext("caseReactions('example')",context);
+ assert.equal((html.match(/data-react=/g)||[]).length,5);assert.equal((html.match(/aria-pressed="true"/g)||[]).length,1);
+ assert(!vm.runInContext("caseCard({id:'example',who:'ob',what:'Teste',status:'pend'},true)",context).includes('data-reaction-picker='));
  vm.runInContext("S.reactionPending={example:true}",context);
- assert.equal((vm.runInContext("caseReactions('example')",context).match(/ disabled/g)||[]).length,5);
+ assert.equal((vm.runInContext("caseReactions('example')",context).match(/ disabled/g)||[]).length,6);
+ vm.runInContext("reactionPicker=null;S.caseReactions={}",context);
+ assert(!vm.runInContext("caseReactions('example')",context).includes('class="reaction-total '));
 });
+
+test('seletor abre com toque ou pressão longa; rolagem cancela a pressão',()=>{
+ const {context,events,timers}=ui();
+ vm.runInContext("S={...S,me:'bruno',ready:true,loaded:{'cases-mural':true,'reactions-example':true}};tab='mural'",context);
+ const button={disabled:false,dataset:{reactionPicker:'example'}};
+ const target={closest:selector=>selector==='[data-reaction-picker]'?button:null};
+ const send=(name,e)=>events[name]?.forEach(fn=>fn(e));
+ send('click',{target});assert.equal(vm.runInContext('reactionPicker',context),'example');
+ send('click',{target});assert.equal(vm.runInContext('reactionPicker',context),null);
+ send('pointerdown',{target,button:0,clientX:20,clientY:30});
+ send('pointermove',{clientX:20,clientY:70});assert(![...timers.values()].some(t=>t.ms===420));
+ send('pointerdown',{target,button:0,clientX:20,clientY:30});
+ [...timers.values()].find(t=>t.ms===420).fn();send('pointerup',{});send('click',{target:{closest:()=>null}});
+ assert.equal(vm.runInContext('reactionPicker',context),'example');
+ send('click',{target:{closest:()=>null}});assert.equal(vm.runInContext('reactionPicker',context),null);
+});
+
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
  const {context,nodes,html}=ui();assert(!html.includes('xvi-congresso'));assert(!html.includes('base64'));
  vm.runInContext('S.ready=true;viewLogin();',context);assert.equal((nodes['#root'].innerHTML.match(/data-id=/g)||[]).length,14);
