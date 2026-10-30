@@ -160,3 +160,5 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - A pedido do Bruno, tela do navegador reduzida a “Você está no navegador.”, instrução de instalação e três passos curtos. Sem crachá, slogan, fotos, simulação de tela inicial ou textos longos. Mantém vermelho, tipografia, escolha iOS/Android e regra de abrir o login somente pelo ícone.
 
 - Menu atualizado: Agenda e Queridômetro (Queri / dômetro em duas linhas, sem hífen visual); nome acessível inteiro no botão. Área de texto com altura uniforme para manter os seis ícones alinhados.
+
+- Ajuste fino do menu: coração com 20px (demais 24px), margem de 2px para alinhar centros; removida altura mínima extra dos rótulos, linhas de 11px e padding vertical dos botões de 4px. Preservada safe area do iPhone.
