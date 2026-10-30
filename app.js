@@ -1,7 +1,8 @@
+import {prepareReportPhoto} from './report-photo.js';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
 import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js?v=20261029b';
-import * as backend from './backend.js?v=20261029b';
+import * as backend from './backend.js?v=20261029g';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -77,8 +78,8 @@ function settle(){
 }
 
 /* ===================== TELAS ===================== */
-let tab = "inicio", day = 18, contasSeg = "despesas", fofocaSeg = "chat", qDraft = {};
-try{ tab = localStorage.getItem("xvi-tab") || "inicio"; }catch(e){}
+let tab = "inicio", day = 18, contasSeg = "despesas", qDraft = {};
+try{ tab = localStorage.getItem("xvi-tab") || "inicio";if(!["inicio","programa","placar","querido","contas","fofoca"].includes(tab))tab="inicio"; }catch(e){}
 
 async function act(button,run){
   if(button?.disabled)return;
@@ -132,10 +133,9 @@ function viewInicio(){
   const {cur,nxt} = nextItem();
   const rk = ranking();
   const myPos = rk.findIndex(r=>r.id===S.me)+1;
-  const pending = S.shame.filter(s=>s.status==="pend").length;
   return `
   <button class="btn seal block" id="homeReport" type="button" style="margin-bottom:14px">Fazer denúncia</button>
-  ${S.shame.length?'<button class="btn block mural-alert" data-go="mural" type="button" style="margin-bottom:14px">Ver mural da vergonha →</button>':''}
+  ${S.shame.some(s=>s.status==="ok")?'<button class="btn block mural-alert" data-go="mural" type="button" style="margin-bottom:14px">Ver mural da vergonha →</button>':''}
   ${nxt ? `<section class="card next">
     <div class="sealmark" aria-hidden="true">XVI</div>
     <div class="eyebrow">Próxima sessão · ${dayOf(nxt.start).wd} ${fmtTime(nxt.start)}</div>
@@ -164,8 +164,6 @@ function viewInicio(){
   <div class="sec-h"><h3>Suas contas</h3><button class="link" data-go="contas" type="button">Abrir contas</button></div>
   ${(()=>{const b=balances()[S.me];return `<div class="card row"><div class="grow"><div class="eyebrow">${b>=0?"Você tem a receber":"Você deve"}</div><div class="bigfig num" style="color:${b>=0?"var(--good)":"var(--bad)"}">${brl(Math.abs(b))}</div></div><button class="btn sm" id="quickExp" type="button">Lançar gasto</button></div>`})()}
 
-  ${pending?`<div class="sec-h"><h3>Mural da Vergonha</h3><button class="link" data-go="mural" type="button">Ver mural</button></div>
-  <div class="card row"><span class="tag live">${pending}</span><div class="grow">${pending===1?"denúncia aguardando":"denúncias aguardando"} julgamento no Tribunal de sábado</div></div>`:""}
   `;
 }
 
@@ -179,7 +177,6 @@ function viewPrograma(){
   const t=now();
   const items = AGENDA.filter(a=>a.d===day);
   return `
-  <p class="muted" style="font-size:13px">Programação provisória de 18 a 22/11/2026. Horários sugeridos, sujeitos a ajuste.</p>
   <div class="days" role="tablist">${DAYS.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
   <section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
   <div class="card" style="padding-block:4px">${items.map(a=>{
@@ -245,22 +242,24 @@ function viewContas(){
   return seg+body;
 }
 
+function caseCard(item,pending=false){
+ const photo=S.casePhotos?.[item.id];
+ return `<article class="shame">
+ ${photo?`<img class="case-photo" src="${esc(photo)}" alt="Foto da denúncia contra ${esc(first(item.who))}">`:av(item.who,'xl')}
+ <h3>${esc(item.what)}</h3><div class="row" style="margin-top:10px"><b class="grow">${esc(first(item.who))}</b>${pending?'':pts(-15)}</div>
+ ${pending?`<div class="fab-row" style="margin-top:14px"><button class="btn sm seal" data-judge="${esc(item.id)}" data-v="ok" type="button">Condenar (−15)</button><button class="btn sm ghost" data-judge="${esc(item.id)}" data-v="no" type="button">Absolver</button></div>`:''}
+ </article>`;
+}
 function viewMural(){
-  const list=[...S.shame].reverse();
-  return `
-  <div class="card" style="background:var(--ink);color:var(--bg);border:0">
-    <div class="eyebrow" style="color:color-mix(in srgb,var(--bg) 70%,transparent)">Regimento, art. 1º</div>
-    <h2 style="font-size:26px;font-weight:800;margin-top:4px">Mural da Vergonha</h2>
-    <p style="margin:8px 0 0;font-size:14px;opacity:.85">Toda infração às regras da monogamia vira denúncia. O Tribunal de sábado julga; condenado perde 15 pontos e fica no mural até o fim do congresso.</p>
-  </div>
-  <button class="btn seal block" style="margin-top:12px" id="report" type="button">Fazer uma denúncia</button>
-  <div class="stack" style="margin-top:16px">${list.map(s=>`<article class="shame ${s.status==="pend"?"pend":""}">
-    <span class="stamp">${s.status==="pend"?"EM JULGAMENTO":"CONDENADO"}</span>
-    <div class="row">${av(s.who,"lg")}<div><div class="eyebrow">Réu</div><b style="font-size:18px">${esc(P[s.who].nick)}</b></div></div>
-    <h4>${esc(s.what)}</h4>
-    <div class="muted" style="font-size:13px">Denunciado por ${esc(first(s.by))} · ${esc(s.at)}${s.status==="ok"?' · <span class="pts neg">−15</span>':""}</div>
-    ${isAdm()&&s.status==="pend"?`<div class="fab-row" style="margin-top:12px"><button class="btn sm seal" data-judge="${esc(s.id)}" data-v="ok" type="button">Condenar (−15)</button><button class="btn sm ghost" data-judge="${esc(s.id)}" data-v="no" type="button">Absolver</button></div>`:""}
-  </article>`).join("")}</div>`;
+ const list=S.shame.filter(s=>s.status==='ok').slice().reverse();
+ return `<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">Mural da Vergonha</h2>
+ ${list.length?`<div class="stack">${list.map(s=>caseCard(s)).join('')}</div>`:'<p class="muted">Ninguém no mural.</p>'}`;
+}
+function viewTribunal(){
+ if(!isAdm())return '';
+ const list=S.shame.filter(s=>s.status==='pend').slice().reverse();
+ return `<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">Julgar denúncias</h2>
+ ${list.length?`<div class="stack">${list.map(s=>caseCard(s,true)).join('')}</div>`:'<p class="muted">Nenhuma denúncia pendente.</p>'}`;
 }
 
 function todayNum(){ const t=now(); const d=new Date(t).getDate(); return DAYS.some(x=>x.d===d)?d:null; }
@@ -294,10 +293,7 @@ function viewQuerido(){
 }
 
 function viewFofoca(){
-  const seg = `<div class="seg seg2" role="tablist">${[["chat","Chat anônimo"],["mural","Mural da Vergonha"]].map(([k,l])=>`<button type="button" data-fseg="${k}" aria-pressed="${fofocaSeg===k}">${l}</button>`).join("")}</div>`;
-  if(fofocaSeg==="mural") return seg + `<div style="margin-top:14px">${viewMural()}</div>`;
-  return seg + `
-  <p class="muted" style="font-size:14px;margin:12px 0 10px">As mensagens aparecem sem autor para os participantes e ADMs. Fofoca liberada, ofensa não.</p>
+  return `<h2 class="page-title">Chat anônimo</h2>
   <div class="chat" id="chatList">${S.chat.map(m=>`<div class="bubble ${m.mine?"mine":""}">
     <div class="who">${m.mine?"Você (anônimo)":"Anônimo"} · ${esc(m.at)}</div>
     <div>${esc(m.text)}</div>
@@ -357,22 +353,40 @@ function sheetExpense(){
  });});
 }
 function sheetReport(){
- sheet(`<h3>Denúncia ao Tribunal</h3><div class="stack">
- <label class="f">Réu<select id="rpW">${PEOPLE.filter(p=>p.id!==S.me).map(p=>`<option value="${p.id}">${esc(p.nick)}</option>`).join('')}</select></label>
- <label class="f">O que aconteceu<input id="rpT" maxlength="500" placeholder="Descreva a infração"></label>
- <button class="btn seal block" id="rpOk" type="button">Protocolar denúncia</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
- s.querySelector('#rpOk').onclick=()=>act(s.querySelector('#rpOk'),async()=>{const what=s.querySelector('#rpT').value.trim();if(!what)throw Error('Descreva a infração.');await backend.addCase({who:s.querySelector('#rpW').value,what});s.remove();toast('Denúncia protocolada');});});
+ let photo='',photoJob=0;
+ sheet(`<h3>Fazer denúncia</h3><div class="stack">
+ <label class="f">Denunciado<select id="rpW">${PEOPLE.filter(p=>p.id!==S.me).map(p=>`<option value="${p.id}">${esc(p.nick)}</option>`).join('')}</select></label>
+ <label class="f">Título da denúncia<input id="rpT" maxlength="500" placeholder="O que aconteceu?"></label>
+ <label class="f">Foto (opcional)<input id="rpPhoto" type="file" accept="image/*"></label>
+ <div id="rpPreview" hidden><img class="case-preview" alt="Foto anexada"><button class="link" id="rpRemove" type="button">Remover foto</button></div>
+ <p class="muted" role="status" id="rpStatus" style="margin:0;font-size:13px"></p>
+ <button class="btn seal block" id="rpOk" type="button">Enviar denúncia</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ const input=s.querySelector('#rpPhoto'),button=s.querySelector('#rpOk'),preview=s.querySelector('#rpPreview'),status=s.querySelector('#rpStatus');
+ input.onchange=async()=>{
+  const job=++photoJob;photo='';preview.hidden=true;
+  if(!input.files[0])return;
+  button.disabled=true;status.textContent='Preparando foto…';
+  try{const result=await prepareReportPhoto(input.files[0]);if(job!==photoJob)return;photo=result;preview.querySelector('img').src=photo;preview.hidden=false;status.textContent='';}
+  catch(e){if(job===photoJob){input.value='';status.textContent=e.message;}}
+  finally{if(job===photoJob)button.disabled=false;}
+ };
+ s.querySelector('#rpRemove').onclick=()=>{++photoJob;photo='';input.value='';preview.hidden=true;status.textContent='';button.disabled=false;};
+ button.onclick=()=>act(button,async()=>{
+  const what=s.querySelector('#rpT').value.trim();if(!what)throw Error('Preencha o título da denúncia.');
+  await backend.addCase({who:s.querySelector('#rpW').value,what},photo);s.remove();toast('Denúncia enviada para julgamento');
+ });});
 }
+
 function sheetMe(){
  sheet(`<div class="badge" style="margin-bottom:14px"><div class="lanyard"><span>CREDENCIAL</span><span>${isAdm()?'ORGANIZAÇÃO':'CONGRESSISTA'}</span></div>
  <div class="body row">${av(S.me,'xl')}<div><h3 style="margin:0">${esc(first(S.me))}</h3><div class="muted">${score(S.me)} pontos</div></div></div></div>
  <div class="stack">${isAdm()?`<div class="eyebrow">Painel do ADM</div>
  <button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>
- <button class="btn ghost block" data-a="mural" type="button">Julgar denúncias (${S.shame.filter(x=>x.status==='pend').length})</button><button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>`:''}
+ <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias (${S.shame.filter(x=>x.status==='pend').length})</button><button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>`:''}
  <button class="btn ghost block" data-a="out" type="button">Sair / trocar de congressista</button></div>`,s=>{
  s.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a==='out'){act(b,async()=>{await backend.logout();s.remove();});return;}s.remove();
- if(a==='give')sheetPoints(false);if(a==='take')sheetPoints(true);if(a==='mural')go('mural');if(a==='budget')sheetBudget();};});
+ if(a==='give')sheetPoints(false);if(a==='take')sheetPoints(true);if(a==='tribunal')go('tribunal');if(a==='budget')sheetBudget();};});
 }
 function sheetBudget(){
  if(!isAdm())return;
@@ -404,14 +418,14 @@ const ICONS={
 };
 const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Queridômetro",contas:"Contas",fofoca:"Fofoca"};
 
-function go(t){ if(t==="mural"){ t="fofoca"; fofocaSeg="mural"; } tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
+function go(t){ if(t==="tribunal"&&!isAdm())return;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
 
 function render(){
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
-  const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,fofoca:viewFofoca}[tab]||viewInicio)();
+  const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p>`:""}<main>${body}</main>
-    <p class="muted" style="font-size:12px;text-align:center;margin-top:28px">Programação e orçamento provisórios. Pontos, gastos e mensagens são compartilhados pelo congresso.</p></div>
+    </div>
     <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   tick();
 }
@@ -427,7 +441,6 @@ document.addEventListener('click',e=>{
  if(e.target.closest('.scrim'))return;
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}
- const fs=e.target.closest('[data-fseg]');if(fs){fofocaSeg=fs.dataset.fseg;render();return;}
  const q=e.target.closest('[data-q]');if(q){qDraft[q.dataset.q]=qDraft[q.dataset.q]===q.dataset.em?undefined:q.dataset.em;if(!qDraft[q.dataset.q])delete qDraft[q.dataset.q];const y=scrollY;render();scrollTo(0,y);return;}
  const sg=e.target.closest('[data-seg]');if(sg){contasSeg=sg.dataset.seg;render();return;}
  const task=e.target.closest('[data-task]');if(task){act(task,async()=>{await backend.reviewTask(task.dataset.task,task.dataset.approve==='yes');toast('Tarefa julgada');});return;}

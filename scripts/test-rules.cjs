@@ -27,10 +27,32 @@ const {context}=require('./firebase-context.cjs');
  const noReceipt=make('bruno',first);noReceipt.expectation='DENY';noReceipt.functionMocks.find(m=>m.args[0].exactValue.includes('/participation/')).result.value=null;cases.push(noReceipt);
  const receipt=make('bruno',first);receipt.request.path=prefix+'/participation/'+key+'/people/bruno';receipt.request.resource.data={voted:true};cases.push(receipt);
  const wrongReceipt=structuredClone(receipt);wrongReceipt.expectation='DENY';wrongReceipt.request.path=prefix+'/participation/'+key+'/people/ob';cases.push(wrongReceipt);
+ const casePath=prefix+'/cases/test-photo-case',photoPath=prefix+'/casePhotos/test-photo-case',photo={dataUrl:'data:image/jpeg;base64,AAAA'};
+ const caseData={by:'bruno',who:'ob',what:'Teste',status:'pend',hasPhoto:true};
+ function photoTest(method,data,status='pend',admin=false,expectation='DENY',parentExists=false){
+  return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path:photoPath,method,resource:{data}},functionMocks:[
+   mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,admin),
+   mock('exists',casePath,parentExists),mock('get',casePath,{data:{...caseData,status}}),mock('getAfter',casePath,{data:{...caseData,status}})
+  ]};
+ }
+ cases.push(photoTest('create',photo,'pend',false,'ALLOW'));
+ cases.push(photoTest('create',{dataUrl:'data:image/svg+xml;base64,AAAA'}));
+ cases.push(photoTest('create',{dataUrl:'data:image/jpeg;base64,'+'A'.repeat(180001)}));
+ cases.push(photoTest('create',photo,'pend',false,'DENY',true));
+ cases.push(photoTest('get',photo,'pend',false,'DENY',true));
+ cases.push(photoTest('get',photo,'pend',true,'ALLOW',true));
+ cases.push(photoTest('get',photo,'ok',false,'ALLOW',true));
+ const orphan=photoTest('create',photo);orphan.functionMocks.find(m=>m.function==='getAfter').result.value=null;cases.push(orphan);
+ const wrongAuthor=photoTest('create',photo);wrongAuthor.functionMocks.find(m=>m.function==='getAfter').result.value.data.by='ob';cases.push(wrongAuthor);
+ const overwrite=photoTest('update',photo,'ok',true,'DENY',true);overwrite.resource={data:photo};cases.push(overwrite);
+ const guestPhoto=photoTest('get',photo,'ok');guestPhoto.request.auth=null;cases.push(guestPhoto);
+ for(const [status,admin,expectation] of [['pend',false,'DENY'],['pend',true,'ALLOW'],['ok',false,'ALLOW']]){
+  const sample=photoTest('get',photo,status,admin,expectation,true);sample.request.path=casePath;sample.resource={data:{...caseData,status}};cases.push(sample);
+ }
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});
  fs.writeFileSync('.private/rules-report.json',JSON.stringify(result.body,null,2));
  const results=result.body.testResults||[];console.log(JSON.stringify({issues:result.body.issues,testResults:results.map((t,i)=>({case:i+1,state:t.state,debugMessages:t.debugMessages,errorPosition:t.errorPosition}))},null,2));
- assert.equal(results.length,cases.length);assert(results.every(t=>t.state==='SUCCESS'),'Há regras com falha no relatório.');console.log(`OK: ${cases.length} cenários de votação e prazo.`);
+ assert.equal(results.length,cases.length);assert(results.every(t=>t.state==='SUCCESS'),'Há regras com falha no relatório.');console.log(`OK: ${cases.length} cenários de votação, prazo, fotos e denúncias.`);
 }finally{await c.close();}})().catch(e=>{console.error(e.message);process.exitCode=1;});

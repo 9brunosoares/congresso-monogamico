@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {prepareReportPhoto} from '../report-photo.js';
 import {bindAgendaSwipe,adjacentDay} from '../agenda-gesture.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -35,7 +36,7 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={};const context={bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,Date,Intl,console,backend:{},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
+ const nodes={};const context={prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,Date,Intl,console,backend:{},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html};
 }
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
@@ -65,10 +66,22 @@ test('votação somente nas quatro manhãs e penalidade única após o prazo',()
  assert.equal(penalties.length,13);assert(!penalties.some(p=>p.who==='bruno'));assert(penalties.every(p=>p.d===-5));
  assert.equal(missedVotePoints({},VOTE_DAYS[3].deadline).length,56);
 });
-test('home destaca denúncia e mural mesmo com caso já julgado; login sem selo ADM',()=>{
+test('home mostra mural apenas após condenação; login sem selo ADM',()=>{
  const {context,nodes}=ui();vm.runInContext('S.ready=true;viewLogin()',context);
  assert(nodes['#root'].innerHTML.includes('Quem é você?'));assert(!nodes['#root'].innerHTML.includes('class="adm"'));
  vm.runInContext("S.me='bruno';S.shame=[{status:'ok'}];tab='inicio';render()",context);
  assert(nodes['#root'].innerHTML.includes('Fazer denúncia'));assert(nodes['#root'].innerHTML.includes('Ver mural da vergonha'));
  assert(!nodes['#root'].innerHTML.includes('Relógio real'));
+});
+
+test('Fofoca só tem chat; mural não expõe pendentes e usa foto ou avatar',()=>{
+ const {context,nodes}=ui();
+ vm.runInContext("S={...S,me:'bruno',admin:false,ready:true,shame:[{id:'pending',who:'ob',by:'bruno',what:'Pendente',status:'pend'}]};tab='inicio';render()",context);
+ assert(!nodes['#root'].innerHTML.includes('Ver mural da vergonha'));
+ vm.runInContext("tab='fofoca';render()",context);assert(nodes['#root'].innerHTML.includes('Chat anônimo'));assert(!nodes['#root'].innerHTML.includes('Mural da Vergonha'));assert(!nodes['#root'].innerHTML.includes('data-fseg'));
+ vm.runInContext("S.shame.push({id:'approved',who:'ob',what:'Título condenado',status:'ok'});tab='mural';render()",context);
+ assert(nodes['#root'].innerHTML.includes('Título condenado'));assert(!nodes['#root'].innerHTML.includes('Pendente'));assert(nodes['#root'].innerHTML.includes('img/ob.jpg'));
+ vm.runInContext("S.casePhotos={approved:'data:image/jpeg;base64,AAAA'};render()",context);assert(nodes['#root'].innerHTML.includes('class="case-photo"'));
+ assert(!nodes['#root'].innerHTML.includes('Programação e orçamento provisórios'));
+ vm.runInContext("tab='programa';render()",context);assert(!nodes['#root'].innerHTML.includes('Programação provisória'));
 });

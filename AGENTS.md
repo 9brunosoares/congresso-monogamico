@@ -79,7 +79,7 @@ Usar apenas `nick` (apelido); não há campo de nome completo. O `id` é o apeli
 - `settle()`: algoritmo guloso que casa o maior devedor com o maior credor para minimizar os Pix.
 
 ### Navegação (barra inferior, 6 abas)
-Início · Agenda · Placar · Queridômetro · Contas · Fofoca. O Mural da Vergonha está dentro de Fofoca, numa aba segmentada junto com o chat. **Seis é o limite** do que cabe no iPhone; se entrar outra seção grande, reorganize o menu.
+Início · Agenda · Placar · Queridômetro · Contas · Fofoca. Fofoca contém somente o chat anônimo. O Mural da Vergonha é uma tela auxiliar, acessada pelo destaque na home apenas quando há condenados. O julgamento de pendentes fica no painel ADM. **Seis é o limite** do que cabe no iPhone; se entrar outra seção grande, reorganize o menu.
 
 ## 3. Identidade visual (aprovada, não mudar sem o Bruno pedir)
 
@@ -164,3 +164,14 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Ajuste fino do menu: coração com 20px (demais 24px), margem de 2px para alinhar centros; removida altura mínima extra dos rótulos, linhas de 11px e padding vertical dos botões de 4px. Preservada safe area do iPhone.
 
 - Agenda: swipe horizontal sobre as atividades troca o dia (esquerda avança, direita volta), sem circular nos extremos. Rolagem vertical e gestos nas bordas preservados; seletor superior mantém rolagem horizontal própria e acompanha o dia selecionado. Implementação em agenda-gesture.js.
+
+## Denúncias com foto e mural limpo
+- Home exibe Ver mural da vergonha somente se houver cases com status ok. Pendentes ficam no perfil ADM → Julgar denúncias. Fofoca só mostra Chat anônimo; removido o seletor Mural/Chat e o texto explicativo longo.
+- Mural público contém apenas condenados: foto anexada (se houver), título, apelido e −15. Sem foto anexa usa avatar oficial. Sem regimento longo nem denúncias pendentes.
+- Removidos o rodapé “Programação e orçamento provisórios...” e o aviso “Programação provisória de 18 a 22...” da agenda; os dados continuam provisórios, não confundir remoção do aviso com confirmação de horários/orçamento.
+- cases: campos antigos + hasPhoto bool opcional (legados sem campo continuam válidos). Cliente cria pend; só ADM condena/absolve. Leitura de pendentes somente ADM; membros consultam cases com where(status == ok). O backend obtém papel antes de criar o listener correspondente.
+- casePhotos/{caseId}: somente dataUrl JPEG base64, até 180000 caracteres (~135 KB). Documento separado, sem índice nesse campo. Nenhuma foto embutida no HTML. Usa Firestore já configurado; sem ativar Storage/Blaze.
+- report-photo.js reduz fotos para até 960px e ajusta qualidade/dimensão antes de enviar; canvas retira metadados. Originais de até 20 MB; imagens não suportadas recebem erro claro. Anexo opcional, prévia e botão Remover foto.
+- Denúncia e foto são criadas atomicamente em batch. As regras exigem autoria, schema, limite e referência cruzada; foto não pode ser anexada avulsa nem alterada. Foto pendente só ADM lê, condenada só membros. Absolvição remove também foto.
+- Limpeza futura de testes deve incluir casePhotos dos casos removidos. Não apagar registros reais ao testar.
+- Verificação atual: 16 testes locais; 30 cenários simulados do texto exato das regras no serviço oficial; prévia do navegador com backend em memória verificou anexar/comprimir foto, pendente fora do mural, julgar no painel e publicar no mural com imagem. Sem contas reais ou gravações de teste na produção.

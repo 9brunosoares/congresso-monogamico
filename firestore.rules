@@ -103,16 +103,33 @@ service cloud.firestore {
    allow delete: if isAdmin();
   }
   function isValidCase(d) {
-   return only(d,['who','by','what','status','at','createdAt']) && d.who in ids() && d.by in ids()
+   return d.keys().hasAll(['who','by','what','status','at','createdAt']) && d.keys().hasOnly(['who','by','what','status','at','createdAt','hasPhoto']) && d.get('hasPhoto',false) is bool && d.who in ids() && d.by in ids()
     && d.who != d.by && text(d.what,500) && d.status in ['pend','ok'] && text(d.at,40) && d.createdAt is timestamp;
   }
   match /cases/{id} {
-   allow read: if isMember();
+   allow read: if isMember() && (resource.data.status == 'ok' || isAdmin());
    allow create: if isMember() && isValidCase(request.resource.data) && fresh(request.resource.data)
-    && request.resource.data.by == personId() && request.resource.data.status == 'pend';
+    && request.resource.data.by == personId() && request.resource.data.status == 'pend'
+    && (!request.resource.data.get('hasPhoto',false) || validPhoto(getAfter(/databases/$(database)/documents/casePhotos/$(id)).data));
    allow update: if isAdmin() && isValidCase(request.resource.data) && sameCreation()
     && resource.data.status == 'pend' && request.resource.data.status == 'ok'
     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+   allow delete: if isAdmin();
+  }
+  // Foto JPEG reduzida, em documento separado (até 180 KB de texto).
+  // Denúncias e fotos pendentes só são lidas por ADM; após condenação, membros.
+  function validPhoto(d) {
+   return only(d,['dataUrl']) && d.dataUrl is string && d.dataUrl.size() <= 180000
+    && d.dataUrl.matches('data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}');
+  }
+  match /casePhotos/{id} {
+   allow get: if isMember() && (get(/databases/$(database)/documents/cases/$(id)).data.status == 'ok' || isAdmin());
+   allow list, update: if false;
+   allow create: if isMember() && validPhoto(request.resource.data)
+    && !exists(/databases/$(database)/documents/cases/$(id))
+    && getAfter(/databases/$(database)/documents/cases/$(id)).data.by == personId()
+    && getAfter(/databases/$(database)/documents/cases/$(id)).data.status == 'pend'
+    && getAfter(/databases/$(database)/documents/cases/$(id)).data.hasPhoto == true;
    allow delete: if isAdmin();
   }
   function isValidTask(d) {

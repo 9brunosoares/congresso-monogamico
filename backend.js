@@ -1,13 +1,14 @@
+import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, onSnapshot, query, orderBy, limit, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
 import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen } from './shared.js?v=20261029b';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
-const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},agenda:[],error:''});
-let state=emptyState(), notify=()=>{}, generation=0, stops=[], voteStops=[], currentDay=dayKey();
+const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],casePhotos:{},chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},agenda:[],error:''});
+let state=emptyState(), notify=()=>{}, generation=0, stops=[], photoStops=[], voteStops=[], currentDay=dayKey();
 let firstSnapshots=new Set(), connected=false;
 let mine=new Set();
 try{mine=new Set(JSON.parse(sessionStorage.getItem('xvi-mine')||'[]'));}catch{}
@@ -23,7 +24,7 @@ const errorText=e=>({
  'unavailable':'Sem conexão com o congresso. Tente novamente.',
 }[e.code] || e.message || 'Não foi possível concluir. Tente novamente.');
 export {errorText};
-function stopData(){stops.forEach(f=>f());stops=[];voteStops.forEach(f=>f());voteStops=[];firstSnapshots=new Set();connected=false;}
+function stopData(){photoStops.forEach(f=>f());photoStops=[];stops.forEach(f=>f());stops=[];voteStops.forEach(f=>f());voteStops=[];firstSnapshots=new Set();connected=false;}
 function failed(e){state.error=errorText(e);emit();}
 function ready(key){firstSnapshots.add(key);if(firstSnapshots.size>=14){state.ready=true;connected=true;}emit();}
 function rows(snapshot){return snapshot.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));}
@@ -64,8 +65,24 @@ export async function start(onUpdate){
   try {
    await claimProfile(user,id);
    if(version!==generation)return;
-   state.me=id;emit();
-   for(const [name,key] of [['points','points'],['expenses','exps'],['cases','shame'],['tasks','tasks']]){
+   state.me=id;
+   state.admin=(await getDoc(doc(db,'admins',user.uid))).exists();
+   if(version!==generation)return;
+   emit();
+   const casesRef=collection(db,'cases');
+   stops.push(onSnapshot(state.admin?casesRef:query(casesRef,where('status','==','ok')),snapshot=>{
+    if(version!==generation)return;
+    state.shame=rows(snapshot);photoStops.forEach(f=>f());photoStops=[];
+    state.casePhotos={};
+    for(const item of state.shame.filter(x=>x.hasPhoto))photoStops.push(onSnapshot(doc(db,'casePhotos',item.id),photo=>{
+     if(version!==generation)return;
+     const value=photo.data()?.dataUrl;
+     if(validReportPhoto(value))state.casePhotos={...state.casePhotos,[item.id]:value};
+     emit();
+    },failed));
+    ready('shame');
+   },failed));
+   for(const [name,key] of [['points','points'],['expenses','exps'],['tasks','tasks']]){
     stops.push(onSnapshot(collection(db,name),snapshot=>{if(version!==generation)return;state[key]=rows(snapshot);ready(key);},failed));
    }
    stops.push(onSnapshot(query(collection(db,'chat'),orderBy('createdAt','desc'),limit(100)),snapshot=>{
@@ -107,12 +124,18 @@ export async function reviewTask(id,approve){
   if(approve)tx.set(doc(db,'points',`task_${id}`),created({who:task.who,d:task.d,why:task.why,kind:'aux'}));
  });
 }
-export async function addCase(data){member();return addDoc(collection(db,'cases'),created({...data,by:state.me,status:'pend'}));}
+export async function addCase(data,photo=''){
+ member();if(photo&&!validReportPhoto(photo))throw Error('A foto anexada não é válida. Escolha outra.');
+ const ref=doc(collection(db,'cases')),batch=writeBatch(db);
+ batch.set(ref,created({...data,by:state.me,status:'pend',hasPhoto:!!photo}));
+ if(photo)batch.set(doc(db,'casePhotos',ref.id),{dataUrl:photo});
+ await batch.commit();return ref;
+}
 export async function judgeCase(id,condemn){
  admin();await runTransaction(db,async tx=>{
   const ref=doc(db,'cases',id),snap=await tx.get(ref);if(!snap.exists()||snap.data().status!=='pend')throw Error('Esta denúncia já foi julgada.');
   if(condemn){tx.update(ref,{status:'ok'});tx.set(doc(db,'points',`case_${id}`),created({who:snap.data().who,d:-15,why:'Infração da monogamia (Mural)',kind:'inf'}));}
-  else tx.delete(ref);
+  else {tx.delete(ref);if(snap.data().hasPhoto)tx.delete(doc(db,'casePhotos',id));}
  });
 }
 export async function sendChat(text){
