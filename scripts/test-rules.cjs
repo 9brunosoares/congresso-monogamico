@@ -102,6 +102,27 @@ const {context}=require('./firebase-context.cjs');
  for(const method of ['list','delete'])cases.push(reactionCase(method,undefined,'DENY'));
  const fullVotes=Object.fromEntries(ALL.map(id=>[id,'😂']));cases.push(reactionCase('update',{votes:fullVotes},'DENY'));
  const fullRead=reactionCase('get');fullRead.resource.data={votes:fullVotes};cases.push(fullRead);
+ const taskPath=prefix+'/tasks/direct-example',taskPointPath=prefix+'/points/task_direct-example';
+ const taskData={who:'bruno',d:5,why:'Lavar a louça',status:'ok',at:'19/11 11:59',createdAt:new Date(testTime).toISOString()};
+ const taskPoint={who:'bruno',d:5,why:'Lavar a louça',kind:'aux',at:taskData.at,createdAt:taskData.createdAt};
+ function directTaskCase(path,method,expectation='ALLOW',closed=false,admin=false){
+  return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path,method,resource:{data:structuredClone(path===taskPath?taskData:taskPoint)}},resource:{data:structuredClone(path===taskPath?taskData:taskPoint)},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,admin),mock('exists',prefix+'/scoreClosures/main',closed),mock('exists',taskPath,false),mock('getAfter',taskPath,{data:taskData}),mock('getAfter',taskPointPath,{data:taskPoint}),mock('existsAfter',taskPointPath,!closed)]};
+ }
+ cases.push(directTaskCase(taskPath,'create'),directTaskCase(taskPointPath,'create'));
+ cases.push(directTaskCase(taskPath,'create','ALLOW',true),directTaskCase(taskPointPath,'create','DENY',true));
+ for(const path of [taskPath,taskPointPath]){
+  const guest=directTaskCase(path,'create','DENY');guest.request.auth=null;cases.push(guest);
+  const forged=directTaskCase(path,'create','DENY');forged.request.resource.data.who='ob';cases.push(forged);
+  const inflated=directTaskCase(path,'create','DENY');inflated.request.resource.data.d=20;cases.push(inflated);
+ }
+ const aloneTask=directTaskCase(taskPath,'create','DENY');aloneTask.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue===taskPointPath).result.value=null;cases.push(aloneTask);
+ const alonePoint=directTaskCase(taskPointPath,'create','DENY');alonePoint.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue===taskPath).result.value=null;cases.push(alonePoint);
+ const reused=directTaskCase(taskPointPath,'create','DENY');reused.functionMocks.find(m=>m.function==='exists'&&m.args[0].exactValue===taskPath).result.value=true;cases.push(reused);
+ const pending=directTaskCase(taskPath,'create','DENY');pending.request.resource.data.status='pend';cases.push(pending);
+ for(const method of ['update','delete'])cases.push(directTaskCase(taskPath,method,'DENY'));
+ const deleteWithPoints=directTaskCase(taskPath,'delete','DENY',false,true);cases.push(deleteWithPoints);
+ const deletePair=directTaskCase(taskPath,'delete','ALLOW',false,true);deletePair.functionMocks.find(m=>m.function==='existsAfter').result.value=false;cases.push(deletePair);
+ cases.push(directTaskCase(taskPath,'delete','DENY',true,true));
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});

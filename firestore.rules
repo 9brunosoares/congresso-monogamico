@@ -145,6 +145,14 @@ service cloud.firestore {
     && text(d.why,200) && d.kind in ['aux','jogo','inf'] && text(d.at,40) && d.createdAt is timestamp;
   }
   function scoringOpen() { return !exists(/databases/$(database)/documents/scoreClosures/main); }
+  function directTaskPoint(id,d) {
+   let taskId=id.split('task_')[1];
+   let path=/databases/$(database)/documents/tasks/$(taskId);
+   let task=getAfter(path).data;
+   return !exists(path) && task.who == personId() && task.status == 'ok'
+    && isValidTask(task) && presetTask(task) && d.who == task.who && d.d == task.d
+    && d.why == task.why && d.kind == 'aux' && d.at == task.at && d.createdAt == task.createdAt;
+  }
   match /scoreClosures/{id} {
    allow read: if isMember();
    allow create: if id == 'main' && isAdmin() && only(request.resource.data,['closedAt','closedBy'])
@@ -153,7 +161,8 @@ service cloud.firestore {
   }
   match /points/{id} {
    allow read: if isMember();
-   allow create: if isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && fresh(request.resource.data);
+   allow create: if isMember() && scoringOpen() && isValidPoint(request.resource.data) && fresh(request.resource.data)
+    && (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,request.resource.data)));
    allow update: if isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && sameCreation();
    allow delete: if isAdmin() && scoringOpen();
   }
@@ -323,14 +332,22 @@ service cloud.firestore {
     && d.d is int && d.d >= 1 && d.d <= 20 && text(d.why,200)
     && d.status in ['pend','ok','no'] && text(d.at,40) && d.createdAt is timestamp;
   }
+  function presetTask(d) {
+   return (d.why == 'Lavar a louça' && d.d == 5) || (d.why == 'Tirar o lixo' && d.d == 5)
+    || (d.why == 'Cozinhar uma refeição' && d.d == 10) || (d.why == 'Repor gelo ou bebida' && d.d == 3);
+  }
+  function taskPointsSaved(id,d) {
+   let p=getAfter(/databases/$(database)/documents/points/$('task_' + id)).data;
+   return p.who == d.who && p.d == d.d && p.why == d.why && p.kind == 'aux'
+    && p.at == d.at && p.createdAt == d.createdAt;
+  }
   match /tasks/{id} {
    allow read: if isMember();
    allow create: if isMember() && isValidTask(request.resource.data) && fresh(request.resource.data)
-    && request.resource.data.who == personId() && request.resource.data.status == 'pend';
-   allow update: if isAdmin() && isValidTask(request.resource.data) && sameCreation()
-    && resource.data.status == 'pend' && request.resource.data.status in ['ok','no']
-    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
-   allow delete: if isAdmin();
+    && request.resource.data.who == personId() && request.resource.data.status == 'ok' && presetTask(request.resource.data)
+    && (scoringOpen() ? taskPointsSaved(id,request.resource.data) : !existsAfter(/databases/$(database)/documents/points/$('task_' + id)));
+   allow update: if false;
+   allow delete: if isAdmin() && scoringOpen() && !existsAfter(/databases/$(database)/documents/points/$('task_' + id));
   }
   function isValidChat(d) { return only(d,['text','createdAt']) && text(d.text,280) && d.createdAt is timestamp; }
   match /chat/{id} {

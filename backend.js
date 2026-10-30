@@ -1,7 +1,7 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030e';
-import {normalizePix} from './pix.js?v=20261030e';
-import {normalizeOfficialLinks} from './official-links.js?v=20261030e';
-import {REACTIONS} from './mural-reactions.js?v=20261030e';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030f';
+import {normalizePix} from './pix.js?v=20261030f';
+import {normalizeOfficialLinks} from './official-links.js?v=20261030f';
+import {REACTIONS} from './mural-reactions.js?v=20261030f';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -9,7 +9,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030e';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030f';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -96,7 +96,7 @@ function syncData(){
   historyHead=rows(snapshot);if(!historyOlder.length){historyCursor=snapshot.docs.at(-1)||null;state.historyHasMore=snapshot.size===50;}
   state.financeHistory=mergeRows(historyOlder,historyHead);
  });
- if(lazy.tasks)listen('tasks',query(collection(db,'tasks'),where(state.admin?'status':'who','==',state.admin?'pend':state.me)),snap=>{state.tasks=rows(snap)});
+ if(lazy.tasks)listen('tasks',state.admin?collection(db,'tasks'):query(collection(db,'tasks'),where('who','==',state.me)),snap=>{state.tasks=rows(snap)});
  if(lazy.cases){
   const ref=currentView==='mural'?query(collection(db,'cases'),where('status','==','ok'),orderBy('createdAt','desc'),limit(12)):query(collection(db,'cases'),where('status','==','pend'));
   listen('cases-'+currentView,ref,snapshot=>{
@@ -263,13 +263,25 @@ export async function loadOlderFinanceHistory(){
 }
 export async function savePix(type,value){member();await setDoc(doc(db,'pixKeys',state.me),normalizePix(type,value));}
 export async function removePix(){member();await deleteDoc(doc(db,'pixKeys',state.me));}
-export async function submitTask(data){member();return addDoc(collection(db,'tasks'),created({...data,who:state.me,status:'pend'}));}
-export async function reviewTask(id,approve){
+export async function submitTask(data){
+ member();const ref=doc(collection(db,'tasks')),actor=state.me;
+ const values={'Lavar a louça':5,'Tirar o lixo':5,'Cozinhar uma refeição':10,'Repor gelo ou bebida':3};
+ if(values[data.why]!==data.d)throw Error('Escolha uma tarefa da tabela.');
+ await runTransaction(db,async tx=>{
+  const closed=await tx.get(doc(db,'scoreClosures','main'));
+  const task=created({who:actor,d:data.d,why:data.why,status:'ok'});
+  tx.set(ref,task);
+  if(!closed.exists())tx.set(doc(db,'points',`task_${ref.id}`),{who:actor,d:task.d,why:task.why,kind:'aux',at:task.at,createdAt:task.createdAt});
+ });return ref;
+}
+export async function deleteTask(id){
  admin();await runTransaction(db,async tx=>{
   const closed=await tx.get(doc(db,'scoreClosures','main'));
-  const ref=doc(db,'tasks',id),snap=await tx.get(ref);if(!snap.exists()||snap.data().status!=='pend')throw Error('Esta tarefa já foi julgada.');
-  const task=snap.data();tx.update(ref,{status:approve?'ok':'no'});
-  if(approve&&!closed.exists())tx.set(doc(db,'points',`task_${id}`),created({who:task.who,d:task.d,why:task.why,kind:'aux'}));
+  if(closed.exists())throw Error('O placar já foi encerrado.');
+  const ref=doc(db,'tasks',id),point=doc(db,'points',`task_${id}`);
+  const [snap,points]=await Promise.all([tx.get(ref),tx.get(point)]);
+  if(!snap.exists())return;
+  tx.delete(ref);if(points.exists())tx.delete(point);
  });
 }
 export async function addCase(data,photo=''){

@@ -23,8 +23,8 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
  onSnapshot:(ref,fn)=>{const l={ref,fn,active:true};listeners.push(l);queueMicrotask(()=>{if(l.active)fn(snap(ref))});return()=>l.active=false},
  serverTimestamp:()=>new Date(time).toISOString(),
  runTransaction:async(db,fn)=>{for(let attempt=0;attempt<5;attempt++){
-  const revision=epoch,writes=[];await fn({get:async ref=>snap(ref),set:(ref,value)=>writes.push([ref.path,value]),update:(ref,value)=>writes.push([ref.path,{...records.get(ref.path),...value}])});
-  if(epoch!==revision)continue;for(const [key,value] of writes)records.set(key,value);epoch++;emit();return;
+  const revision=epoch,writes=[];await fn({get:async ref=>snap(ref),set:(ref,value)=>writes.push([ref.path,value]),delete:ref=>writes.push([ref.path,null]),update:(ref,value)=>writes.push([ref.path,{...records.get(ref.path),...value}])});
+  if(epoch!==revision)continue;for(const [key,value] of writes){if(value===null)records.delete(key);else records.set(key,value);}epoch++;emit();return;
  }throw Error('Conflito persistente')},
  addDoc(){assert.fail('Financeiro deve usar transação')},setDoc(){},updateDoc(){},deleteDoc(){},writeBatch(){},increment(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){}
  };
@@ -51,7 +51,13 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   const payment=await api.savePayment({from:'ob',to:'pig',amount:'3',kind:'payment',settlementId:'',note:'Parcial',paidOn:'2026-10-29'});
   assert.equal(ledgerBalances(state.exps,state.payments).ob,-700);
   await api.cancelPayment(payment.path.split('/')[1],1);assert.equal(ledgerBalances(state.exps,state.payments).ob,-1000);
-  await auth('bruno');await assert.rejects(api.closeFinance(),/22\/11/);
+  const task=await api.submitTask({why:'Lavar a louça',d:5});
+  assert.equal(records.get(task.path).status,'ok');assert.equal(records.get('points/task_'+task.id).d,5);
+  await assert.rejects(api.submitTask({why:'Lavar a louça',d:20}),/tabela/);
+  await assert.rejects(api.deleteTask(task.id),/ADMs/);
+  await auth('bruno');await api.deleteTask(task.id);assert(!records.has(task.path));assert(!records.has('points/task_'+task.id));
+  await api.deleteTask(task.id);
+  await assert.rejects(api.closeFinance(),/22\/11/);
   time=Date.parse('2026-11-22T03:00:00Z');await auth('ob');await assert.rejects(api.closeFinance(),/ADMs/);await auth('bruno');
   const original=sdk.getDocsFromServer;let race=true;sdk.getDocsFromServer=async ref=>{const result=snap(ref);if(race){race=false;const ctrl=records.get('financeControl/main');records.set('financeControl/main',{...ctrl,revision:ctrl.revision+1});epoch++;}return result};
   await assert.rejects(api.closeFinance(),/lançamento durante/);assert(!records.has('financeClosings/main'));sdk.getDocsFromServer=original;
@@ -68,9 +74,9 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   await assert.rejects(api.addPoints({who:'ob',d:5,why:'Depois',kind:'aux'}),/encerrado/);
   await assert.rejects(api.closeScores(),/encerrado/);
   const pointsBefore=[...records.keys()].filter(k=>k.startsWith('points/')).length;
-  records.set('tasks/task-after',{who:'ob',d:5,why:'Louça',status:'pend'});records.set('cases/case-after',{who:'ob',by:'bruno',what:'Teste',status:'pend'});
-  await api.reviewTask('task-after',true);await api.judgeCase('case-after',true);
-  assert.equal(records.get('tasks/task-after').status,'ok');assert.equal(records.get('cases/case-after').status,'ok');
+  records.set('cases/case-after',{who:'ob',by:'bruno',what:'Teste',status:'pend'});
+  const late=await api.submitTask({why:'Tirar o lixo',d:5});await assert.rejects(api.deleteTask(late.id),/encerrado/);await api.judgeCase('case-after',true);
+  assert.equal(records.get(late.path).status,'ok');assert(!records.has('points/task_'+late.id));assert.equal(records.get('cases/case-after').status,'ok');
   assert.equal([...records.keys()].filter(k=>k.startsWith('points/')).length,pointsBefore);
   // Reações não dependem do placar nem das contas abertas e não geram pontos.
   await api.setCaseReaction('case-after','😂');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😂'});

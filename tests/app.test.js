@@ -75,6 +75,15 @@ test('seletor abre com toque ou pressão longa; rolagem cancela a pressão',()=>
  send('click',{target:{closest:()=>null}});assert.equal(vm.runInContext('reactionPicker',context),null);
 });
 
+test('tarefas não pedem aprovação; somente ADM vê excluir antes de fechar o placar',()=>{
+ const {context}=ui();
+ vm.runInContext("S={...S,ready:true,me:'ob',admin:false,tasks:[{id:'task-example',who:'ob',d:5,why:'Lavar a louça',status:'ok'}],points:[{id:'task_task-example',who:'ob',d:5,why:'Lavar a louça',kind:'aux'}]}",context);
+ let html=vm.runInContext('viewPlacar()',context);
+ assert(!html.includes('aprova'));assert(html.includes('Fiz uma tarefa'));assert(!html.includes('data-delete-task'));
+ vm.runInContext('S.admin=true',context);html=vm.runInContext('viewPlacar()',context);assert(html.includes('data-delete-task="task-example"'));
+ vm.runInContext("S.scoreClosing={closedAt:{toMillis:()=>Date.now()}}",context);assert(!vm.runInContext('viewPlacar()',context).includes('data-delete-task'));
+});
+
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
  const {context,nodes,html}=ui();assert(!html.includes('xvi-congresso'));assert(!html.includes('base64'));
  vm.runInContext('S.ready=true;viewLogin();',context);assert.equal((nodes['#root'].innerHTML.match(/data-id=/g)||[]).length,14);

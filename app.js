@@ -1,12 +1,12 @@
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030e';
-import {PIX_TYPES} from './pix.js?v=20261030e';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030e';
-import {REACTIONS} from './mural-reactions.js?v=20261030e';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030f';
+import {PIX_TYPES} from './pix.js?v=20261030f';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030f';
+import {REACTIONS} from './mural-reactions.js?v=20261030f';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030e';
-import * as backend from './backend.js?v=20261030e';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030f';
+import * as backend from './backend.js?v=20261030f';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -193,11 +193,11 @@ function viewPrograma(){
 function viewPlacar(){
   const rk=ranking();
   const log=allPoints().sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0)).slice(0,12);
-  const tasks=S.tasks.filter(t=>isAdm()?t.status==='pend':t.who===S.me);
-  const approvals=tasks.length?`<div class="sec-h"><h3>${isAdm()?'Tarefas para aprovar':'Minhas tarefas'}</h3></div><div class="card stack">${tasks.map(t=>`<div><b>${esc(first(t.who))}</b> · ${esc(t.why)} (+${t.d})<div class="muted">${t.status==='pend'?'Aguardando aprovação':t.status==='ok'?'Aprovada':'Não aprovada'}</div>${isAdm()?`<button class="btn sm" data-task="${esc(t.id)}" data-approve="yes" type="button">Aprovar</button> <button class="btn sm ghost" data-task="${esc(t.id)}" data-approve="no" type="button">Recusar</button>`:''}</div>`).join('')}</div>`:'';
+  const tasks=S.tasks.filter(t=>t.status==='ok'&&(isAdm()||t.who===S.me)).slice().reverse();
+  const approvals=tasks.length?`<div class="sec-h"><h3>${isAdm()?'Tarefas':'Minhas tarefas'}</h3></div><div class="card stack">${tasks.map(t=>`<div class="row"><div class="grow"><b>${esc(first(t.who))}</b> · ${esc(t.why)}${S.points.some(p=>p.id==='task_'+t.id)?` (+${t.d})`:''}<div class="muted" style="font-size:12px">${esc(t.at||'')}</div></div>${isAdm()&&!S.scoreClosing?`<button class="link" data-delete-task="${esc(t.id)}" type="button" aria-label="Excluir tarefa de ${esc(first(t.who))}">Excluir</button>`:''}</div>`).join('')}</div>`:'';
   return `
   <div class="card">${podium(rk)}</div>
-  ${isAdm()?(!S.scoreClosing?`<div class="fab-row" style="margin-top:12px"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`:''):`<button class="btn ghost block" style="margin-top:12px" id="quickReport" type="button">Fiz uma tarefa (vai para aprovação)</button>`}
+  ${isAdm()?(!S.scoreClosing?`<div class="fab-row" style="margin-top:12px"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`:''):`<button class="btn ghost block" style="margin-top:12px" id="quickReport" type="button">Fiz uma tarefa</button>`}
   ${S.scoreClosing?'<p class="muted" style="font-size:13px">Placar encerrado.</p>':isAdm()?'<button class="link" style="margin-top:12px;font-size:13px" id="closeScores" type="button">Encerrar placar</button>':''}
   ${approvals}<div class="sec-h"><h3>Classificação</h3><span class="muted" style="font-size:13px">${ALL.length} congressistas</span></div>
   <div class="card rank" style="padding-block:4px">${rk.map((r,i)=>`<div class="rk ${r.id===S.me?"me-row":""}"><span class="pos">${i+1}</span>${av(r.id)}<div><div class="nm">${esc(P[r.id].nick)}</div><div class="sub">${r.n} lançamentos</div></div><span class="score">${r.s}</span></div>`).join("")}</div>
@@ -359,10 +359,14 @@ function sheetPoints(neg){
  });});
 }
 function sheetTask(){
- sheet(`<h3>Fiz uma tarefa</h3><p class="muted">${S.scoreClosing?'Um organizador confirma a tarefa.':'Um organizador aprova antes de os pontos entrarem no placar.'}</p><div class="stack">
- <label class="f">Tarefa<select id="tkWhy">${RULES.plus.filter(o=>typeof o[1]==='number').map(([n,v])=>`<option value="${v}">${n} (+${v})</option>`).join('')}</select></label>
- <button class="btn block" id="tkOk" type="button">Enviar para aprovação</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
- s.querySelector('#tkOk').onclick=()=>act(s.querySelector('#tkOk'),async()=>{const w=s.querySelector('#tkWhy');await backend.submitTask({d:+w.value,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,'')});s.remove();toast('Tarefa enviada para aprovação');});});
+ sheet(`<h3>Fiz uma tarefa</h3><div class="stack">
+ <label class="f">Tarefa<select id="tkWhy">${RULES.plus.filter(o=>typeof o[1]==='number').map(([n,v])=>`<option value="${v}">${n}${S.scoreClosing?'':` (+${v})`}</option>`).join('')}</select></label>
+ <button class="btn block" id="tkOk" type="button">Registrar tarefa</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ s.querySelector('#tkOk').onclick=()=>act(s.querySelector('#tkOk'),async()=>{const w=s.querySelector('#tkWhy');await backend.submitTask({d:+w.value,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,'')});s.remove();toast('Tarefa registrada.');});});
+}
+function sheetDeleteTask(id){
+ const task=S.tasks.find(t=>t.id===id);if(!task||!isAdm())return;
+ sheet(`<h3>Excluir tarefa?</h3><p>${esc(first(task.who))} · ${esc(task.why)}${S.points.some(p=>p.id==='task_'+id)?`<br>Os ${task.d} pontos serão retirados.`:''}</p><div class="stack"><button class="btn block" id="deleteTaskOk" type="button">Excluir tarefa</button><button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{s.querySelector('#deleteTaskOk').onclick=()=>act(s.querySelector('#deleteTaskOk'),async()=>{await backend.deleteTask(id);s.remove();toast('Tarefa excluída.');});});
 }
 function sheetCloseScores(){
  sheet('<h3>Encerrar placar?</h3><p>A pontuação e a classificação ficarão congeladas. O restante do app continua funcionando.</p><div class="stack"><button class="btn block" id="scoreCloseOk" type="button">Encerrar placar</button><button class="btn ghost block" data-close type="button">Voltar</button></div>',s=>{s.querySelector('#scoreCloseOk').onclick=()=>act(s.querySelector('#scoreCloseOk'),async()=>{await backend.closeScores();s.remove();toast('Placar encerrado.');});});
@@ -579,7 +583,7 @@ document.addEventListener('click',e=>{
  const ex=e.target.closest('[data-exp]');if(ex){sheetExpenseDetails(ex.dataset.exp);return;}
  const pay=e.target.closest('[data-payment]');if(pay){sheetPayment(S.payments.find(p=>p.id===pay.dataset.payment));return;}
  const confirm=e.target.closest('[data-confirm]');if(confirm){sheetConfirmSettlement(confirm.dataset.confirm);return;}
- const task=e.target.closest('[data-task]');if(task){act(task,async()=>{await backend.reviewTask(task.dataset.task,task.dataset.approve==='yes');toast('Tarefa julgada');});return;}
+ const task=e.target.closest('[data-delete-task]');if(task){sheetDeleteTask(task.dataset.deleteTask);return;}
  const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;

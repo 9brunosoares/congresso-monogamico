@@ -1,5 +1,11 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Tarefas sem aprovação (30/10/2026)
+- Cada membro registra a PRÓPRIA tarefa e ganha pontos imediatamente, usando os quatro valores fixos da tabela (louça5, lixo5, cozinhar10, gelo/bebida3). Sem Aprovar/Recusar, solicitação ou fila. `tasks` novos já nascem status ok.
+- `submitTask` grava tarefa e `points/task_<id>` na mesma transação, com mesmos who/d/why/at/createdAt e kind aux. Regras permitem ao membro criar somente esse ponto vinculado a uma tarefa nova própria, nunca pontos arbitrários/duplicados, nem tarefa sem ponto enquanto placar aberto.
+- ADMs veem todas as tarefas na aba Placar e Excluir com confirmação; `deleteTask` retira tarefa e ponto correspondente juntos. Só ADM pode excluir. Após encerramento do placar, exclusão fica bloqueada para preservar a classificação congelada. Novas tarefas continuam registráveis após fechamento, sem gerar pontos ou prometer pontuação na interface.
+- Pendentes anteriores de teste preservadas sem conversão e fora da nova lista de registradas. A revisão automática de aprovação rejeitou a migração porque não havia autorização específica para somar pontos dos testes existentes. Não contornar; só converter após resposta explícita do Bruno. Nenhum teste foi apagado; continuam cobertos pela seleção de limpeza futura.
+
 ## Correção do valor da locação (30/10/2026)
 - Bruno corrigiu o valor real para **R$3.000**, pago por Pig e dividido pelos14. Substitui todas as referências históricas a R$2.640 abaixo. Orçamento permanece R$14.000.
 - Atualizar o lançamento existente `expenses/rental-2026`, mantendo autoria/data original e rateio, com nova versão, evento financeiro antes/depois e incremento do controle. Não criar gasto duplicado.
