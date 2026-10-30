@@ -22,7 +22,7 @@ O humor fica implícito; o app deve parecer profissional.
 
 ## 2. Estado atual: Firebase integrado, sem build do front-end
 
-- Front-end estático no GitHub Pages. `index.html` contém a interface; `backend.js` usa os módulos oficiais do SDK Web 13.1.0 por CDN.
+- Front-end estático no GitHub Pages. `index.html` contém os estilos e a abertura; `app.js` contém a interface; `backend.js` usa os módulos oficiais do SDK Web 13.1.0 por CDN.
 - `roster.js` é a fonte da lista `PEOPLE`: 14 IDs/apelidos, fotos e os três ADMs oficiais.
 - `firebase-config.js` contém somente a configuração Web pública. Nenhuma senha, PIN ou credencial administrativa deve entrar no repositório.
 - Projeto Firebase `congresso-monogamico`, banco `(default)` Standard, região `southamerica-east1`, faixa gratuita. Authentication Email/Password ativado.
@@ -94,7 +94,7 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 
 ## 4. Arquivos entregues
 
-- `index.html`: o app completo, já com as meta tags de PWA e iOS (`apple-mobile-web-app-*`, manifest, `theme-color` claro e escuro).
+- `index.html`: estilos e abertura do app, com as meta tags de PWA e iOS (`apple-mobile-web-app-*`, manifest, `theme-color` claro e escuro).
 - `manifest.webmanifest`: nome "XVI Congresso Monogâmico", nome curto "Congresso", `display: standalone`.
 - `icon-1024.png`, `icon-512.png`, `icon-192.png`, `apple-touch-icon.png` (180) e `favicon.png`.
 - `robots.txt` (`Disallow: /`) e a meta `noindex`: o Bruno quer o site público, mas fora dos buscadores.
@@ -146,3 +146,12 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Cada voto grava atomicamente o total, marcador privado e `participation/{diaSP}/people/{apelido}` com somente `{voted:true}`. Participantes podem ler a entrega, nunca escolhas por autor. Clientes não podem editar/apagar comprovantes ou marcar outra pessoa.
 - Quatro listeners de participação carregam antes do placar. `missedVotePoints()` deriva −5 por pessoa/dia após o meio-dia, sem depender de abrir o app no prazo e sem gravações repetidas. Computado em todos os placares e histórico. Não lançar também points manuais pelo mesmo motivo.
 - Antes da viagem não há penalidade nem voto de teste. Limpeza futura precisa incluir participation nos dias correspondentes, para manter consistência.
+
+## Instalação e animação aprovadas (29/10/2026)
+- `install.js` é a entrada local e leve. Navegador comum mostra tutorial de quatro passos na identidade vermelha, com escolha iPhone/iPad ou Android. Desktop orienta a abrir no celular.
+- Somente `(display-mode: standalone)` ou `navigator.standalone === true` inicia `app.js` por import dinâmico. Não há botão “continuar no navegador” ou parâmetro de URL para pular o tutorial. Não é uma fronteira de autenticação/segurança; Firebase continua validando o acesso.
+- SDK Firebase, sessão e listeners só iniciam quando o app é aberto como aplicativo; abrir o tutorial não busca dados do congresso.
+- iOS: Safari → Compartilhar → Adicionar à Tela de Início → Abrir como App da Web, quando disponível. Android: Chrome → menu → Instalar aplicativo/Adicionar à tela inicial. Botão nativo Instalar Congresso aparece somente quando o navegador oferece beforeinstallprompt; confirmar instalação não libera a aba comum.
+- Animação final: dois anéis diagonais com pedras, cadeado vermelho mais abaixo e à esquerda, fechadura, haste reta elevada com brecha só à direita. Lado esquerdo sempre conectado. Movimento de encaixe mantido; sem arquivos de imagem adicionais, respeita redução de movimento.
+- `app.js` foi extraído do módulo inline sem alterar fluxos/dados; loader aparece na abertura e pequeno nos botões de envio. Referências de módulos versionadas para evitar mistura de cache de versões.
+- Testes: `node --test tests/*.test.js` (12 cenários; inclui detecção iPad, navegador bloqueado, modo app liberado, instruções e instalação sem bypass). Verificação visual no navegador em largura de 390px.

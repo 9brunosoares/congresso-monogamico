@@ -33,7 +33,7 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 });
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
- const code=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
+ const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
  const nodes={};const context={PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,Date,Intl,console,backend:{},setTimeout(){},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(){}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html};
 }
