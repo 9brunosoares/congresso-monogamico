@@ -85,3 +85,8 @@ test('Fofoca só tem chat; mural não expõe pendentes e usa foto ou avatar',()=
  assert(!nodes['#root'].innerHTML.includes('Programação e orçamento provisórios'));
  vm.runInContext("tab='programa';render()",context);assert(!nodes['#root'].innerHTML.includes('Programação provisória'));
 });
+
+test('orçamento zero não mostra NaN ou Infinity',()=>{
+ const {context,nodes}=ui();vm.runInContext("S={...S,me:'bruno',ready:true,budget:0};tab='contas';contasSeg='orcamento';render()",context);
+ assert(!nodes['#root'].innerHTML.includes('NaN'));assert(!nodes['#root'].innerHTML.includes('Infinity'));assert(nodes['#root'].innerHTML.includes('Orçamento não definido'));
+});

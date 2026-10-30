@@ -2,7 +2,7 @@ import {prepareReportPhoto} from './report-photo.js';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
 import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js?v=20261029b';
-import * as backend from './backend.js?v=20261029g';
+import * as backend from './backend.js?v=20261029h';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -50,7 +50,7 @@ const photoStyle = id => {
 };
 const av = (id,cls="") => `<span class="av ${cls}" aria-hidden="true">${esc(P[id].nick[0])}<img src="img/${id}.jpg" style="${photoStyle(id)}" alt="" onerror="this.remove()"></span>`;
 const isAdm = () => S.me && S.admin;
-const allPoints = () => [...S.points,...missedVotePoints(S.attendance)];
+const allPoints = () => [...S.points,...missedVotePoints(S.attendance).filter(p=>!S.attendanceReady||S.attendanceReady[p.id.split('_')[1]])];
 const score = id => allPoints().filter(x=>x.who===id).reduce((a,x)=>a+x.d,0);
 const ranking = () => ALL.map(id=>({id,s:score(id),n:allPoints().filter(x=>x.who===id).length})).sort((a,b)=>b.s-a.s||P[a.id].nick.localeCompare(P[b.id].nick));
 const pts = d => `<span class="pts ${d<0?"neg":"pos"}">${d>0?"+":""}${d}</span>`;
@@ -81,11 +81,13 @@ function settle(){
 let tab = "inicio", day = 18, contasSeg = "despesas", qDraft = {};
 try{ tab = localStorage.getItem("xvi-tab") || "inicio";if(!["inicio","programa","placar","querido","contas","fofoca"].includes(tab))tab="inicio"; }catch(e){}
 
+const busyActions=new Set();
 async function act(button,run){
-  if(button?.disabled)return;
+  const key=button?.id;if(button?.disabled||(key&&busyActions.has(key)))return;
+  if(key)busyActions.add(key);
   if(button){button.disabled=true;button.setAttribute("aria-busy","true");button.dataset.original=button.innerHTML;button.innerHTML=loader()+"<span>Enviando…</span>";}
-  try{await run();}catch(e){toast(backend.errorText(e));}
-  finally{if(button){button.disabled=false;button.removeAttribute("aria-busy");button.innerHTML=button.dataset.original;}}
+  try{await run();}catch(e){backend.reportError?.(e);toast(backend.errorText(e));}
+  finally{if(key)busyActions.delete(key);if(button){button.disabled=false;button.removeAttribute("aria-busy");button.innerHTML=button.dataset.original;}const current=key?document.getElementById?.(key):null;if(current)current.disabled=false;}
 }
 function loader(){return '<span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span>';}
 function viewLogin(){
@@ -135,7 +137,7 @@ function viewInicio(){
   const myPos = rk.findIndex(r=>r.id===S.me)+1;
   return `
   <button class="btn seal block" id="homeReport" type="button" style="margin-bottom:14px">Fazer denúncia</button>
-  ${S.shame.some(s=>s.status==="ok")?'<button class="btn block mural-alert" data-go="mural" type="button" style="margin-bottom:14px">Ver mural da vergonha →</button>':''}
+  ${(S.hasMural??S.shame.some(s=>s.status==="ok"))?'<button class="btn block mural-alert" data-go="mural" type="button" style="margin-bottom:14px">Ver mural da vergonha →</button>':''}
   ${nxt ? `<section class="card next">
     <div class="sealmark" aria-hidden="true">XVI</div>
     <div class="eyebrow">Próxima sessão · ${dayOf(nxt.start).wd} ${fmtTime(nxt.start)}</div>
@@ -147,7 +149,7 @@ function viewInicio(){
 
   ${cur?`<div class="card row" style="margin-top:12px"><span class="tag live">Agora</span><div class="grow"><b>${esc(cur.title)}</b><div class="muted" style="font-size:13px">até ${fmtTime(cur.end)} · ${esc(cur.place||"")}</div></div></div>`:""}
 
-  ${(()=>{const d=dayKey(); if(!S.querido[d]) return ""; const done=(S.qvoted[d]||[]).includes(S.me);
+  ${(()=>{const d=dayKey(); const done=(S.qvoted[d]||[]).includes(S.me);
     return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
     <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${done?"Você já votou hoje. Os votos são anônimos.":votingOpen()?"Vote até meio-dia. Quem não preencher perde 5 pontos.":"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
 
@@ -227,12 +229,12 @@ function viewContas(){
     <div class="card" style="padding-block:6px">${ALL.map(id=>({id,v:b[id]})).sort((a,c)=>c.v-a.v).map(r=>`<div class="bal">${av(r.id,"sm")}<span>${esc(P[r.id].nick)}</span><span class="money ${r.v>=0?"pos":"neg"}">${r.v>=0?"+":"−"} ${brl(Math.abs(r.v))}</span></div>`).join("")}</div>`;
   }
   if(contasSeg==="orcamento"){
-    const pct=Math.min(100,total/S.budget*100), left=S.budget-total;
+    const percent=S.budget>0?total/S.budget*100:0, pct=Math.min(100,percent), left=S.budget-total;
     body=`<div class="card" style="margin-top:12px">
       <div class="eyebrow">Orçamento do congresso</div>
       <div class="row" style="align-items:baseline;margin:6px 0 10px"><div class="bigfig num">${brl0(total)}</div><span class="muted">de ${brl0(S.budget)}</span></div>
       <div class="bar ${total>S.budget?"over":""}"><i style="width:${pct}%"></i></div>
-      <div class="row" style="justify-content:space-between;margin-top:8px;font-size:14px"><span class="muted">${Math.round(total/S.budget*100)}% usado</span><b style="color:${left>=0?"var(--good)":"var(--bad)"}">${left>=0?`Sobram ${brl0(left)}`:`Estourou ${brl0(-left)}`}</b></div>
+      <div class="row" style="justify-content:space-between;margin-top:8px;font-size:14px"><span class="muted">${S.budget>0?Math.round(percent)+"% usado":"Orçamento não definido"}</span><b style="color:${left>=0?"var(--good)":"var(--bad)"}">${left>=0?`Sobram ${brl0(left)}`:`Estourou ${brl0(-left)}`}</b></div>
       <div class="muted" style="font-size:13px;margin-top:6px">Por pessoa: ${brl0(total/ALL.length)} gastos de ${brl0(S.budget/ALL.length)} previstos</div>
       ${isAdm()?`<button class="btn sm ghost" style="margin-top:12px" id="editBudget" type="button">Ajustar orçamento (ADM)</button>`:""}
     </div>
@@ -245,19 +247,21 @@ function viewContas(){
 function caseCard(item,pending=false){
  const photo=S.casePhotos?.[item.id];
  return `<article class="shame">
- ${photo?`<img class="case-photo" src="${esc(photo)}" alt="Foto da denúncia contra ${esc(first(item.who))}">`:av(item.who,'xl')}
+ ${photo?`<img class="case-photo" src="${esc(photo)}" alt="Foto da denúncia contra ${esc(first(item.who))}" loading="lazy">`:item.hasPhoto?`<div class="case-photo-placeholder" ${S.photoErrors?.[item.id]?'':`data-photo-id="${esc(item.id)}"`}>${av(item.who,'lg')}${S.photoErrors?.[item.id]?`<button class="link" data-photo-retry="${esc(item.id)}" type="button">Tentar carregar foto</button>`:'<span class="muted">Carregando foto…</span>'}</div>`:av(item.who,'xl')}
  <h3>${esc(item.what)}</h3><div class="row" style="margin-top:10px"><b class="grow">${esc(first(item.who))}</b>${pending?'':pts(-15)}</div>
  ${pending?`<div class="fab-row" style="margin-top:14px"><button class="btn sm seal" data-judge="${esc(item.id)}" data-v="ok" type="button">Condenar (−15)</button><button class="btn sm ghost" data-judge="${esc(item.id)}" data-v="no" type="button">Absolver</button></div>`:''}
  </article>`;
 }
 function viewMural(){
  const list=S.shame.filter(s=>s.status==='ok').slice().reverse();
+ if(S.loaded&&!S.loaded['cases-mural'])return '<h2 class="page-title">Mural da Vergonha</h2><p role="status">Carregando…</p>';
  return `<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">Mural da Vergonha</h2>
- ${list.length?`<div class="stack">${list.map(s=>caseCard(s)).join('')}</div>`:'<p class="muted">Ninguém no mural.</p>'}`;
+ ${list.length?`<div class="stack">${list.map(s=>caseCard(s)).join('')}</div>`:'<p class="muted">Ninguém no mural.</p>'}${S.muralHasMore?`<button class="btn ghost block" id="olderMural" type="button" ${S.muralLoadingOlder?'disabled':''}>${S.muralLoadingOlder?'Carregando…':'Ver mais'}</button>`:''}`;
 }
 function viewTribunal(){
  if(!isAdm())return '';
  const list=S.shame.filter(s=>s.status==='pend').slice().reverse();
+ if(S.loaded&&!S.loaded['cases-tribunal'])return '<h2 class="page-title">Julgar denúncias</h2><p role="status">Carregando…</p>';
  return `<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">Julgar denúncias</h2>
  ${list.length?`<div class="stack">${list.map(s=>caseCard(s,true)).join('')}</div>`:'<p class="muted">Nenhuma denúncia pendente.</p>'}`;
 }
@@ -294,6 +298,8 @@ function viewQuerido(){
 
 function viewFofoca(){
   return `<h2 class="page-title">Chat anônimo</h2>
+  ${S.loaded&&!S.loaded.chat?'<p role="status" class="muted">Carregando mensagens…</p>':''}
+  ${S.chatHasMore?`<button class="btn ghost block" id="olderChat" type="button" ${S.chatLoadingOlder?'disabled':''}>${S.chatLoadingOlder?'Carregando…':'Ver mensagens anteriores'}</button>`:''}
   <div class="chat" id="chatList">${S.chat.map(m=>`<div class="bubble ${m.mine?"mine":""}">
     <div class="who">${m.mine?"Você (anônimo)":"Anônimo"} · ${esc(m.at)}</div>
     <div>${esc(m.text)}</div>
@@ -382,7 +388,7 @@ function sheetMe(){
  <div class="body row">${av(S.me,'xl')}<div><h3 style="margin:0">${esc(first(S.me))}</h3><div class="muted">${score(S.me)} pontos</div></div></div></div>
  <div class="stack">${isAdm()?`<div class="eyebrow">Painel do ADM</div>
  <button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>
- <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias (${S.shame.filter(x=>x.status==='pend').length})</button><button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>`:''}
+ <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias</button><button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>`:''}
  <button class="btn ghost block" data-a="out" type="button">Sair / trocar de congressista</button></div>`,s=>{
  s.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a==='out'){act(b,async()=>{await backend.logout();s.remove();});return;}s.remove();
@@ -421,15 +427,26 @@ const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Querid
 function go(t){ if(t==="tribunal"&&!isAdm())return;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
 
 function render(){
+  backend.setView?.(tab);
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
   const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
-  $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p>`:""}<main>${body}</main>
+  $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
     <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
-  tick();
+  for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
+  tick();watchCasePhotos();
 }
 
+let photoObserver;
+function watchCasePhotos(){
+ photoObserver?.disconnect();
+ if(!['mural','tribunal'].includes(tab))return;
+ const nodes=[...document.querySelectorAll('[data-photo-id]')];
+ if(typeof IntersectionObserver==='undefined'){nodes.slice(0,3).forEach(node=>backend.loadCasePhoto?.(node.dataset.photoId));return;}
+ photoObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){photoObserver.unobserve(entry.target);backend.loadCasePhoto?.(entry.target.dataset.photoId)}},{rootMargin:'160px'});
+ nodes.forEach(node=>photoObserver.observe(node));
+}
 function selectAgendaDay(next){
  if(next===day)return;
  const y=scrollY;day=next;render();scrollTo(0,y);
@@ -439,6 +456,7 @@ function selectAgendaDay(next){
 bindAgendaSwipe(document,()=>tab==='programa'&&S.ready&&!!S.me,direction=>selectAgendaDay(adjacentDay(DAYS.map(d=>d.d),day,direction)));
 document.addEventListener('click',e=>{
  if(e.target.closest('.scrim'))return;
+ const pr=e.target.closest('[data-photo-retry]');if(pr){backend.loadCasePhoto(pr.dataset.photoRetry,true);return;}
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}
  const q=e.target.closest('[data-q]');if(q){qDraft[q.dataset.q]=qDraft[q.dataset.q]===q.dataset.em?undefined:q.dataset.em;if(!qDraft[q.dataset.q])delete qDraft[q.dataset.q];const y=scrollY;render();scrollTo(0,y);return;}
@@ -447,7 +465,7 @@ document.addEventListener('click',e=>{
  const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
- ({meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
+ ({retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
  qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
  clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Demonstração encerrada');}})[id]?.();
 });

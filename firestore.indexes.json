@@ -1,1 +1,25 @@
-{"indexes":[],"fieldOverrides":[{"collectionGroup":"casePhotos","fieldPath":"dataUrl","indexes":[]}]}
+{
+  "indexes": [
+    {
+      "collectionGroup": "cases",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "casePhotos",
+      "fieldPath": "dataUrl",
+      "indexes": []
+    }
+  ]
+}

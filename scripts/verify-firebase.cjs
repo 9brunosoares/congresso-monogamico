@@ -56,12 +56,14 @@ async function until(predicate,label){const end=Date.now()+45000;while(Date.now(
   const allegation=track(await member.api.addCase({who:'luan',what:tag+' denúncia'}));await adm.api.judgeCase(allegation.id,true);owned.push('points/case_'+allegation.id);
   await assert.rejects(()=>adm.api.judgeCase(allegation.id,true));
   console.log('OK: aprovação e condenação atômicas, sem pontos duplicados.');
+  third.api.setView('fofoca');
   await member.api.sendChat(tag+' mensagem');await until(()=>third.state.chat.some(m=>m.text===tag+' mensagem'),'chat na outra sessão');
   const message=third.state.chat.find(m=>m.text===tag+' mensagem');owned.push('chat/'+message.id);
   const rawMessage=(await c.db.doc('chat/'+message.id).get()).data();assert.deepEqual(Object.keys(rawMessage).sort(),['createdAt','text']);
   console.log('OK: chat anônimo sincronizado, com apenas texto e data no banco.');
   voteKey=dayKey();assert.equal(dayKey(rawMessage.createdAt.toMillis()),voteKey,'Data do cliente diferente do servidor');assert(!(await c.db.doc('querido/'+voteKey).get()).exists,'Já há votos reais hoje; não executar este teste sobre eles.');voteStarted=true;
   const ballot=id=>Object.fromEntries(ALL.filter(x=>x!==id).map(x=>[x,EMOJIS[0]]));
+  third.api.setView('querido');
   await Promise.all([adm.api.vote(ballot('bruno')),member.api.vote(ballot('ob'))]);
   await until(()=>third.state.voterCount===2,'duas votações simultâneas');
   const day=(await c.db.doc('querido/'+voteKey).get()).data();assert.equal(day.voters,2);assert.equal(decodeTally(day.counts.luan)[EMOJIS[0]],2);assert.equal(decodeTally(day.counts.bruno)[EMOJIS[0]],1);
@@ -82,7 +84,7 @@ async function until(predicate,label){const end=Date.now()+45000;while(Date.now(
  }finally{
   for(const client of clients){await client.api.logout().catch(()=>{});await sdk.terminate(client.api.testDb).catch(()=>{});await apps.deleteApp(client.api.testAuth.app).catch(()=>{});}
   const batch=c.db.batch();for(const p of [...new Set(owned)])batch.delete(c.db.doc(p));
-  if(voteStarted){batch.delete(c.db.doc('querido/'+voteKey));for(const user of createdUsers)batch.delete(c.db.doc('querido/'+voteKey+'/voters/'+user.uid));}
+  if(voteStarted){batch.delete(c.db.doc('querido/'+voteKey));for(const user of createdUsers){batch.delete(c.db.doc('querido/'+voteKey+'/voters/'+user.uid));batch.delete(c.db.doc('participation/'+voteKey+'/people/'+user.id));}}
   for(const user of createdUsers){const profile=c.db.doc('people/'+user.id);const snap=await profile.get();if(snap.data()?.uid===user.uid)batch.update(profile,{uid:null});batch.delete(c.db.doc('admins/'+user.uid));}
   await batch.commit();for(const user of createdUsers)await c.auth.deleteUser(user.uid);
   await c.close();console.log('Limpeza concluída: somente contas e registros temporários deste teste foram removidos.');
