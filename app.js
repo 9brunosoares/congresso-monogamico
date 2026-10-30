@@ -1,10 +1,10 @@
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers} from './finance.js';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030a';
 import {PIX_TYPES} from './pix.js';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
 import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS} from './shared.js?v=20261029b';
-import * as backend from './backend.js?v=20261029i';
+import * as backend from './backend.js?v=20261030a';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -63,10 +63,10 @@ function toast(msg){ const t=document.createElement("div"); t.className="toast";
 
 /* ===================== CONTAS ===================== */
 function balances(){
-  return Object.fromEntries(Object.entries(ledgerBalances(S.exps)).map(([id,cents])=>[id,cents/100]));
+  return Object.fromEntries(Object.entries(ledgerBalances(S.exps,S.payments)).map(([id,cents])=>[id,cents/100]));
 }
 function settle(){
-  return simplifiedTransfers(ledgerBalances(S.exps)).map(x=>({...x,v:x.amountCents/100}));
+  return simplifiedTransfers(ledgerBalances(S.exps,S.payments)).map(x=>({...x,v:x.amountCents/100}));
 }
 
 /* ===================== TELAS ===================== */
@@ -156,7 +156,7 @@ function viewInicio(){
   <div class="card">${podium(rk)}</div>
 
   <div class="sec-h"><h3>Suas contas</h3><button class="link" data-go="contas" type="button">Abrir contas</button></div>
-  ${(()=>{const b=balances()[S.me];return `<div class="card row"><div class="grow"><div class="eyebrow">${b>=0?"Você tem a receber":"Você deve"}</div><div class="bigfig num" style="color:${b>=0?"var(--good)":"var(--bad)"}">${brl(Math.abs(b))}</div></div><button class="btn sm" id="quickExp" type="button">Lançar gasto</button></div>`})()}
+  ${(()=>{const b=balances()[S.me];return `<div class="card row"><div class="grow"><div class="eyebrow">${b>=0?"Você tem a receber":"Você deve"}</div><div class="bigfig num" style="color:${b>=0?"var(--good)":"var(--bad)"}">${brl(Math.abs(b))}</div></div>${S.closing?'':'<button class="btn sm" id="quickExp" type="button">Lançar gasto</button>'}</div>`})()}
 
   `;
 }
@@ -203,23 +203,18 @@ function viewPlacar(){
 }
 
 function viewContas(){
-  const seg = `<div class="seg" role="tablist">${[["despesas","Gastos"],["acerto","Quem paga quem"],["orcamento","Orçamento"]].map(([k,l])=>`<button type="button" data-seg="${k}" aria-pressed="${contasSeg===k}">${l}</button>`).join("")}</div>`;
-  const total=S.exps.reduce((a,e)=>a+expenseCents(e),0)/100;
+  if(contasSeg==='acerto')contasSeg='pagamentos';
+  const seg = `<div class="seg" role="tablist">${[["despesas","Gastos"],["pagamentos","Pagamentos"],["orcamento","Orçamento"]].map(([k,l])=>`<button type="button" data-seg="${k}" aria-pressed="${contasSeg===k}">${l}</button>`).join("")}</div>`;
+  const total=activeExpenses(S.exps).reduce((a,e)=>a+expenseCents(e),0)/100;
   let body="";
   if(contasSeg==="despesas"){
     const b=balances()[S.me];
-    body=`<div class="card row" style="margin-top:12px"><div class="grow"><div class="eyebrow">Total gasto</div><div class="bigfig num">${brl0(total)}</div><div class="muted" style="font-size:13px">${brl(total/ALL.length)} por pessoa em média</div></div><button class="btn" id="quickExp" type="button">Lançar gasto</button></div>
+    body=`<div class="card row" style="margin-top:12px"><div class="grow"><div class="eyebrow">Total gasto</div><div class="bigfig num">${brl0(total)}</div><div class="muted" style="font-size:13px">${brl(total/ALL.length)} por pessoa em média</div></div>${S.closing?'':'<button class="btn" id="quickExp" type="button">Lançar gasto</button>'}</div>
     <div class="card row" style="margin-top:10px">${av(S.me)}<div class="grow"><b>Seu saldo</b><div class="muted" style="font-size:13px">${b>=0?"os outros te devem":"você deve ao grupo"}</div></div><span class="money" style="color:${b>=0?"var(--good)":"var(--bad)"}">${b>=0?"+":"−"} ${brl(Math.abs(b))}</span></div>
     <div class="sec-h"><h3>Gastos lançados</h3></div>
-    <div class="card" style="padding-block:4px">${[...S.exps].reverse().map(e=>`<div class="exp">${av(e.payer)}<div style="min-width:0"><div class="t">${esc(e.title)}</div><div class="s">${esc(first(e.payer))} pagou · dividido por ${e.split.length===ALL.length?"todos":e.split.length} · ${CATS.find(c=>c.id===e.cat).name}</div></div><span class="money">${brl(e.amount)}</span></div>`).join("")}</div>`;
+    <div class="card" style="padding-block:4px">${activeExpenses(S.exps).slice().reverse().map(e=>`<div class="exp" data-exp="${esc(e.id)}">${av(e.payer)}<div style="min-width:0"><button class="link t" type="button" data-exp="${esc(e.id)}">${esc(e.title)}</button><div class="s">${esc(first(e.payer))} pagou · dividido por ${e.split.length===ALL.length?"todos":e.split.length} · ${CATS.find(c=>c.id===e.cat).name}</div></div><span class="money">${brl(e.amount)}</span></div>`).join("")}</div>`;
   }
-  if(contasSeg==="acerto"){
-    const st=settle(), b=balances();
-    body=`<p class="muted" style="font-size:14px;margin:14px 0 0">Sugestão de Pix para acertar os saldos. Pagamentos feitos no banco ainda não são registrados aqui.</p>
-    <div class="card" style="margin-top:10px;padding-block:4px">${st.length?st.map(x=>`<div><div class="settle" style="${x.from===S.me||x.to===S.me?"font-weight:700":""}">${av(x.from,"sm")}<span>${esc(first(x.from))}</span><span class="arrow">→</span><span>${av(x.to,"sm")} ${esc(first(x.to))}</span><span class="money">${brl(x.v)}</span></div>${S.pixKeys?.[x.to]?`<button class="link" style="margin-bottom:12px" type="button" data-pix="${x.to}">Chave Pix de ${esc(first(x.to))}</button>`:''}</div>`).join(""):`<div class="empty">Tudo acertado.</div>`}</div>
-    <div class="sec-h"><h3>Saldo de cada um</h3></div>
-    <div class="card" style="padding-block:6px">${ALL.map(id=>({id,v:b[id]})).sort((a,c)=>c.v-a.v).map(r=>`<div class="bal">${av(r.id,"sm")}<span>${esc(P[r.id].nick)}</span><span class="money ${r.v>=0?"pos":"neg"}">${r.v>=0?"+":"−"} ${brl(Math.abs(r.v))}</span></div>`).join("")}</div>`;
-  }
+  if(contasSeg==='pagamentos')body=viewPayments(false);
   if(contasSeg==="orcamento"){
     const percent=S.budget>0?total/S.budget*100:0, pct=Math.min(100,percent), left=S.budget-total;
     body=`<div class="card" style="margin-top:12px">
@@ -228,12 +223,32 @@ function viewContas(){
       <div class="bar ${total>S.budget?"over":""}"><i style="width:${pct}%"></i></div>
       <div class="row" style="justify-content:space-between;margin-top:8px;font-size:14px"><span class="muted">${S.budget>0?Math.round(percent)+"% usado":"Orçamento não definido"}</span><b style="color:${left>=0?"var(--good)":"var(--bad)"}">${left>=0?`Sobram ${brl0(left)}`:`Estourou ${brl0(-left)}`}</b></div>
       <div class="muted" style="font-size:13px;margin-top:6px">Por pessoa: ${brl0(total/ALL.length)} gastos de ${brl0(S.budget/ALL.length)} previstos</div>
-      ${isAdm()?`<button class="btn sm ghost" style="margin-top:12px" id="editBudget" type="button">Ajustar orçamento (ADM)</button>`:""}
+      ${isAdm()&&!S.closing?`<button class="btn sm ghost" style="margin-top:12px" id="editBudget" type="button">Ajustar orçamento (ADM)</button>`:""}
     </div>
     <div class="sec-h"><h3>Por categoria</h3></div>
-    <div class="card" style="padding-block:4px">${CATS.map(c=>{const s=S.exps.filter(e=>e.cat===c.id).reduce((a,e)=>a+expenseCents(e),0)/100;return `<div class="cat"><b>${c.name}</b><span class="money" style="font-size:14px">${brl(s)}</span></div>`}).join("")}</div>`;
+    <div class="card" style="padding-block:4px">${CATS.map(c=>{const s=activeExpenses(S.exps).filter(e=>e.cat===c.id).reduce((a,e)=>a+expenseCents(e),0)/100;return `<div class="cat"><b>${c.name}</b><span class="money" style="font-size:14px">${brl(s)}</span></div>`}).join("")}</div>`;
   }
-  return seg+`<div style="margin-top:12px"><button class="link" id="myPix" type="button" ${S.loaded?.pix?'':'disabled'}>Minha chave Pix</button></div>`+body;
+  return seg+`<div class="row" style="margin-top:12px;gap:16px;flex-wrap:wrap"><button class="link" id="myPix" type="button" ${S.loaded?.pix?'':'disabled'}>Minha chave Pix</button><button class="link" data-go="historico" type="button">Histórico</button>${S.closing?'<button class="link" data-go="fechamento" type="button">Acerto final</button>':isAdm()&&settlementsOpen()?'<button class="btn sm" id="closeAccounts" type="button">Encerrar contas</button>':''}</div>`+body;
+}
+function viewPayments(back=true){
+ return `${back?'<button class="link" data-go="contas" type="button">← Contas</button>':''}<div class="sec-h"><h3>Pagamentos</h3>${S.closing?'':'<button class="btn sm" id="newPayment" type="button">Registrar pagamento</button>'}</div><div class="card" style="padding-block:4px">${(S.payments||[]).filter(p=>p.status!=='cancelled').slice().reverse().map(p=>`<div class="exp"><div class="grow"><button class="link" type="button" data-payment="${esc(p.id)}">${esc(first(p.from))} → ${esc(first(p.to))}</button><div class="muted" style="font-size:13px">${esc(p.paidOn.split('-').reverse().join('/'))}${p.note?' · '+esc(p.note):''}</div></div><b class="money">${brl(p.amountCents/100)}</b></div>`).join('')||'<div class="empty">Nenhum pagamento registrado.</div>'}</div>`;
+}
+function viewClosing(){
+ const c=S.closing;if(!c)return '<button class="link" data-go="contas" type="button">← Contas</button>';
+ return `<button class="link" data-go="contas" type="button">← Contas</button><div class="sec-h"><h3>Acerto final</h3><button class="btn sm" id="copyClosing" type="button" ${S.loaded?.pix?'':'disabled'}>Copiar relatório</button></div><div class="card"><div class="eyebrow">Total gasto</div><div class="bigfig num">${brl(c.expenseTotalCents/100)}</div></div><div class="stack" style="margin-top:12px">${transferRows(c,S.pixKeys).map(t=>{
+ const p=(S.payments||[]).find(p=>p.kind==='settlement'&&p.settlementId===t.id),paid=p?.status==='active';
+ return `<div class="card"><div class="row"><b class="grow">${esc(first(t.from))} → ${esc(first(t.to))}</b><b>${brl(t.amountCents/100)}</b></div>${t.pixValue?`<p class="muted" style="overflow-wrap:anywhere">Pix: ${esc(t.pixValue)}</p>`:''}${paid?`<p class="pos">Pago · confirmado por ${esc(first(p.updatedBy||p.by))}</p>`:''}${canManagePayment(t,S.me,isAdm())?(paid?`<button class="link" data-payment="${esc(p.id)}" type="button">Ver pagamento</button>`:`<button class="btn block" style="margin-top:12px" data-confirm="${t.id}" type="button">${t.to===S.me?'Confirmar recebimento':'Confirmar pagamento'}</button>`):''}</div>`;
+ }).join('')||'<p>Todos os saldos estão zerados.</p>'}</div>`;
+}
+function financeSummary(type,data){
+ if(!data||!Object.keys(data).length)return '—';
+ if(type==='budget')return brl(data.budget);
+ if(type==='closing')return `Gastos: ${brl(data.expenseTotalCents/100)} · ${transferRows(data).length} transferências`;
+ if(type==='payment')return `${first(data.from)} → ${first(data.to)} · ${brl(data.amountCents/100)} · ${data.paidOn}${data.note?' · '+data.note:''} · ${data.status==='cancelled'?'cancelado':'registrado'}`;
+ return `${data.title} · ${brl(expenseCents(data)/100)} · pago por ${first(data.payer)} · ${CATS.find(c=>c.id===data.cat)?.name} · rateio: ${data.split.map(first).join(', ')} · ${data.status==='cancelled'?'cancelado':'ativo'}`;
+}
+function viewFinanceHistory(){
+ return `<button class="link" data-go="contas" type="button">← Contas</button><h2 class="page-title">Histórico das contas</h2>${!S.loaded?.financeHistory?'<p role="status">Carregando…</p>':`<div class="stack">${(S.financeHistory||[]).slice().reverse().map(e=>`<article class="card"><b>${esc(({baseline:'Registro inicial',create:'Criado',update:'Alterado',cancel:'Cancelado'})[e.action]||e.action)} · ${esc(first(e.by))}</b><div class="muted" style="font-size:13px">${esc(backend.formatStamp(e.createdAt))} · versão ${e.version}</div>${e.action!=='create'?`<p class="muted" style="overflow-wrap:anywhere">Antes: ${esc(financeSummary(e.type,e.before))}</p>`:''}<p style="overflow-wrap:anywhere">${e.action==='baseline'?'Registro atual':'Depois'}: ${esc(financeSummary(e.type,e.after))}</p></article>`).join('')||'<p class="muted">Nenhuma alteração registrada.</p>'}</div>${S.historyHasMore?`<button class="btn ghost block" id="olderFinance" type="button" ${S.historyLoading?'disabled':''}>Ver anteriores</button>`:''}`}`;
 }
 
 function caseCard(item,pending=false){
@@ -330,16 +345,16 @@ function sheetTask(){
  <button class="btn block" id="tkOk" type="button">Enviar para aprovação</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
  s.querySelector('#tkOk').onclick=()=>act(s.querySelector('#tkOk'),async()=>{const w=s.querySelector('#tkWhy');await backend.submitTask({d:+w.value,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,'')});s.remove();toast('Tarefa enviada para aprovação');});});
 }
-function sheetExpense(){
- let split=new Set(ALL);
- sheet(`<h3>Lançar gasto</h3><div class="stack">
- <label class="f">O que foi<input id="exT" maxlength="120" placeholder="Ex.: gelo e limão"></label>
- <label class="f">Valor (R$)<input id="exV" type="number" inputmode="decimal" min="0.01" max="1000000" step="0.01" placeholder="0,00"></label>
- <label class="f">Quem pagou<select id="exP">${personOpts(S.me)}</select></label>
- <label class="f">Categoria<select id="exC">${CATS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></label>
+function sheetExpense(expense=null){
+ let split=new Set(expense?.split||ALL);
+ sheet(`<h3>${expense?'Editar':'Lançar'} gasto</h3><div class="stack">
+ <label class="f">O que foi<input id="exT" maxlength="120" placeholder="Ex.: gelo e limão" value="${esc(expense?.title||'')}"></label>
+ <label class="f">Valor (R$)<input id="exV" type="number" inputmode="decimal" min="0.01" max="1000000" step="0.01" placeholder="0,00" value="${expense?(expenseCents(expense)/100).toFixed(2):''}"></label>
+ <label class="f">Quem pagou<select id="exP">${personOpts(expense?.payer||S.me)}</select></label>
+ <label class="f">Categoria<select id="exC">${CATS.map(c=>`<option value="${c.id}" ${expense?.cat===c.id?'selected':''}>${c.name}</option>`).join('')}</select></label>
  <div><span>Dividir entre <button class="link" id="exAll" type="button">todos / ninguém</button></span>
- <div class="pick" id="exS">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="true">${av(p.id)}<span>${esc(p.nick)}</span></button>`).join('')}</div></div>
- <button class="btn seal block" id="exOk" type="button">Lançar gasto</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ <div class="pick" id="exS">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="${split.has(p.id)}">${av(p.id)}<span>${esc(p.nick)}</span></button>`).join('')}</div></div>
+ <button class="btn seal block" id="exOk" type="button">${expense?'Salvar alterações':'Lançar gasto'}</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
  const sync=()=>s.querySelectorAll('#exS button').forEach(b=>b.setAttribute('aria-pressed',split.has(b.dataset.id)));
  s.querySelector('#exS').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.id;split.has(id)?split.delete(id):split.add(id);sync();};
  s.querySelector('#exAll').onclick=()=>{split=split.size?new Set():new Set(ALL);sync();};
@@ -347,8 +362,43 @@ function sheetExpense(){
  const title=s.querySelector('#exT').value.trim(),amount=s.querySelector('#exV').value;
  if(!title)throw Error('Preencha a descrição do gasto.');moneyToCents(amount);
  if(!split.size)throw Error('Escolha com quem dividir.');
- await backend.addExpense({title,amount,payer:s.querySelector('#exP').value,cat:s.querySelector('#exC').value,split:[...split]});s.remove();toast('Gasto lançado');
+ const data={title,amount,payer:s.querySelector('#exP').value,cat:s.querySelector('#exC').value,split:[...split]};
+ if(expense)await backend.updateExpense(expense.id,data,expense.version);else await backend.addExpense(data);
+ s.remove();toast(expense?'Gasto atualizado':'Gasto lançado');
  });});
+}
+function sheetExpenseDetails(id){
+ const e=S.exps.find(e=>e.id===id);if(!e)return;
+ const shares=splitCents(expenseCents(e),e.split,e.id),editable=!S.closing&&(isAdm()||e.by===S.me);
+ sheet(`<h3>${esc(e.title)}</h3><div class="stack"><div class="bigfig num">${brl(expenseCents(e)/100)}</div><p>Pago por <b>${esc(first(e.payer))}</b> · ${esc(CATS.find(c=>c.id===e.cat).name)}</p><div class="muted">${esc(e.at)}${e.by?' · lançado por '+esc(first(e.by)):''}</div><div>${Object.entries(shares).map(([id,cents])=>`<div class="row" style="justify-content:space-between"><span>${esc(first(id))}</span><b>${brl(cents/100)}</b></div>`).join('')}</div>${editable?'<button class="btn block" id="expenseEdit" type="button">Editar gasto</button><button class="link" id="expenseCancel" type="button">Cancelar gasto</button>':''}<button class="btn ghost block" data-close type="button">Fechar</button></div>`,s=>{
+  if(!editable)return;
+  s.querySelector('#expenseEdit').onclick=()=>{s.remove();sheetExpense(e)};
+  s.querySelector('#expenseCancel').onclick=()=>{s.remove();sheetCancel('gasto',()=>backend.cancelExpense(e.id,e.version));};
+ });
+}
+function sheetCancel(label,run){
+ sheet(`<h3>Cancelar ${label}?</h3><p>O registro continua no histórico e deixa de contar nos saldos.</p><div class="stack"><button class="btn block" id="financeCancel" type="button">Confirmar cancelamento</button><button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{s.querySelector('#financeCancel').onclick=()=>act(s.querySelector('#financeCancel'),async()=>{await run();s.remove();toast('Registro cancelado');});});
+}
+const todaySP=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+function sheetPayment(payment=null){
+ const own=payment?canManagePayment(payment,S.me,isAdm()):true;
+ if(payment?.kind==='settlement'||S.closing||!own){
+  if(!payment)return;
+  const cancellable=own&&payment.kind==='settlement'&&payment.status==='active';
+  sheet(`<h3>Pagamento</h3><p>${esc(financeSummary('payment',payment))}</p><div class="stack">${cancellable?'<button class="link" id="paymentCancel" type="button">Cancelar confirmação</button>':''}<button class="btn ghost block" data-close type="button">Fechar</button></div>`,s=>{if(cancellable)s.querySelector('#paymentCancel').onclick=()=>{s.remove();sheetCancel('pagamento',()=>backend.cancelPayment(payment.id,payment.version));};});return;
+ }
+ sheet(`<h3>${payment?'Editar':'Registrar'} pagamento</h3><div class="stack"><label class="f">Quem pagou<select id="pmFrom">${personOpts(payment?.from||S.me)}</select></label><label class="f">Quem recebeu<select id="pmTo">${personOpts(payment?.to||ALL.find(id=>id!==S.me))}</select></label><label class="f">Valor (R$)<input id="pmValue" type="number" inputmode="decimal" min="0.01" step="0.01" max="1000000" value="${payment?(payment.amountCents/100).toFixed(2):''}"></label><label class="f">Data<input id="pmDate" type="date" max="${todaySP()}" value="${payment?.paidOn||todaySP()}"></label><label class="f">Observação (opcional)<input id="pmNote" maxlength="200" value="${esc(payment?.note||'')}"></label><button class="btn block" id="paymentSave" type="button">${payment?'Salvar alterações':'Registrar pagamento'}</button>${payment?'<button class="link" id="paymentCancel" type="button">Cancelar pagamento</button>':''}<button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{
+  s.querySelector('#paymentSave').onclick=()=>act(s.querySelector('#paymentSave'),async()=>{await backend.savePayment({from:s.querySelector('#pmFrom').value,to:s.querySelector('#pmTo').value,amount:s.querySelector('#pmValue').value,paidOn:s.querySelector('#pmDate').value,note:s.querySelector('#pmNote').value.trim(),kind:'payment',settlementId:''},payment?.id,payment?.version);s.remove();toast('Pagamento registrado');});
+  if(payment)s.querySelector('#paymentCancel').onclick=()=>{s.remove();sheetCancel('pagamento',()=>backend.cancelPayment(payment.id,payment.version));};
+ });
+}
+function sheetCloseAccounts(){
+ const report=closingReport(closingSnapshot(S.exps,S.payments,S.budget,S.pixKeys));
+ sheet(`<h3>Encerrar contas?</h3><p>Novos gastos e alterações ficam bloqueados. As quitações continuam disponíveis.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">${esc(report)}</pre><div class="stack"><button class="btn block" id="closeFinanceOk" type="button">Encerrar contas</button><button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{s.querySelector('#closeFinanceOk').onclick=()=>act(s.querySelector('#closeFinanceOk'),async()=>{await backend.closeFinance();s.remove();go('fechamento');toast('Contas encerradas');});});
+}
+function sheetConfirmSettlement(id){
+ const t=S.closing?.transfers.find(t=>t.id===id);if(!t)return;
+ sheet(`<h3>Confirmar quitação?</h3><p>${esc(first(t.from))} pagou <b>${brl(t.amountCents/100)}</b> para ${esc(first(t.to))}.</p><div class="stack"><button class="btn block" id="settlementOk" type="button">Confirmar</button><button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{s.querySelector('#settlementOk').onclick=()=>act(s.querySelector('#settlementOk'),async()=>{await backend.confirmSettlement(id);s.remove();toast('Quitação confirmada');});});
 }
 function sheetPix(id=S.me){
  const key=S.pixKeys?.[id],own=id===S.me;
@@ -393,7 +443,7 @@ function sheetMe(){
  <div class="body row">${av(S.me,'xl')}<div><h3 style="margin:0">${esc(first(S.me))}</h3><div class="muted">${score(S.me)} pontos</div></div></div></div>
  <div class="stack">${isAdm()?`<div class="eyebrow">Painel do ADM</div>
  <button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>
- <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias</button><button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>`:''}
+ <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias</button>${S.closing?'':'<button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>'}`:''}
  <button class="btn ghost block" data-a="out" type="button">Sair / trocar de congressista</button></div>`,s=>{
  s.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a==='out'){act(b,async()=>{await backend.logout();s.remove();});return;}s.remove();
@@ -435,10 +485,10 @@ function render(){
   backend.setView?.(tab);
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
-  const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
+  const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
-    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
+    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
   tick();watchCasePhotos();
 }
@@ -467,11 +517,14 @@ document.addEventListener('click',e=>{
  const q=e.target.closest('[data-q]');if(q){qDraft[q.dataset.q]=qDraft[q.dataset.q]===q.dataset.em?undefined:q.dataset.em;if(!qDraft[q.dataset.q])delete qDraft[q.dataset.q];const y=scrollY;render();scrollTo(0,y);return;}
  const sg=e.target.closest('[data-seg]');if(sg){contasSeg=sg.dataset.seg;render();return;}
  const pk=e.target.closest('[data-pix]');if(pk){sheetPix(pk.dataset.pix);return;}
+ const ex=e.target.closest('[data-exp]');if(ex){sheetExpenseDetails(ex.dataset.exp);return;}
+ const pay=e.target.closest('[data-payment]');if(pay){sheetPayment(S.payments.find(p=>p.id===pay.dataset.payment));return;}
+ const confirm=e.target.closest('[data-confirm]');if(confirm){sheetConfirmSettlement(confirm.dataset.confirm);return;}
  const task=e.target.closest('[data-task]');if(task){act(task,async()=>{await backend.reviewTask(task.dataset.task,task.dataset.approve==='yes');toast('Tarefa julgada');});return;}
  const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
- ({myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:sheetExpense,givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
+ ({closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
  qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
  clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Demonstração encerrada');}})[id]?.();
 });

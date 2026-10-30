@@ -21,7 +21,7 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   setPersistence:async()=>{},browserLocalPersistence:{},onAuthStateChanged:(auth,fn)=>{queueMicrotask(()=>fn(user))},
   getDocFromCache:async ref=>{if(ref.path==='people/bruno')return {data:()=>({uid:user.uid})};throw Error('Cache vazio')},
   getDoc:async ref=>{gets.push(ref.path);return ref.path==='admins/'+user.uid?{exists:()=>false}:{exists:()=>true,data:()=>({dataUrl:'data:image/jpeg;base64,AAAA'})}},
-  getDocs:async ref=>{gets.push(ref);return snap([])},
+  getDocs:async ref=>{gets.push(ref);return snap([])},getDocsFromServer:async()=>snap([]),
   onSnapshot:(ref,accept,fail)=>{
    const item={ref,accept,fail,active:true};listeners.push(item);
    queueMicrotask(()=>{if(!item.active)return;
@@ -54,7 +54,7 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   await fs.writeFile(backendPath,source);
   const api=await import(pathToFileURL(backendPath).href);await api.start(next=>{state=next});await flush();await flush();
   assert(state.ready);assert.equal(cacheSettings.localCache.kind,'persistent');assert(cacheSettings.localCache.tabManager.multi);
-  assert.deepEqual(active().map(x=>x.ref.path).sort(),['agenda','cases','expenses','points','settings/main']);
+  assert.deepEqual(active().map(x=>x.ref.path).sort(),['agenda','cases','expenses','financeClosings/main','payments','points','settings/main']);
   assert.equal(gets.filter(x=>typeof x==='string'&&x.startsWith('casePhotos/')).length,0);
   const coreCount=listeners.length;api.setView('fofoca');await flush();assert.equal(listeners.length,coreCount+1);
   const chatQuery=active().find(x=>x.ref.path==='chat').ref;assert(chatQuery.filters.some(f=>f.limit===50));assert.equal(state.chat.length,50);assert(state.chatHasMore);

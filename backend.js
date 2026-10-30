@@ -1,10 +1,10 @@
-import {moneyToCents} from './finance.js';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030a';
 import {normalizePix} from './pix.js';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
 import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen } from './shared.js?v=20261029b';
@@ -12,9 +12,10 @@ import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen } 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
 const db=initializeFirestore(app,{localCache:typeof indexedDB==='undefined'?memoryLocalCache():persistentLocalCache({tabManager:persistentMultipleTabManager(),cacheSizeBytes:40*1024*1024})});
-const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],hasMural:false,casePhotos:{},photoErrors:{},chat:[],chatHasMore:false,chatLoadingOlder:false,muralHasMore:false,muralLoadingOlder:false,pixKeys:{},tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},attendanceReady:{},loaded:{},agenda:[],error:''});
+const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],payments:[],financeHistory:[],historyHasMore:false,historyLoading:false,shame:[],hasMural:false,casePhotos:{},photoErrors:{},chat:[],chatHasMore:false,chatLoadingOlder:false,muralHasMore:false,muralLoadingOlder:false,pixKeys:{},tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},attendanceReady:{},loaded:{},agenda:[],error:''});
 let state=emptyState(), notify=()=>{}, generation=0,currentDay=dayKey(),currentView='inicio',sessionReady=false,paused=false,quotaBlocked=false;
 let firstSnapshots=new Set(),required=new Set(),chatHead=[],chatOlder=[],chatCursor=null,muralHead=[],muralOlder=[],muralCursor=null,backgroundTimer;
+let historyHead=[],historyOlder=[],historyCursor=null;
 const PAGE_SIZE=50;
 let mine=new Set();
 try{mine=new Set(JSON.parse(sessionStorage.getItem('xvi-mine')||'[]'));}catch{}
@@ -48,7 +49,7 @@ const photos=photoLoader(async id=>{
 },{valid:validReportPhoto,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['mural','tribunal'].includes(currentView)&&state.shame.some(x=>x.id===id&&x.hasPhoto&&(x.status==='ok'||state.admin)),
  onValue(id,value){const next={...state.casePhotos};delete next[id];next[id]=value;state.casePhotos=Object.fromEntries(Object.entries(next).slice(-24));delete state.photoErrors[id];emit();},
  onError(id,error){state.photoErrors={...state.photoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}});
-function stopData(){pool.stop();photos.clear();firstSnapshots=new Set();required=new Set();sessionReady=false;chatHead=[];chatOlder=[];chatCursor=null;muralHead=[];muralOlder=[];muralCursor=null;}
+function stopData(){pool.stop();photos.clear();firstSnapshots=new Set();required=new Set();sessionReady=false;chatHead=[];chatOlder=[];chatCursor=null;muralHead=[];muralOlder=[];muralCursor=null;historyHead=[];historyOlder=[];historyCursor=null;}
 function failed(e){if(e.code==='resource-exhausted'){quotaBlocked=true;pool.stop();}state.error=errorText(e);emit();}
 function rows(snapshot){return snapshot.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));}
 function publishChat(){state.chat=mergeRows(chatOlder,chatHead).map(m=>({...m,at:formatStamp(m.createdAt),mine:mine.has(m.id)}));}
@@ -58,6 +59,8 @@ function syncData(){
  required=new Set();
  const listen=(key,ref,accept,essential=false)=>{specs.push({key,ref,accept,version});if(essential)required.add(key);};
  for(const [name,key] of [['points','points'],['expenses','exps']])listen(key,collection(db,name),snapshot=>{state[key]=rows(snapshot)},true);
+ listen('payments',collection(db,'payments'),snapshot=>{state.payments=rows(snapshot)},true);
+ listen('closing',doc(db,'financeClosings','main'),snapshot=>{state.closing=snapshot.exists()?{...snapshot.data(),transfers:transferRows(snapshot.data())}:null},true);
  listen('settings',doc(db,'settings','main'),snap=>{state.budget=snap.data()?.budget||0},true);
  listen('agenda',collection(db,'agenda'),snapshot=>{state.agenda=rows(snapshot).sort((a,b)=>a.start-b.start)},true);
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(1)),snap=>{state.hasMural=!snap.empty},true);
@@ -79,7 +82,12 @@ function syncData(){
   if(!chatOlder.length){chatCursor=snapshot.docs.at(-1)||null;state.chatHasMore=snapshot.size===PAGE_SIZE;}
   publishChat();
  });
- if(currentView==='contas')listen('pix',collection(db,'pixKeys'),snap=>{state.pixKeys=Object.fromEntries(snap.docs.map(d=>[d.id,d.data()]))});
+ if(['contas','pagamentos','fechamento'].includes(currentView))listen('pix',collection(db,'pixKeys'),snap=>{state.pixKeys=Object.fromEntries(snap.docs.map(d=>[d.id,d.data()]))});
+ if(currentView==='historico')listen('financeHistory',query(collection(db,'financeHistory'),orderBy('createdAt','desc'),limit(50)),snapshot=>{
+  if(historyOlder.length)historyOlder=mergeRows(historyOlder,historyHead);
+  historyHead=rows(snapshot);if(!historyOlder.length){historyCursor=snapshot.docs.at(-1)||null;state.historyHasMore=snapshot.size===50;}
+  state.financeHistory=mergeRows(historyOlder,historyHead);
+ });
  if(lazy.tasks)listen('tasks',query(collection(db,'tasks'),where(state.admin?'status':'who','==',state.admin?'pend':state.me)),snap=>{state.tasks=rows(snap)});
  if(lazy.cases){
   const ref=currentView==='mural'?query(collection(db,'cases'),where('status','==','ok'),orderBy('createdAt','desc'),limit(12)):query(collection(db,'cases'),where('status','==','pend'));
@@ -168,7 +176,71 @@ export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate
 const stamp=()=>new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const created=data=>({...data,at:stamp(),createdAt:serverTimestamp()});
 export async function addPoints(data){admin();return addDoc(collection(db,'points'),created(data));}
-export async function addExpense(data){member();const amountCents=moneyToCents(data.amount);return addDoc(collection(db,'expenses'),created({...data,amount:amountCents/100,amountCents,by:state.me}));}
+const financeCollection=type=>({expense:'expenses',payment:'payments',budget:'settings'})[type];
+async function financeWrite(type,id,changes,expectedVersion){
+ member();const ref=id?doc(db,financeCollection(type),id):doc(collection(db,financeCollection(type)));
+ await runTransaction(db,async tx=>{
+  const controlRef=doc(db,'financeControl','main'),control=await tx.get(controlRef);
+  if(!control.exists())throw Error('Atualização das contas em andamento. Tente novamente.');
+  if(control.data().closed&&!(type==='payment'&&changes.kind==='settlement'))throw Error('As contas já foram encerradas.');
+  const snap=await tx.get(ref),before=snap.exists()?snap.data():{};
+  if(id&&!snap.exists()&&!(type==='payment'&&changes.kind==='settlement'))throw Error('Registro não encontrado. Atualize a tela.');
+  if(snap.exists()&&expectedVersion!==before.version)throw Error('Este registro foi alterado. Feche e abra novamente antes de salvar.');
+  if(type==='budget')admin();
+  if(type==='expense'&&snap.exists()&&!state.admin&&before.by!==state.me)throw Error('Você não pode alterar este gasto.');
+  if(type==='payment'&&(!canManagePayment(snap.exists()?before:changes,state.me,state.admin)||!canManagePayment({...before,...changes},state.me,state.admin)))throw Error('Você não está envolvido neste pagamento.');
+  if(type==='payment'&&(changes.kind||before.kind)==='settlement'){
+   if(!settlementsOpen()||!control.data().closed)throw Error('As contas ainda não foram encerradas.');
+   if(before.status==='active'&&changes.status!=='cancelled')throw Error('Esta quitação já foi confirmada.');
+  }
+  if(before.status==='cancelled'&&!(type==='payment'&&changes.kind==='settlement'&&changes.status==='active'))throw Error('Este registro já foi cancelado.');
+  const version=(before.version||0)+1,time=serverTimestamp();
+  const after={...(snap.exists()?before:created({by:state.me,status:'active'})),...changes,version,updatedAt:time,updatedBy:state.me};
+  const action=!snap.exists()?'create':after.status==='cancelled'?'cancel':'update';
+  tx.set(ref,after);
+  tx.set(doc(db,'financeHistory',`${type}_${ref.id}_${version}`),{type,recordId:ref.id,version,action,by:state.me,before,after,createdAt:time});
+  tx.update(controlRef,{revision:control.data().revision+1,lastEvent:`${type}_${ref.id}_${version}`});
+ });return ref;
+}
+export async function addExpense(data){const amountCents=moneyToCents(data.amount);return financeWrite('expense',null,{...data,amount:amountCents/100,amountCents});}
+export async function updateExpense(id,data,version){const amountCents=moneyToCents(data.amount);return financeWrite('expense',id,{...data,amount:amountCents/100,amountCents},version);}
+export const cancelExpense=(id,version)=>financeWrite('expense',id,{status:'cancelled'},version);
+export async function savePayment(data,id=null,version){
+ const amountCents=moneyToCents(data.amount);const {amount,...fields}=data;
+ if(fields.from===fields.to)throw Error('Escolha duas pessoas diferentes.');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(fields.paidOn)||!Number.isFinite(Date.parse(fields.paidOn+'T12:00:00-03:00'))||new Date(fields.paidOn+'T12:00:00-03:00').toISOString().slice(0,10)!==fields.paidOn||fields.paidOn>new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'}))throw Error('Use uma data válida até hoje.');
+ return financeWrite('payment',id,{...fields,amountCents},version);
+}
+export const cancelPayment=(id,version)=>{const p=state.payments.find(p=>p.id===id);return financeWrite('payment',id,{status:'cancelled',kind:p?.kind||'payment'},version);};
+export async function closeFinance(){
+ admin();if(!settlementsOpen())throw Error('O encerramento abre em 22/11.');
+ const controlRef=doc(db,'financeControl','main'),control=await getDocFromServer(controlRef);
+ if(control.data().closed)throw Error('As contas já foram encerradas.');
+ const [expenses,payments,settings]=await Promise.all([getDocsFromServer(collection(db,'expenses')),getDocsFromServer(collection(db,'payments')),getDocFromServer(doc(db,'settings','main'))]);
+ const snapshot=storedClosing(closingSnapshot(rows(expenses),rows(payments),settings.data().budget));
+ await runTransaction(db,async tx=>{
+  const latest=await tx.get(controlRef);
+  if(latest.data().closed)throw Error('As contas já foram encerradas.');
+  if(latest.data().revision!==control.data().revision)throw Error('Houve um lançamento durante o fechamento. Confira e tente novamente.');
+  const time=serverTimestamp(),after={...snapshot,version:1,updatedAt:time,updatedBy:state.me,closedAt:time,closedBy:state.me};
+  tx.set(doc(db,'financeClosings','main'),after);
+  tx.set(doc(db,'financeHistory','closing_main_1'),{type:'closing',recordId:'main',version:1,action:'create',by:state.me,before:{},after,createdAt:time});
+  tx.update(controlRef,{revision:latest.data().revision+1,closed:true,lastEvent:'closing_main_1'});
+ });
+}
+export async function confirmSettlement(transferId){
+ member();const closing=await getDocFromServer(doc(db,'financeClosings','main'));
+ const transfer=closing.exists()?transferRows(closing.data()).find(t=>t.id===transferId):null;if(!transfer)throw Error('Quitação não encontrada.');
+ const id='final_'+transfer.id,existing=await getDocFromServer(doc(db,'payments',id));
+ return savePayment({from:transfer.from,to:transfer.to,amount:(transfer.amountCents/100).toFixed(2),note:'',paidOn:new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'}),kind:'settlement',settlementId:transfer.id,status:'active'},id,existing.data()?.version);
+}
+export async function loadOlderFinanceHistory(){
+ member();if(currentView!=='historico'||!historyCursor||!state.historyHasMore||state.historyLoading)return;
+ state.historyLoading=true;emit();const version=generation;
+ try{const snap=await getDocs(query(collection(db,'financeHistory'),orderBy('createdAt','desc'),startAfter(historyCursor),limit(50)));
+  if(version!==generation)return;historyOlder=mergeRows(historyOlder,rows(snap));historyCursor=snap.docs.at(-1)||historyCursor;state.historyHasMore=snap.size===50;state.financeHistory=mergeRows(historyOlder,historyHead);
+ }finally{if(version===generation){state.historyLoading=false;emit();}}
+}
 export async function savePix(type,value){member();await setDoc(doc(db,'pixKeys',state.me),normalizePix(type,value));}
 export async function removePix(){member();await deleteDoc(doc(db,'pixKeys',state.me));}
 export async function submitTask(data){member();return addDoc(collection(db,'tasks'),created({...data,who:state.me,status:'pend'}));}
@@ -201,7 +273,7 @@ export async function sendChat(text){
  }catch(e){mine.delete(ref.id);throw e;}
 }
 export async function deleteChat(id){admin();await deleteDoc(doc(db,'chat',id));chatHead=chatHead.filter(m=>m.id!==id);chatOlder=chatOlder.filter(m=>m.id!==id);publishChat();emit();}
-export async function setBudget(budget){admin();await updateDoc(doc(db,'settings','main'),{budget});}
+export async function setBudget(budget){admin();const snap=await getDocFromServer(doc(db,'settings','main'));return financeWrite('budget','main',{budget},snap.data().version);}
 export async function addSession(data){admin();return addDoc(collection(db,'agenda'),data);}
 export async function vote(ballot){
  member();if(!votingOpen())throw Error("A votação abre de quinta a domingo da viagem, até meio-dia (São Paulo).");

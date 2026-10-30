@@ -7,6 +7,7 @@ const {context}=require('./firebase-context.cjs');
  const {ALL}=await import('../roster.js');
  const settingsRef=c.db.doc('settings/main'),rentalRef=c.db.doc('expenses/rental-2026');
  const [settings,expenses,agenda]=await Promise.all([settingsRef.get(),c.db.collection('expenses').get(),c.db.collection('agenda').get()]);
+ if(settings.data()?.version)throw Error('Migração antiga encerrada: use as ações financeiras do app para preservar o histórico.');
  const existing=expenses.docs.find(d=>d.id==='rental-2026');
  const possibleDuplicate=expenses.docs.filter(d=>d.id!=='rental-2026'&&(/loca[çc][aã]o|aluguel/i.test(d.data().title||'')));
  if(possibleDuplicate.length)throw Error('Já existe possível locação: '+possibleDuplicate.map(d=>d.id).join(', ')+'. Conferir antes de lançar outra.');

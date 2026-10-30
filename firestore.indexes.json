@@ -16,6 +16,8 @@
     }
   ],
   "fieldOverrides": [
+    {"collectionGroup":"financeHistory","fieldPath":"before","indexes":[]},
+    {"collectionGroup":"financeHistory","fieldPath":"after","indexes":[]},
     {
       "collectionGroup": "casePhotos",
       "fieldPath": "dataUrl",

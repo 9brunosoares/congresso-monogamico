@@ -4,7 +4,17 @@ rules_version = '2';
 // admins/{uid}: id oficial string<=20; criado apenas no primeiro vínculo de ADM.
 // settings/main: budget number 0..1000000.
 // pixKeys/{id}: type enum e value string1..77; titular escreve, grupo lê.
-// expenses: amountCents int1..100000000 e by oficial opcionais para clientes legados.
+// expenses: amountCents int1..100000000, by oficial (vazio apenas em baseline legado).
+// Financeiro versionado: version int1..1000000, updatedAt timestamp, updatedBy oficial.
+// expenses/payments: status active|cancelled, sem exclusão física. by/createdAt/at imutáveis.
+// payments: from/to oficiais distintos, amountCents int1..100000000,
+// kind payment|settlement, paidOn YYYY-MM-DD até hoje SP, note string<=200.
+// financeHistory/{tipo_id_versao}: type expense|payment|budget, recordId<=80,
+// version, action create|update|cancel, by, before/after cópias exatas, createdAt.
+// Eventos imutáveis e obrigatórios na mesma transação. Baselines só via migração administrativa.
+// financeControl/main: revision int,closed bool,lastEvent string<=120; revisão atômica.
+// financeClosings/main: budget,expenseTotalCents,transfers com listas from/to/amountCents
+// paralelas de até13 itens, version1,updatedAt/By,closedAt/By; imutável.
 // agenda/{id}: d int18..22, t HH:mm, title<=120, place<=100, pts int0..100,
 // prep<=500, note<=500, start/end epoch millis (sessão de até 24h).
 // points/{id}: who oficial, d int -100..100, why<=200, kind aux|jogo|inf,
@@ -61,10 +71,30 @@ service cloud.firestore {
     && get(profilePath()).data.uid == null && get(profilePath()).data.admin == true
     && getAfter(profilePath()).data.uid == uid;
   }
-  function isValidSettings(d) { return only(d,['budget']) && d.budget is number && d.budget >= 0 && d.budget <= 1000000; }
+  function financeMeta(d) { return d.version is int && d.version > 0 && d.version <= 1000000 && d.updatedAt is timestamp && d.updatedAt == request.time && d.updatedBy == personId(); }
+  function isValidSettings(d) { return only(d,['budget','version','updatedAt','updatedBy']) && d.budget is number && d.budget >= 0 && d.budget <= 1000000 && financeMeta(d); }
+  function auditPath(type,id,version) { return /databases/$(database)/documents/financeHistory/$(type + '_' + id + '_' + string(version)); }
+  function audited(type,id) {
+   let d=request.resource.data;
+   let e=getAfter(auditPath(type,id,d.version)).data;
+   let before=request.method == 'create' ? {} : resource.data;
+   let control=getAfter(/databases/$(database)/documents/financeControl/main).data;
+   // O schema/autoria/data do evento são validados em financeHistory; a cópia
+   // exata e o ID versionado impedem reutilizar um evento anterior.
+   return e.after == d && e.before == before
+    && control.revision == get(/databases/$(database)/documents/financeControl/main).data.revision + 1
+    && control.lastEvent == type + '_' + id + '_' + string(d.version);
+  }
+  function accountsOpen() { return get(/databases/$(database)/documents/financeControl/main).data.closed == false; }
+  function financeUpdate() {
+   return (resource.data.status == 'active' || (resource.data.get('kind','') == 'settlement' && request.resource.data.status == 'active')) && request.resource.data.version == resource.data.version + 1
+    && sameCreation() && request.resource.data.by == resource.data.by && request.resource.data.at == resource.data.at;
+  }
   match /settings/{id} {
    allow read: if isMember();
-   allow create, update: if id == 'main' && isAdmin() && isValidSettings(request.resource.data);
+   allow create: if false;
+   allow update: if id == 'main' && isAdmin() && accountsOpen() && isValidSettings(request.resource.data)
+    && request.resource.data.version == resource.data.version + 1 && audited('budget',id);
    allow delete: if false;
   }
   function isValidPix(d) {
@@ -104,23 +134,113 @@ service cloud.firestore {
    allow delete: if isAdmin();
   }
   function isValidExpense(d) {
-   return d.keys().hasAll(['title','cat','amount','payer','split','at','createdAt'])
-    && d.keys().hasOnly(['title','cat','amount','amountCents','by','payer','split','at','createdAt']) && text(d.title,120)
+   return only(d,['title','cat','amount','amountCents','by','payer','split','at','createdAt','status','version','updatedAt','updatedBy']) && text(d.title,120)
     && d.cat in ['casa','mercado','bebida','transporte','atividades']
     && d.amount is number && d.amount > 0 && d.amount <= 1000000 && d.payer in ids()
     && d.amount == int(d.amount * 100 + 0.5) / 100.0
-    && (!d.keys().hasAny(['amountCents']) || (d.amountCents is int && d.amountCents > 0 && d.amountCents <= 100000000 && d.amount == d.amountCents / 100.0))
-    && (!d.keys().hasAny(['by']) || d.by in ids())
+    && d.amountCents is int && d.amountCents > 0 && d.amountCents <= 100000000 && d.amount == d.amountCents / 100.0
+    && (d.by in ids() || d.by == '') && d.status in ['active','cancelled'] && financeMeta(d)
     && d.split is list && d.split.size() > 0 && d.split.size() <= 14
     && d.split.toSet().size() == d.split.size() && d.split.hasOnly(ids()) && text(d.at,40) && d.createdAt is timestamp;
   }
   match /expenses/{id} {
    allow read: if isMember();
-   allow create: if isMember() && isValidExpense(request.resource.data) && fresh(request.resource.data)
-    && (!request.resource.data.keys().hasAny(['by']) || request.resource.data.by == personId());
-   allow update: if isAdmin() && isValidExpense(request.resource.data) && sameCreation()
-    && request.resource.data.get('by',null) == resource.data.get('by',null);
-   allow delete: if isAdmin();
+   allow create: if isMember() && accountsOpen() && isValidExpense(request.resource.data) && fresh(request.resource.data)
+    && request.resource.data.by == personId() && request.resource.data.status == 'active' && request.resource.data.version == 1 && audited('expense',id);
+   allow update: if isMember() && accountsOpen() && (isAdmin() || resource.data.by == personId())
+    && isValidExpense(request.resource.data) && financeUpdate() && audited('expense',id);
+   allow delete: if false;
+  }
+  function settlementOpen() { return request.time >= timestamp.date(2026,11,22) + duration.value(3,'h'); }
+  function paymentParty(d) { return d.from == personId() || d.to == personId() || isAdmin(); }
+  function isValidPayment(d) {
+   let date=d.paidOn.split('-');
+   return only(d,['from','to','amountCents','kind','settlementId','paidOn','note','by','at','createdAt','status','version','updatedAt','updatedBy'])
+    && d.from in ids() && d.to in ids() && d.from != d.to && d.by in ids()
+    && d.amountCents is int && d.amountCents > 0 && d.amountCents <= 100000000
+    && d.kind in ['payment','settlement'] && (d.kind == 'payment' || settlementOpen())
+    && optionalText(d.settlementId,3)
+    && d.paidOn is string && d.paidOn.size() == 10 && d.paidOn.matches('202[0-9]-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])')
+    && timestamp.date(int(date[0]),int(date[1]),int(date[2])) + duration.value(3,'h') <= request.time
+    && optionalText(d.note,200) && text(d.at,40) && d.createdAt is timestamp
+    && d.status in ['active','cancelled'] && financeMeta(d);
+  }
+  function paymentMode(d,id) {
+   return d.kind == 'payment' ? accountsOpen() && d.settlementId == '' : matchesSettlement(d,id);
+  }
+  function matchesSettlement(d,id) {
+   let c=get(/databases/$(database)/documents/financeClosings/main).data;
+   return !accountsOpen() && id == 'final_' + d.settlementId && d.settlementId.matches('t([0-9]|1[0-2])')
+    && c.transfers.from[int(d.settlementId.replace('t',''))] == d.from
+    && c.transfers.to[int(d.settlementId.replace('t',''))] == d.to
+    && c.transfers.amountCents[int(d.settlementId.replace('t',''))] == d.amountCents;
+  }
+  match /payments/{id} {
+   allow read: if isMember();
+   allow create: if isMember() && isValidPayment(request.resource.data) && paymentMode(request.resource.data,id) && paymentParty(request.resource.data)
+    && fresh(request.resource.data) && request.resource.data.by == personId()
+    && request.resource.data.status == 'active' && request.resource.data.version == 1 && audited('payment',id);
+   allow update: if isMember() && paymentParty(resource.data) && paymentParty(request.resource.data)
+    && (isAdmin() || (request.resource.data.from == resource.data.from && request.resource.data.to == resource.data.to))
+    && request.resource.data.kind == resource.data.kind && request.resource.data.settlementId == resource.data.settlementId
+    && isValidPayment(request.resource.data) && paymentMode(request.resource.data,id) && financeUpdate() && audited('payment',id);
+   allow delete: if false;
+  }
+  function financeRecordPath(type,id) {
+   let collection=type == 'expense' ? 'expenses' : type == 'payment' ? 'payments' : type == 'closing' ? 'financeClosings' : 'settings';
+   return /databases/$(database)/documents/$(collection)/$(id);
+  }
+  function isValidFinanceEvent(d,eventId) {
+   let p=financeRecordPath(d.type,d.recordId);
+   let before=exists(p) ? get(p).data : {};
+   let after=getAfter(p).data;
+   return only(d,['type','recordId','version','action','by','before','after','createdAt'])
+    && d.type in ['expense','payment','budget','closing'] && text(d.recordId,80) && d.recordId.matches('[a-zA-Z0-9_-]+')
+    && eventId == d.type + '_' + d.recordId + '_' + string(d.version)
+    && d.by == personId() && d.version is int && d.version > 0 && d.version <= 1000000
+    && d.before is map && d.after is map && d.before == before && d.after == after
+    && d.version == before.get('version',0) + 1 && d.version == after.version && after.updatedAt == request.time
+    && after.updatedBy == personId() && d.createdAt is timestamp && d.createdAt == request.time
+    && d.action == (!exists(p) ? 'create' : after.get('status','active') == 'cancelled' ? 'cancel' : 'update');
+  }
+  match /financeHistory/{id} {
+   allow read: if isMember();
+   allow create: if isMember() && isValidFinanceEvent(request.resource.data,id);
+   allow update, delete: if false;
+  }
+  function validTransferAt(t,i,n) {
+   return n <= i || (t.amountCents[i] is int && t.amountCents[i] > 0 && t.amountCents[i] <= 100000000 && t.from[i] != t.to[i]);
+  }
+  function validClosing(d) {
+   let t=d.transfers;
+   let n=t.from.size();
+   let official=ids();
+   return only(d,['budget','expenseTotalCents','transfers','version','updatedAt','updatedBy','closedAt','closedBy'])
+    && d.budget is number && d.budget >= 0 && d.budget <= 1000000
+    && d.expenseTotalCents is int && d.expenseTotalCents >= 0 && d.expenseTotalCents <= 1400000000
+    && t is map && only(t,['from','to','amountCents']) && t.from is list && t.to is list && t.amountCents is list
+    && n <= 13 && t.to.size() == n && t.amountCents.size() == n && t.from.hasOnly(official) && t.to.hasOnly(official)
+    && validTransferAt(t,0,n) && validTransferAt(t,1,n) && validTransferAt(t,2,n) && validTransferAt(t,3,n)
+    && validTransferAt(t,4,n) && validTransferAt(t,5,n) && validTransferAt(t,6,n) && validTransferAt(t,7,n)
+    && validTransferAt(t,8,n) && validTransferAt(t,9,n) && validTransferAt(t,10,n) && validTransferAt(t,11,n) && validTransferAt(t,12,n)
+    && d.closedAt == request.time && d.closedBy == personId() && d.version == 1 && financeMeta(d);
+  }
+  match /financeClosings/{id} {
+   allow read: if isMember();
+   allow create: if id == 'main' && isAdmin() && accountsOpen() && settlementOpen() && validClosing(request.resource.data)
+    && getAfter(/databases/$(database)/documents/financeControl/main).data.closed == true && audited('closing',id);
+   allow update, delete: if false;
+  }
+  match /financeControl/{id} {
+   allow read: if isMember();
+   allow create, delete: if false;
+   allow update: if id == 'main' && isMember() && only(request.resource.data,['revision','closed','lastEvent'])
+    && request.resource.data.revision is int && request.resource.data.revision == resource.data.revision + 1
+    && text(request.resource.data.lastEvent,120) && request.resource.data.closed is bool
+    && getAfter(/databases/$(database)/documents/financeHistory/$(request.resource.data.lastEvent)).data.by == personId()
+    && getAfter(/databases/$(database)/documents/financeHistory/$(request.resource.data.lastEvent)).data.createdAt == request.time
+    && (request.resource.data.closed == resource.data.closed || (resource.data.closed == false && request.resource.data.closed == true && isAdmin() && settlementOpen()
+     && getAfter(/databases/$(database)/documents/financeClosings/main).data.closedAt == request.time));
   }
   function isValidCase(d) {
    return d.keys().hasAll(['who','by','what','status','at','createdAt']) && d.keys().hasOnly(['who','by','what','status','at','createdAt','hasPhoto']) && d.get('hasPhoto',false) is bool && d.who in ids() && d.by in ids()
