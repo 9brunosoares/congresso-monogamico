@@ -79,7 +79,7 @@ Usar apenas `nick` (apelido); não há campo de nome completo. O `id` é o apeli
 - `settle()`: algoritmo guloso que casa o maior devedor com o maior credor para minimizar os Pix.
 
 ### Navegação (barra inferior, 6 abas)
-Início · Programa · Placar · Querido · Contas · Fofoca. O Mural da Vergonha está dentro de Fofoca, numa aba segmentada junto com o chat. **Seis é o limite** do que cabe no iPhone; se entrar outra seção grande, reorganize o menu.
+Início · Agenda · Placar · Queridômetro · Contas · Fofoca. O Mural da Vergonha está dentro de Fofoca, numa aba segmentada junto com o chat. **Seis é o limite** do que cabe no iPhone; se entrar outra seção grande, reorganize o menu.
 
 ## 3. Identidade visual (aprovada, não mudar sem o Bruno pedir)
 
@@ -158,3 +158,5 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 
 ### Tutorial simplificado
 - A pedido do Bruno, tela do navegador reduzida a “Você está no navegador.”, instrução de instalação e três passos curtos. Sem crachá, slogan, fotos, simulação de tela inicial ou textos longos. Mantém vermelho, tipografia, escolha iOS/Android e regra de abrir o login somente pelo ícone.
+
+- Menu atualizado: Agenda e Queridômetro (Queri / dômetro em duas linhas, sem hífen visual); nome acessível inteiro no botão. Área de texto com altura uniforme para manter os seis ícones alinhados.

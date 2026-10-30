@@ -401,7 +401,7 @@ const ICONS={
   querido:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
   fofoca:'<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
 };
-const LABELS={inicio:"Início",programa:"Programa",placar:"Placar",querido:"Querido",contas:"Contas",fofoca:"Fofoca"};
+const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Queridômetro",contas:"Contas",fofoca:"Fofoca"};
 
 function go(t){ if(t==="mural"){ t="fofoca"; fofocaSeg="mural"; } tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
 
@@ -411,7 +411,7 @@ function render(){
   const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,fofoca:viewFofoca}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p>`:""}<main>${body}</main>
     <p class="muted" style="font-size:12px;text-align:center;margin-top:28px">Programação e orçamento provisórios. Pontos, gastos e mensagens são compartilhados pelo congresso.</p></div>
-    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${LABELS[k]}</button>`).join("")}</div></nav>`;
+    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   tick();
 }
 
