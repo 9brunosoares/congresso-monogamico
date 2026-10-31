@@ -25,7 +25,8 @@ rules_version = '2';
 // createdAt imutável; somente ADM julga ou exclui.
 // tasks/{id}: who oficial, d int1..20, why<=200, status pend|ok|no,
 // at<=40, createdAt imutável; participante envia a própria tarefa; ADM aprova.
-// chat/{id}: SOMENTE text string1..280 e createdAt timestamp. Sem autor/uid.
+// chat/{id}: text string1..280, createdAt timestamp e struck bool. Sem autor/uid.
+// chatAuthors/{uid}/messages/{id}: owned:true, privado ao UID. Criação atômica com mensagem.
 // caseReactions/{caseId}: votes mapa de até14 IDs oficiais para um dos cinco emojis.
 // Só publicações condenadas; cada membro altera somente a própria entrada.
 // querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
@@ -349,12 +350,25 @@ service cloud.firestore {
    allow update: if false;
    allow delete: if isAdmin() && scoringOpen() && !existsAfter(/databases/$(database)/documents/points/$('task_' + id));
   }
-  function isValidChat(d) { return only(d,['text','createdAt']) && text(d.text,280) && d.createdAt is timestamp; }
+  function isValidChat(d) { return only(d,['text','createdAt','struck']) && text(d.text,280) && d.createdAt is timestamp && d.struck is bool; }
   match /chat/{id} {
    allow read: if isMember();
-   allow create: if isMember() && isValidChat(request.resource.data) && fresh(request.resource.data);
-   allow update: if false;
-   allow delete: if isAdmin();
+   allow create: if isMember() && isValidChat(request.resource.data) && fresh(request.resource.data)
+    && request.resource.data.struck == false
+    && getAfter(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)/messages/$(id)).data == {'owned':true};
+   allow update: if isMember() && isValidChat(request.resource.data)
+    && exists(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)/messages/$(id))
+    && resource.data.get('struck',false) == false && request.resource.data.struck == true
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['struck']);
+   allow delete: if false;
+  }
+  // Comprovante privado de autoria, sem UID/apelido nas mensagens do grupo.
+  match /chatAuthors/{uid}/messages/{id} {
+   allow read: if isMember() && isOwner(uid);
+   allow create: if isMember() && isOwner(uid) && request.resource.data == {'owned':true}
+    && !exists(/databases/$(database)/documents/chat/$(id))
+    && getAfter(/databases/$(database)/documents/chat/$(id)).data.createdAt == request.time;
+   allow update,delete: if false;
   }
   function isToday(day) { return day == string(int((request.time.toMillis() - 10800000) / 86400000)); }
   function resultsReleased(day) {

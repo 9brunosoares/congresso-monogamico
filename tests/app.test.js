@@ -84,6 +84,16 @@ test('tarefas não pedem aprovação; somente ADM vê excluir antes de fechar o 
  vm.runInContext("S.scoreClosing={closedAt:{toMillis:()=>Date.now()}}",context);assert(!vm.runInContext('viewPlacar()',context).includes('data-delete-task'));
 });
 
+test('chat: só o autor vê apagar; mensagem riscada continua legível e ADM não recebe poder extra',()=>{
+ const {context,html:styles}=ui();
+ vm.runInContext("S={...S,me:'bruno',admin:true,chat:[{id:'own',text:'Minha mensagem',mine:true},{id:'other',text:'Mensagem de outro',mine:false},{id:'struck',text:'Ainda dá para ler',mine:true,struck:true}]}",context);
+ const html=vm.runInContext('viewFofoca()',context);
+ assert(html.includes('data-del="own"'));assert(!html.includes('data-del="other"'));assert(!html.includes('data-del="struck"'));
+ assert(html.includes('class="chat-text struck">Ainda dá para ler</div>'));
+ assert(styles.includes('text-decoration-style:double'));assert(!html.includes('risco duplo'));
+ vm.runInContext('S.admin=false',context);assert(vm.runInContext('viewFofoca()',context).includes('data-del="own"'));
+});
+
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
  const {context,nodes,html}=ui();assert(!html.includes('xvi-congresso'));assert(!html.includes('base64'));
  vm.runInContext('S.ready=true;viewLogin();',context);assert.equal((nodes['#root'].innerHTML.match(/data-id=/g)||[]).length,14);

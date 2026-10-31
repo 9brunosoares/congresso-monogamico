@@ -1,12 +1,12 @@
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030f';
-import {PIX_TYPES} from './pix.js?v=20261030f';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030f';
-import {REACTIONS} from './mural-reactions.js?v=20261030f';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030g';
+import {PIX_TYPES} from './pix.js?v=20261030g';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030g';
+import {REACTIONS} from './mural-reactions.js?v=20261030g';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030f';
-import * as backend from './backend.js?v=20261030f';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030g';
+import * as backend from './backend.js?v=20261030g';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -328,8 +328,8 @@ function viewFofoca(){
   ${S.chatHasMore?`<button class="btn ghost block" id="olderChat" type="button" ${S.chatLoadingOlder?'disabled':''}>${S.chatLoadingOlder?'Carregando…':'Ver mensagens anteriores'}</button>`:''}
   <div class="chat" id="chatList">${S.chat.map(m=>`<div class="bubble ${m.mine?"mine":""}">
     <div class="who">${m.mine?"Você (anônimo)":"Anônimo"} · ${esc(m.at)}</div>
-    <div>${esc(m.text)}</div>
-    ${isAdm()&&!m.mine?`<button class="link del" data-del="${esc(m.id)}" type="button">apagar</button>`:""}
+    <div class="chat-text${m.struck?' struck':''}">${esc(m.text)}</div>
+    ${m.mine&&!m.struck?`<button class="link del" data-del="${esc(m.id)}" type="button">apagar</button>`:""}
   </div>`).join("")}</div>
   <form class="composer" id="chatForm"><input id="chatIn" maxlength="280" autocomplete="off" placeholder="Solta a fofoca…" aria-label="Mensagem anônima"><button class="btn seal" type="submit">Enviar</button></form>`;
 }
@@ -584,7 +584,7 @@ document.addEventListener('click',e=>{
  const pay=e.target.closest('[data-payment]');if(pay){sheetPayment(S.payments.find(p=>p.id===pay.dataset.payment));return;}
  const confirm=e.target.closest('[data-confirm]');if(confirm){sheetConfirmSettlement(confirm.dataset.confirm);return;}
  const task=e.target.closest('[data-delete-task]');if(task){sheetDeleteTask(task.dataset.deleteTask);return;}
- const dl=e.target.closest('[data-del]');if(dl){act(dl,async()=>{await backend.deleteChat(dl.dataset.del);toast('Mensagem apagada');});return;}
+ const dl=e.target.closest('[data-del]');if(dl){act(dl,()=>backend.deleteChat(dl.dataset.del));return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
  ({officialLinks:sheetOfficialLinks,closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,

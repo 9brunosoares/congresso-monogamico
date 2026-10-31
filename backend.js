@@ -1,7 +1,7 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030f';
-import {normalizePix} from './pix.js?v=20261030f';
-import {normalizeOfficialLinks} from './official-links.js?v=20261030f';
-import {REACTIONS} from './mural-reactions.js?v=20261030f';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030g';
+import {normalizePix} from './pix.js?v=20261030g';
+import {normalizeOfficialLinks} from './official-links.js?v=20261030g';
+import {REACTIONS} from './mural-reactions.js?v=20261030g';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -9,7 +9,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030f';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030g';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -20,7 +20,6 @@ let firstSnapshots=new Set(),required=new Set(),chatHead=[],chatOlder=[],chatCur
 let historyHead=[],historyOlder=[],historyCursor=null;
 const PAGE_SIZE=50;
 let mine=new Set();
-try{mine=new Set(JSON.parse(sessionStorage.getItem('xvi-mine')||'[]'));}catch{}
 const emit=()=>notify({...state});
 const errorText=e=>notice(({
  'auth/invalid-credential':'Apelido ou PIN incorreto.',
@@ -51,7 +50,7 @@ const photos=photoLoader(async id=>{
 },{valid:validReportPhoto,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['mural','tribunal'].includes(currentView)&&state.shame.some(x=>x.id===id&&x.hasPhoto&&(x.status==='ok'||state.admin)),
  onValue(id,value){const next={...state.casePhotos};delete next[id];next[id]=value;state.casePhotos=Object.fromEntries(Object.entries(next).slice(-24));delete state.photoErrors[id];emit();},
  onError(id,error){state.photoErrors={...state.photoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}});
-function stopData(){pool.stop();photos.clear();firstSnapshots=new Set();required=new Set();sessionReady=false;chatHead=[];chatOlder=[];chatCursor=null;muralHead=[];muralOlder=[];muralCursor=null;historyHead=[];historyOlder=[];historyCursor=null;}
+function stopData(){pool.stop();photos.clear();mine=new Set();firstSnapshots=new Set();required=new Set();sessionReady=false;chatHead=[];chatOlder=[];chatCursor=null;muralHead=[];muralOlder=[];muralCursor=null;historyHead=[];historyOlder=[];historyCursor=null;}
 function failed(e){if(e.code==='resource-exhausted'){quotaBlocked=true;pool.stop();}state.error=errorText(e);emit();}
 function rows(snapshot){return snapshot.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));}
 function publishChat(){state.chat=mergeRows(chatOlder,chatHead).map(m=>({...m,at:formatStamp(m.createdAt),mine:mine.has(m.id)}));}
@@ -84,6 +83,9 @@ function syncData(){
  for(const day of VOTE_DAYS.filter(d=>(state.scoreClosing?.closedAt?.toMillis?.()??Date.now())>=d.deadline))listen('participation-'+day.key,collection(db,'participation',day.key,'people'),snap=>{
   state.attendance={...state.attendance,[day.key]:Object.fromEntries(snap.docs.map(d=>[d.id,true]))};state.attendanceReady={...state.attendanceReady,[day.key]:true};
  },true);
+ if(lazy.chat)listen('chatMine',collection(db,'chatAuthors',auth.currentUser.uid,'messages'),snapshot=>{
+  mine=new Set(snapshot.docs.map(d=>d.id));publishChat();
+ });
  if(lazy.chat)listen('chat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(PAGE_SIZE)),snapshot=>{
   if(chatOlder.length)chatOlder=mergeRows(chatOlder,chatHead);
   chatHead=rows(snapshot);
@@ -317,13 +319,22 @@ export async function setCaseReaction(id,emoji){
  });}finally{if(version===generation){state.reactionPending={...state.reactionPending,[id]:false};emit();}}
 }
 export async function sendChat(text){
- member();const ref=doc(collection(db,'chat'));mine.add(ref.id);
- try{
-  await setDoc(ref,{text,createdAt:serverTimestamp()});
-  try{sessionStorage.setItem('xvi-mine',JSON.stringify([...mine].slice(-100)));}catch{}
- }catch(e){mine.delete(ref.id);throw e;}
+ member();const ref=doc(collection(db,'chat')),batch=writeBatch(db);
+ batch.set(ref,{text,createdAt:serverTimestamp(),struck:false});
+ batch.set(doc(db,'chatAuthors',auth.currentUser.uid,'messages',ref.id),{owned:true});
+ await batch.commit();return ref;
 }
-export async function deleteChat(id){admin();await deleteDoc(doc(db,'chat',id));chatHead=chatHead.filter(m=>m.id!==id);chatOlder=chatOlder.filter(m=>m.id!==id);publishChat();emit();}
+export async function deleteChat(id){
+ member();const uid=auth.currentUser.uid,version=generation;
+ await runTransaction(db,async tx=>{
+  const ref=doc(db,'chat',id);
+  const [owner,message]=await Promise.all([tx.get(doc(db,'chatAuthors',uid,'messages',id)),tx.get(ref)]);
+  if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
+  if(!owner.exists()||!owner.data().owned)throw Error('Só o autor pode apagar esta mensagem.');
+  if(!message.exists())throw Error('Mensagem indisponível.');
+  if(!message.data().struck)tx.update(ref,{struck:true});
+ });
+}
 export async function setBudget(budget){admin();const snap=await getDocFromServer(doc(db,'settings','main'));return financeWrite('budget','main',{budget},snap.data().version);}
 export async function addSession(data){admin();return addDoc(collection(db,'agenda'),data);}
 export async function vote(ballot){

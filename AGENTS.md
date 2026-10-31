@@ -1,10 +1,17 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Chat: apagar risca, somente autor (30/10/2026)
+- Botão apagar somente nas próprias mensagens novas e ainda não riscadas. Não excluir o documento: marcar struck:true e renderizar texto com line-through double, mantendo legibilidade, conteúdo e horário. Não explicar a piada no front, sem aviso/toast extra. ADMs não têm permissão de apagar/riscá-las por serem ADMs.
+- `chat/{id}` novo: SOMENTE text<=280, createdAt timestamp servidor e struck boolean inicialmente false. Update permite somente false→true por autor; conteúdo/data imutáveis; ninguém exclui fisicamente pelo cliente. Mensagens antigas sem struck seguem legíveis.
+- Autoria em comprovante privado `chatAuthors/{uid}/messages/{id}` com SOMENTE owned:true, criado no mesmo batch da mensagem nova. Só o próprio UID lê/lista seus comprovantes; nem ADM do app lê os alheios. Regras recusam reivindicar mensagem antiga ou comprovante sem mensagem nova. Texto público não contém UID/apelido/autor; infraestrutura administrativa pode acessar comprovantes, não prometer anonimato absoluto contra infraestrutura.
+- Um listener privado apenas na Fofoca identifica mensagens próprias entre sessões/dispositivos da mesma conta; pool/cache/pausa existentes. Sem usar o sessionStorage legado como prova de autoria; reset da memória ao trocar sessão evita atribuição ao usuário seguinte.
+- Mensagens anteriores não tinham autoria verificável: preservadas sem botão apagar, sem backfill ou inferência. Na limpeza futura remover tanto mensagens de teste quanto comprovantes privados associados; checkpoint descobre subcoleções mesmo sem documento pai.
+
 ## Tarefas sem aprovação (30/10/2026)
 - Cada membro registra a PRÓPRIA tarefa e ganha pontos imediatamente, usando os quatro valores fixos da tabela (louça5, lixo5, cozinhar10, gelo/bebida3). Sem Aprovar/Recusar, solicitação ou fila. `tasks` novos já nascem status ok.
 - `submitTask` grava tarefa e `points/task_<id>` na mesma transação, com mesmos who/d/why/at/createdAt e kind aux. Regras permitem ao membro criar somente esse ponto vinculado a uma tarefa nova própria, nunca pontos arbitrários/duplicados, nem tarefa sem ponto enquanto placar aberto.
 - ADMs veem todas as tarefas na aba Placar e Excluir com confirmação; `deleteTask` retira tarefa e ponto correspondente juntos. Só ADM pode excluir. Após encerramento do placar, exclusão fica bloqueada para preservar a classificação congelada. Novas tarefas continuam registráveis após fechamento, sem gerar pontos ou prometer pontuação na interface.
-- Pendentes anteriores de teste preservadas sem conversão e fora da nova lista de registradas. A revisão automática de aprovação rejeitou a migração porque não havia autorização específica para somar pontos dos testes existentes. Não contornar; só converter após resposta explícita do Bruno. Nenhum teste foi apagado; continuam cobertos pela seleção de limpeza futura.
+- Bruno confirmou explicitamente manter as duas tarefas antigas de teste do Nanu SEM PONTOS. Preservadas sem conversão e fora da nova lista de registradas; não executar a migração privada. Nenhum teste foi apagado; continuam cobertos pela seleção de limpeza futura.
 
 ## Correção do valor da locação (30/10/2026)
 - Bruno corrigiu o valor real para **R$3.000**, pago por Pig e dividido pelos14. Substitui todas as referências históricas a R$2.640 abaixo. Orçamento permanece R$14.000.

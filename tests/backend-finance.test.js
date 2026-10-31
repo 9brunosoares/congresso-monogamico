@@ -9,7 +9,7 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
  const online=Object.getOwnPropertyDescriptor(navigator,'onLine');
  let user={uid:'uid-bruno',email:'bruno@congresso.app'},state,authCallback,serial=0,epoch=0,time=Date.parse('2026-10-30T12:00:00Z');
  const records=new Map([['settings/main',{budget:14000,version:1,updatedBy:'bruno',updatedAt:'baseline'}],['financeControl/main',{revision:0,closed:false,lastEvent:''}]]),listeners=[],files=[];
- const snap=ref=>{const captured=records.get(ref.path);return ref.collection?{docs:[...records].filter(([key])=>key.startsWith(ref.path+'/')&&key.split('/').length===2).map(([key,data])=>({id:key.split('/')[1],data:()=>({...data})})),size:[...records.keys()].filter(key=>key.startsWith(ref.path+'/')).length,empty:false}:{id:ref.path.split('/').at(-1),exists:()=>captured!==undefined,data:()=>captured?{...captured}:undefined}};
+ const snap=ref=>{const captured=records.get(ref.path);return ref.collection?{docs:[...records].filter(([key])=>key.startsWith(ref.path+'/')&&key.split('/').length===ref.path.split('/').length+1).map(([key,data])=>({id:key.split('/').at(-1),data:()=>({...data})})),size:[...records.keys()].filter(key=>key.startsWith(ref.path+'/')).length,empty:false}:{id:ref.path.split('/').at(-1),exists:()=>captured!==undefined,data:()=>captured?{...captured}:undefined}};
  const emit=()=>listeners.filter(l=>l.active).forEach(l=>l.fn(snap(l.ref)));
  const flush=()=>new Promise(resolve=>setImmediate(resolve));
  const sdk={
@@ -26,7 +26,7 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   const revision=epoch,writes=[];await fn({get:async ref=>snap(ref),set:(ref,value)=>writes.push([ref.path,value]),delete:ref=>writes.push([ref.path,null]),update:(ref,value)=>writes.push([ref.path,{...records.get(ref.path),...value}])});
   if(epoch!==revision)continue;for(const [key,value] of writes){if(value===null)records.delete(key);else records.set(key,value);}epoch++;emit();return;
  }throw Error('Conflito persistente')},
- addDoc(){assert.fail('Financeiro deve usar transação')},setDoc(){},updateDoc(){},deleteDoc(){},writeBatch(){},increment(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){}
+ addDoc(){assert.fail('Financeiro deve usar transação')},setDoc(){},updateDoc(){},deleteDoc(){},writeBatch(){const writes=[];return {set:(ref,data)=>writes.push([ref.path,data]),commit:async()=>{for(const [key,value] of writes)records.set(key,value);epoch++;emit();}}},increment(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){}
  };
  try{
   Date.now=()=>time;globalThis.setInterval=()=>0;globalThis.window={addEventListener(){}};globalThis.document={addEventListener(){}};globalThis.sessionStorage={getItem(){return null}};Object.defineProperty(navigator,'onLine',{configurable:true,value:true});
@@ -103,6 +103,15 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   await assert.rejects(api.setCaseReaction('case-after','😱'),/conexão/);assert.equal(state.reactionPending['case-after'],false);
   sdk.runTransaction=transact;await api.setCaseReaction('case-after','👏');
   assert.equal(records.get('caseReactions/case-after').votes.ob,'👏');
+  const message=await api.sendChat('Teste anônimo');
+  assert.deepEqual(Object.keys(records.get(message.path)).sort(),['createdAt','struck','text']);
+  assert(records.has('chatAuthors/uid-ob/messages/'+message.id));
+  const postedAt=records.get(message.path).createdAt;api.setView('fofoca');await flush();await flush();assert.equal(state.chat.find(m=>m.id===message.id).mine,true);
+  await auth('bruno');assert.equal(state.chat.find(m=>m.id===message.id).mine,false);await assert.rejects(api.deleteChat(message.id),/Só o autor/);
+  await auth('ob');await api.deleteChat(message.id);await api.deleteChat(message.id);
+  assert.equal(records.get(message.path).struck,true);assert.equal(records.get(message.path).text,'Teste anônimo');assert.equal(records.get(message.path).createdAt,postedAt);
+  records.set('chat/legacy',{text:'Antiga',createdAt:postedAt});await assert.rejects(api.deleteChat('legacy'),/Só o autor/);
+
   assert.equal([...records.keys()].filter(k=>k.startsWith('points/')).length,pointsBefore);
  }finally{
   Date.now=saved.DateNow;for(const key of ['setInterval','window','document','sessionStorage']){if(saved[key]===undefined)delete globalThis[key];else globalThis[key]=saved[key]}if(online)Object.defineProperty(navigator,'onLine',online);else delete navigator.onLine;delete globalThis.__financeSDK;await Promise.all(files.map(f=>fs.rm(f,{force:true})));

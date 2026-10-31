@@ -257,6 +257,8 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 .bubble.mine{align-self:flex-end;background:var(--ink);color:var(--bg);border-color:var(--ink);border-radius:16px 4px 16px 16px}
 .bubble .who{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .bubble.mine .who{color:inherit;opacity:.7}
+.chat-text{overflow-wrap:anywhere;white-space:pre-wrap}
+.chat-text.struck{text-decoration-line:line-through;text-decoration-style:double;text-decoration-thickness:1px}
 .bubble .del{font-size:12px;padding:2px 0 0}
 .composer{position:sticky;bottom:calc(72px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;margin-top:14px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
 .composer input{flex:1;min-width:0;border:0;background:transparent;padding:8px;font-size:16px;color:var(--ink)}
@@ -310,7 +312,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261030f"></script>
+<script type="module" src="install.js?v=20261030g"></script>
 
 </body>
 </html>
