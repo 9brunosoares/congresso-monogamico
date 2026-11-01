@@ -1,5 +1,13 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Chat: cores sorteadas por abertura (01/11/2026)
+- Mensagens novas de um mesmo autor têm a mesma cor discreta (faixa lateral, ponto e fundo suave), sem nome, legenda ou “autor verde”. Palette14 tons distintos claro/escuro; texto mantém cor de leitura. Próprias mensagens continuam à direita e apagar continua aplicando risco duplo.
+- `chat-colors.js`: embaralha cores com crypto em memória por abertura da Fofoca. Entrar novamente na aba, recarregar app ou trocar conta refaz sorteio; snapshots, envio, riscar e paginação NÃO trocam cores já atribuídas naquela abertura. Cada leitor tem sorteio local independente. Nada de cores no Firestore/storage/URL; sorteio aleatório pode repetir uma cor por acaso.
+- `chat/{id}` acrescenta `threadKey`:128bits aleatórios em32hex, sem UID/apelido no documento público. É pseudônimo estável do autor nos dados, não a cor. Não afirmar impossibilidade de correlacionar mensagens pelo acesso técnico aos dados; o sorteio visual não é criptografia nem anonimato contra infraestrutura.
+- Perfil privado `chatAuthors/{uid}`:{threadKey}; reserva privada `chatThreads/{threadKey}`:{uid}, ambos imutáveis e sem listagem por cliente. Perfil só próprio UID lê; reserva só titular lê. Criação pareada impede reservar chave de outro membro. Primeiro envio cria perfil+reserva+mensagem+comprovante em transação; próximos reutilizam a chave. Nenhum listener novo nem serviço pago.
+- Regras exigem chave do perfil do remetente nas mensagens novas; riscar preserva chave/texto/data. Mensagens anteriores sem threadKey permanecem neutras; comprovantes de autoria já existentes continuam permitindo riscar quando aplicável. Sem migração/inferência/alteração dos testes antigos.
+- Limpeza futura integral do chat deve remover mensagens, comprovantes, perfis chatAuthors e reservas chatThreads, para recomeçar pseudônimos também; preservar contas/PINs em Auth/people. Checkpoint descobre automaticamente esses caminhos. Não executar limpeza agora.
+
 ## Chat: apagar risca, somente autor (30/10/2026)
 - Botão apagar somente nas próprias mensagens novas e ainda não riscadas. Não excluir o documento: marcar struck:true e renderizar texto com line-through double, mantendo legibilidade, conteúdo e horário. Não explicar a piada no front, sem aviso/toast extra. ADMs não têm permissão de apagar/riscá-las por serem ADMs.
 - `chat/{id}` novo: SOMENTE text<=280, createdAt timestamp servidor e struck boolean inicialmente false. Update permite somente false→true por autor; conteúdo/data imutáveis; ninguém exclui fisicamente pelo cliente. Mensagens antigas sem struck seguem legíveis.

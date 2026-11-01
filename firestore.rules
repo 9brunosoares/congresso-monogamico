@@ -25,7 +25,8 @@ rules_version = '2';
 // createdAt imutável; somente ADM julga ou exclui.
 // tasks/{id}: who oficial, d int1..20, why<=200, status pend|ok|no,
 // at<=40, createdAt imutável; participante envia a própria tarefa; ADM aprova.
-// chat/{id}: text string1..280, createdAt timestamp e struck bool. Sem autor/uid.
+// chat/{id}: text string1..280, createdAt timestamp, struck bool, threadKey32hex. Sem UID/apelido.
+// chatAuthors/{uid}: threadKey32hex privado e imutável; chatThreads/{key}: uid privado, reserva única.
 // chatAuthors/{uid}/messages/{id}: owned:true, privado ao UID. Criação atômica com mensagem.
 // caseReactions/{caseId}: votes mapa de até14 IDs oficiais para um dos cinco emojis.
 // Só publicações condenadas; cada membro altera somente a própria entrada.
@@ -350,11 +351,17 @@ service cloud.firestore {
    allow update: if false;
    allow delete: if isAdmin() && scoringOpen() && !existsAfter(/databases/$(database)/documents/points/$('task_' + id));
   }
-  function isValidChat(d) { return only(d,['text','createdAt','struck']) && text(d.text,280) && d.createdAt is timestamp && d.struck is bool; }
+  function validThreadKey(key) { return key is string && key.matches('[a-f0-9]{32}'); }
+  function isValidChat(d) {
+   return d.keys().hasAll(['text','createdAt','struck']) && d.keys().hasOnly(['text','createdAt','struck','threadKey'])
+    && text(d.text,280) && d.createdAt is timestamp && d.struck is bool
+    && (!('threadKey' in d) || validThreadKey(d.threadKey));
+  }
   match /chat/{id} {
    allow read: if isMember();
    allow create: if isMember() && isValidChat(request.resource.data) && fresh(request.resource.data)
     && request.resource.data.struck == false
+    && request.resource.data.threadKey == getAfter(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)).data.threadKey
     && getAfter(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)/messages/$(id)).data == {'owned':true};
    allow update: if isMember() && isValidChat(request.resource.data)
     && exists(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)/messages/$(id))
@@ -363,6 +370,19 @@ service cloud.firestore {
    allow delete: if false;
   }
   // Comprovante privado de autoria, sem UID/apelido nas mensagens do grupo.
+  match /chatAuthors/{uid} {
+   allow get: if isMember() && isOwner(uid);
+   allow create: if isMember() && isOwner(uid) && only(request.resource.data,['threadKey']) && validThreadKey(request.resource.data.threadKey)
+    && !exists(/databases/$(database)/documents/chatThreads/$(request.resource.data.threadKey))
+    && getAfter(/databases/$(database)/documents/chatThreads/$(request.resource.data.threadKey)).data.uid == uid;
+   allow list,update,delete: if false;
+  }
+  match /chatThreads/{key} {
+   allow get: if isMember() && resource.data.uid == request.auth.uid;
+   allow create: if isMember() && validThreadKey(key) && only(request.resource.data,['uid']) && request.resource.data.uid == request.auth.uid
+    && getAfter(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)).data.threadKey == key;
+   allow list,update,delete: if false;
+  }
   match /chatAuthors/{uid}/messages/{id} {
    allow read: if isMember() && isOwner(uid);
    allow create: if isMember() && isOwner(uid) && request.resource.data == {'owned':true}

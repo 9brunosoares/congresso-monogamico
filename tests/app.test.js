@@ -3,6 +3,7 @@ import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlements
 import {PIX_TYPES} from '../pix.js';
 import {EMPTY_OFFICIAL_LINKS} from '../official-links.js';
 import {REACTIONS} from '../mural-reactions.js';
+import {createChatColors} from '../chat-colors.js';
 import {prepareReportPhoto} from '../report-photo.js';
 import {bindAgendaSwipe,adjacentDay} from '../agenda-gesture.js';
 import assert from 'node:assert/strict';
@@ -40,7 +41,7 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={},events={},timers=new Map();let timerId=0;const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
@@ -92,6 +93,15 @@ test('chat: só o autor vê apagar; mensagem riscada continua legível e ADM nã
  assert(html.includes('class="chat-text struck">Ainda dá para ler</div>'));
  assert(styles.includes('text-decoration-style:double'));assert(!html.includes('risco duplo'));
  vm.runInContext('S.admin=false',context);assert(vm.runInContext('viewFofoca()',context).includes('data-del="own"'));
+});
+
+test('chat agrupa falas por cor sem imprimir chave/identidade; mensagens antigas são neutras',()=>{
+ const {context}=ui();
+ vm.runInContext("S.chat=[{text:'Primeira',threadKey:'a'.repeat(32)},{text:'Segunda',threadKey:'b'.repeat(32)},{text:'Terceira',threadKey:'a'.repeat(32)},{text:'Antiga'}]",context);
+ const html=vm.runInContext('viewFofoca()',context),colors=[...html.matchAll(/style="--chat-light:([^;]+);--chat-dark:([^"]+)"/g)];
+ assert.equal(colors.length,3);assert.equal(colors[0][0],colors[2][0]);assert.notEqual(colors[0][0],colors[1][0]);
+ assert(!html.includes('a'.repeat(32)));assert(!html.includes('b'.repeat(32)));assert(!html.includes('threadKey'));
+ assert.equal((html.match(/ tinted/g)||[]).length,3);
 });
 
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{

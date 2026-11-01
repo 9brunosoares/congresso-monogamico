@@ -1,12 +1,13 @@
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261030g';
-import {PIX_TYPES} from './pix.js?v=20261030g';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261030g';
-import {REACTIONS} from './mural-reactions.js?v=20261030g';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261101a';
+import {PIX_TYPES} from './pix.js?v=20261101a';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261101a';
+import {REACTIONS} from './mural-reactions.js?v=20261101a';
+import {createChatColors} from './chat-colors.js?v=20261101a';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261030g';
-import * as backend from './backend.js?v=20261030g';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261101a';
+import * as backend from './backend.js?v=20261101a';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -37,6 +38,7 @@ const CATS = [
 
 let S = {me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],chat:[],tasks:[],querido:{},qvoted:{},voterCount:0,error:''};
 let reactionPicker=null;
+const chatColors=createChatColors();
 
 /* Relógio de demonstração: começa na sexta, 20/11, 15:40 */
 const T0 = Date.now(), DEMO0 = new Date(2026,10,20,15,40).getTime();
@@ -326,11 +328,11 @@ function viewFofoca(){
   return `<h2 class="page-title">Chat anônimo</h2>
   ${S.loaded&&!S.loaded.chat?'<p role="status" class="muted">Carregando mensagens…</p>':''}
   ${S.chatHasMore?`<button class="btn ghost block" id="olderChat" type="button" ${S.chatLoadingOlder?'disabled':''}>${S.chatLoadingOlder?'Carregando…':'Ver mensagens anteriores'}</button>`:''}
-  <div class="chat" id="chatList">${S.chat.map(m=>`<div class="bubble ${m.mine?"mine":""}">
+  <div class="chat" id="chatList">${S.chat.map(m=>{const tone=chatColors.forKey(m.threadKey);return `<div class="bubble ${m.mine?"mine":""}${tone?' tinted':''}"${tone?` style="--chat-light:${tone.light};--chat-dark:${tone.dark}"`:''}>
     <div class="who">${m.mine?"Você (anônimo)":"Anônimo"} · ${esc(m.at)}</div>
     <div class="chat-text${m.struck?' struck':''}">${esc(m.text)}</div>
     ${m.mine&&!m.struck?`<button class="link del" data-del="${esc(m.id)}" type="button">apagar</button>`:""}
-  </div>`).join("")}</div>
+  </div>`}).join("")}</div>
   <form class="composer" id="chatForm"><input id="chatIn" maxlength="280" autocomplete="off" placeholder="Solta a fofoca…" aria-label="Mensagem anônima"><button class="btn seal" type="submit">Enviar</button></form>`;
 }
 
@@ -522,7 +524,7 @@ const ICONS={
 };
 const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Queridômetro",contas:"Contas",fofoca:"Fofoca"};
 
-function go(t){ if(t==="tribunal"&&!isAdm())return;reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
+function go(t){ if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
 
 function render(){
   backend.setView?.(tab);
@@ -609,7 +611,7 @@ setInterval(()=>{tick();const phase=votingOpen();if(phase!==votingPhase){votingP
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me;S=data;if(!S.admin)demo=false;if(previous!==S.me)qDraft={};
+ const previous=S.me;S=data;if(!S.admin)demo=false;if(previous!==S.me){qDraft={};chatColors.reset();}
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const y=scrollY;render();scrollTo(0,y);
  if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}

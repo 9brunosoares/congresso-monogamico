@@ -124,9 +124,9 @@ const {context}=require('./firebase-context.cjs');
  const deletePair=directTaskCase(taskPath,'delete','ALLOW',false,true);deletePair.functionMocks.find(m=>m.function==='existsAfter').result.value=false;cases.push(deletePair);
  cases.push(directTaskCase(taskPath,'delete','DENY',true,true));
  const chatPath=prefix+'/chat/new-message',ownerPath=prefix+'/chatAuthors/'+uid+'/messages/new-message';
- const chatData={text:'Mensagem de teste',createdAt:new Date(testTime).toISOString(),struck:false};
+ const threadKey='a'.repeat(32);const chatData={text:'Mensagem de teste',createdAt:new Date(testTime).toISOString(),struck:false,threadKey};
  function chatCase(path,method,expectation='ALLOW',owner=true,admin=false){
-  return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path,method,resource:{data:path===chatPath?{...chatData,struck:method==='update'}:{owned:true}}},resource:{data:chatData},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,admin),mock('exists',ownerPath,owner),mock('getAfter',ownerPath,owner?{data:{owned:true}}:null),mock('exists',chatPath,false),mock('getAfter',chatPath,{data:chatData})]};
+  return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path,method,resource:{data:path===chatPath?{...chatData,struck:method==='update'}:{owned:true}}},resource:{data:chatData},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,admin),mock('exists',ownerPath,owner),mock('getAfter',ownerPath,owner?{data:{owned:true}}:null),mock('exists',chatPath,false),mock('getAfter',chatPath,{data:chatData}),mock('getAfter',prefix+'/chatAuthors/'+uid,{data:{threadKey}})]};
  }
  for(const path of [chatPath,ownerPath])cases.push(chatCase(path,'create'));
  cases.push(chatCase(chatPath,'update'),chatCase(chatPath,'get'),chatCase(chatPath,'list'),chatCase(ownerPath,'get'),chatCase(ownerPath,'list'));
@@ -142,6 +142,25 @@ const {context}=require('./firebase-context.cjs');
  const orphanOwner=chatCase(ownerPath,'create','DENY');orphanOwner.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue===chatPath).result.value=null;cases.push(orphanOwner);
  const legacy=chatCase(chatPath,'create','DENY');delete legacy.request.resource.data.struck;cases.push(legacy);
  for(const path of [chatPath,ownerPath])for(const method of ['get','list','create','update','delete']){const t=chatCase(path,method,'DENY');t.request.auth=null;cases.push(t);}
+ const authorPath=prefix+'/chatAuthors/'+uid,threadPath=prefix+'/chatThreads/'+threadKey;
+ function threadCase(path,method,expectation='ALLOW'){
+  const data=path===authorPath?{threadKey}:{uid};
+  return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path,method,resource:{data:{...data}}},resource:{data:{...data}},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',threadPath,false),mock('getAfter',threadPath,{data:{uid}}),mock('getAfter',authorPath,{data:{threadKey}})]};
+ }
+ for(const path of [authorPath,threadPath]){
+  for(const method of ['create','get'])cases.push(threadCase(path,method));
+  for(const method of ['list','update','delete'])cases.push(threadCase(path,method,'DENY'));
+  const guest=threadCase(path,'get','DENY');guest.request.auth=null;cases.push(guest);
+  const orphan=threadCase(path,'create','DENY');orphan.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue===(path===authorPath?threadPath:authorPath)).result.value=null;cases.push(orphan);
+ }
+ const otherAuthor=threadCase(authorPath,'get','DENY');otherAuthor.request.path=prefix+'/chatAuthors/other-uid';cases.push(otherAuthor);
+ const otherThread=threadCase(threadPath,'get','DENY');otherThread.resource.data.uid='other-uid';cases.push(otherThread);
+ const stolenThread=threadCase(authorPath,'create','DENY');stolenThread.functionMocks.find(m=>m.function==='exists').result.value=true;cases.push(stolenThread);
+ const invalidAuthor=threadCase(authorPath,'create','DENY');invalidAuthor.request.resource.data.threadKey='bruno';cases.push(invalidAuthor);
+ const spoofedUid=threadCase(threadPath,'create','DENY');spoofedUid.request.resource.data.uid='other-uid';cases.push(spoofedUid);
+ const forgedMessage=chatCase(chatPath,'create','DENY');forgedMessage.request.resource.data.threadKey='b'.repeat(32);cases.push(forgedMessage);
+ const recolor=chatCase(chatPath,'update','DENY');recolor.request.resource.data.threadKey='b'.repeat(32);cases.push(recolor);
+ const previous=chatCase(chatPath,'update');previous.resource={data:{...previous.resource.data}};delete previous.resource.data.threadKey;delete previous.request.resource.data.threadKey;cases.push(previous);
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});

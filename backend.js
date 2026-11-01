@@ -1,7 +1,7 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261030g';
-import {normalizePix} from './pix.js?v=20261030g';
-import {normalizeOfficialLinks} from './official-links.js?v=20261030g';
-import {REACTIONS} from './mural-reactions.js?v=20261030g';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261101a';
+import {normalizePix} from './pix.js?v=20261101a';
+import {normalizeOfficialLinks} from './official-links.js?v=20261101a';
+import {REACTIONS} from './mural-reactions.js?v=20261101a';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -9,7 +9,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261030g';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261101a';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -319,10 +319,19 @@ export async function setCaseReaction(id,emoji){
  });}finally{if(version===generation){state.reactionPending={...state.reactionPending,[id]:false};emit();}}
 }
 export async function sendChat(text){
- member();const ref=doc(collection(db,'chat')),batch=writeBatch(db);
- batch.set(ref,{text,createdAt:serverTimestamp(),struck:false});
- batch.set(doc(db,'chatAuthors',auth.currentUser.uid,'messages',ref.id),{owned:true});
- await batch.commit();return ref;
+ member();const ref=doc(collection(db,'chat')),uid=auth.currentUser.uid,version=generation;
+ const profile=doc(db,'chatAuthors',uid),candidate=crypto.randomUUID().replaceAll('-','');
+ await runTransaction(db,async tx=>{
+  const author=await tx.get(profile);
+  if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
+  const threadKey=author.exists()?author.data().threadKey:candidate;
+  if(!author.exists()){
+   tx.set(profile,{threadKey});
+   tx.set(doc(db,'chatThreads',threadKey),{uid});
+  }
+  tx.set(ref,{text,createdAt:serverTimestamp(),struck:false,threadKey});
+  tx.set(doc(db,'chatAuthors',uid,'messages',ref.id),{owned:true});
+ });return ref;
 }
 export async function deleteChat(id){
  member();const uid=auth.currentUser.uid,version=generation;

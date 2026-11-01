@@ -104,13 +104,20 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   sdk.runTransaction=transact;await api.setCaseReaction('case-after','👏');
   assert.equal(records.get('caseReactions/case-after').votes.ob,'👏');
   const message=await api.sendChat('Teste anônimo');
-  assert.deepEqual(Object.keys(records.get(message.path)).sort(),['createdAt','struck','text']);
+  assert.deepEqual(Object.keys(records.get(message.path)).sort(),['createdAt','struck','text','threadKey']);
   assert(records.has('chatAuthors/uid-ob/messages/'+message.id));
+  const threadKey=records.get(message.path).threadKey;assert.match(threadKey,/^[a-f0-9]{32}$/);
+  assert.equal(records.get('chatAuthors/uid-ob').threadKey,threadKey);assert.deepEqual(records.get('chatThreads/'+threadKey),{uid:'uid-ob'});
+  const second=await api.sendChat('Continuando');assert.equal(records.get(second.path).threadKey,threadKey);
+
   const postedAt=records.get(message.path).createdAt;api.setView('fofoca');await flush();await flush();assert.equal(state.chat.find(m=>m.id===message.id).mine,true);
-  await auth('bruno');assert.equal(state.chat.find(m=>m.id===message.id).mine,false);await assert.rejects(api.deleteChat(message.id),/Só o autor/);
+  await auth('bruno');const another=await api.sendChat('Outro participante');assert.notEqual(records.get(another.path).threadKey,threadKey);assert.equal(state.chat.find(m=>m.id===message.id).mine,false);await assert.rejects(api.deleteChat(message.id),/Só o autor/);
   await auth('ob');await api.deleteChat(message.id);await api.deleteChat(message.id);
   assert.equal(records.get(message.path).struck,true);assert.equal(records.get(message.path).text,'Teste anônimo');assert.equal(records.get(message.path).createdAt,postedAt);
   records.set('chat/legacy',{text:'Antiga',createdAt:postedAt});await assert.rejects(api.deleteChat('legacy'),/Só o autor/);
+  await auth('cadu');const simultaneous=await Promise.all([api.sendChat('Primeira aba'),api.sendChat('Segunda aba')]);
+  assert.equal(records.get(simultaneous[0].path).threadKey,records.get(simultaneous[1].path).threadKey);
+  assert.equal([...records].filter(([path,value])=>path.startsWith('chatThreads/')&&value.uid==='uid-cadu').length,1);
 
   assert.equal([...records.keys()].filter(k=>k.startsWith('points/')).length,pointsBefore);
  }finally{

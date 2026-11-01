@@ -257,6 +257,11 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 .bubble.mine{align-self:flex-end;background:var(--ink);color:var(--bg);border-color:var(--ink);border-radius:16px 4px 16px 16px}
 .bubble .who{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .bubble.mine .who{color:inherit;opacity:.7}
+.bubble.tinted{--chat-accent:var(--chat-light);background:var(--surface);background:color-mix(in srgb,var(--chat-accent) 7%,var(--surface));color:var(--ink);border-color:var(--line);border-inline-start:3px solid var(--chat-accent)}
+.bubble.tinted .who{color:var(--muted);opacity:1}
+.bubble.tinted .who::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;background:var(--chat-accent);vertical-align:1px}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .bubble.tinted{--chat-accent:var(--chat-dark)}}
+:root[data-theme="dark"] .bubble.tinted{--chat-accent:var(--chat-dark)}
 .chat-text{overflow-wrap:anywhere;white-space:pre-wrap}
 .chat-text.struck{text-decoration-line:line-through;text-decoration-style:double;text-decoration-thickness:1px}
 .bubble .del{font-size:12px;padding:2px 0 0}
@@ -312,7 +317,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261030g"></script>
+<script type="module" src="install.js?v=20261101a"></script>
 
 </body>
 </html>
