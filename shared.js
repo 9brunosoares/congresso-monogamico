@@ -1,5 +1,5 @@
-import {votePeople} from './travel.js?v=20261105b';
-import { ALL, EMOJIS } from './roster.js?v=20261105b';
+import {votePeople} from './travel.js?v=20261105c';
+import { ALL, EMOJIS } from './roster.js?v=20261105c';
 export function validatePin(pin){if(!/^[0-9]{6}$/.test(pin))throw Error('Use um PIN de exatamente 6 dígitos.');}
 export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)/(24*60*60*1000)));}
 // Cada dígito hexadecimal guarda o total de um dos oito emojis, na ordem de EMOJIS.

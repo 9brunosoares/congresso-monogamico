@@ -1,14 +1,14 @@
-import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261105b';
+import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261105c';
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261105b';
-import {PIX_TYPES} from './pix.js?v=20261105b';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261105b';
-import {REACTIONS} from './mural-reactions.js?v=20261105b';
-import {createChatColors} from './chat-colors.js?v=20261105b';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261105c';
+import {PIX_TYPES} from './pix.js?v=20261105c';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261105c';
+import {REACTIONS} from './mural-reactions.js?v=20261105c';
+import {createChatColors} from './chat-colors.js?v=20261105c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
-import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261105b';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261105b';
-import * as backend from './backend.js?v=20261105b';
+import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261105c';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261105c';
+import * as backend from './backend.js?v=20261105c';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -431,6 +431,12 @@ function sheetCancel(label,run){
  sheet(`<h3>Cancelar ${label}?</h3><p>O registro continua no histórico e deixa de contar nos saldos.</p><div class="stack"><button class="btn block" id="financeCancel" type="button">Confirmar cancelamento</button><button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{s.querySelector('#financeCancel').onclick=()=>act(s.querySelector('#financeCancel'),async()=>{await run();s.remove();toast('Registro cancelado');});});
 }
 const todaySP=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+function refreshRecipientPix(){
+ const to=$('#pmTo'),box=$('#paymentRecipientPix');if(!to?.value||!box)return;
+ const key=S.pixKeys?.[to.value];box.hidden=!key&&!!S.loaded?.pix;
+ box.innerHTML=key?`<div class="eyebrow">Pix de ${esc(first(to.value))} · ${esc(PIX_TYPES[key.type]||'Pix')}</div><div style="overflow-wrap:anywhere;margin:8px 0">${esc(key.value)}</div><button class="link" id="copyPaymentPix" type="button">Copiar chave</button><small class="muted" style="display:block;margin-top:8px">Confira o destinatário no banco antes de pagar.</small>`:'<small class="muted" role="status">Carregando chave Pix…</small>';
+ const copy=box.querySelector('#copyPaymentPix');if(copy)copy.onclick=()=>act(copy,async()=>{const current=S.pixKeys?.[to.value];if(!current)return;await navigator.clipboard.writeText(current.value);toast('Chave copiada.');});
+}
 function sheetPayment(payment=null){
  const own=payment?canManagePayment(payment,S.me,isAdm()):true;
  if(payment?.kind==='settlement'||S.closing||!own){
@@ -438,7 +444,8 @@ function sheetPayment(payment=null){
   const cancellable=own&&payment.kind==='settlement'&&payment.status==='active';
   sheet(`<h3>Pagamento</h3><p>${esc(financeSummary('payment',payment))}</p><div class="stack">${cancellable?'<button class="link" id="paymentCancel" type="button">Cancelar confirmação</button>':''}<button class="btn ghost block" data-close type="button">Fechar</button></div>`,s=>{if(cancellable)s.querySelector('#paymentCancel').onclick=()=>{s.remove();sheetCancel('pagamento',()=>backend.cancelPayment(payment.id,payment.version));};});return;
  }
- sheet(`<h3>${payment?'Editar':'Registrar'} pagamento</h3><div class="stack"><label class="f">Quem pagou<select id="pmFrom">${personOpts(payment?.from||S.me)}</select></label><label class="f">Quem recebeu<select id="pmTo">${personOpts(payment?.to||ALL.find(id=>id!==S.me))}</select></label><label class="f">Valor (R$)<input id="pmValue" type="number" inputmode="decimal" min="0.01" step="0.01" max="1000000" value="${payment?(payment.amountCents/100).toFixed(2):''}"></label><label class="f">Data<input id="pmDate" type="date" max="${todaySP()}" value="${payment?.paidOn||todaySP()}"></label><label class="f">Observação (opcional)<input id="pmNote" maxlength="200" value="${esc(payment?.note||'')}"></label><button class="btn block" id="paymentSave" type="button">${payment?'Salvar alterações':'Registrar pagamento'}</button>${payment?'<button class="link" id="paymentCancel" type="button">Cancelar pagamento</button>':''}<button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{
+ sheet(`<h3>${payment?'Editar':'Registrar'} pagamento</h3><div class="stack"><label class="f">Quem pagou<select id="pmFrom">${personOpts(payment?.from||S.me)}</select></label><label class="f">Quem recebeu<select id="pmTo">${personOpts(payment?.to||ALL.find(id=>id!==S.me))}</select></label><div id="paymentRecipientPix" class="card" style="padding:14px"></div><label class="f">Valor (R$)<input id="pmValue" type="number" inputmode="decimal" min="0.01" step="0.01" max="1000000" value="${payment?(payment.amountCents/100).toFixed(2):''}"></label><label class="f">Data<input id="pmDate" type="date" max="${todaySP()}" value="${payment?.paidOn||todaySP()}"></label><label class="f">Observação (opcional)<input id="pmNote" maxlength="200" value="${esc(payment?.note||'')}"></label><button class="btn block" id="paymentSave" type="button">${payment?'Salvar alterações':'Registrar pagamento'}</button>${payment?'<button class="link" id="paymentCancel" type="button">Cancelar pagamento</button>':''}<button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{
+  s.querySelector('#pmTo').onchange=refreshRecipientPix;refreshRecipientPix();
   s.querySelector('#paymentSave').onclick=()=>act(s.querySelector('#paymentSave'),async()=>{await backend.savePayment({from:s.querySelector('#pmFrom').value,to:s.querySelector('#pmTo').value,amount:s.querySelector('#pmValue').value,paidOn:s.querySelector('#pmDate').value,note:s.querySelector('#pmNote').value.trim(),kind:'payment',settlementId:''},payment?.id,payment?.version);s.remove();toast('Pagamento registrado');});
   if(payment)s.querySelector('#paymentCancel').onclick=()=>{s.remove();sheetCancel('pagamento',()=>backend.cancelPayment(payment.id,payment.version));};
  });
@@ -545,7 +552,7 @@ function render(){
     </div>
     <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+dayKey()]&&!(S.qvoted[dayKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
-  tick();watchCasePhotos();
+  tick();watchCasePhotos();refreshRecipientPix();
 }
 
 let photoObserver;

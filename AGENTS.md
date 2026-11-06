@@ -289,3 +289,7 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Kirk não participa; removido do roster e das permissões, sem apagar históricos financeiros. Orçamento confirmado R$13.000; locação R$3.000/Pig passa ao rateio13. Migração administrativa com checkpoint e eventos antes/depois, sem apagar testes ou pagamentos.
 - Agenda por perfil oculta dias e eventos anteriores à saída; noite20h/manhã08h. Sadano desde quarta por falta de data. Home conta até a saída personalizada.
 - Queridômetro19: Igor, Pig, Pelado, Nanu, Cadu, OB, Diogo e Sadano. Oito votantes, sete alvos cada. Bruno/Ibrahim e Felipe/Gherardi/Luan excluídos de escolhas, envio e multas nesse dia. De20 em diante13 votantes/12alvos. Resultados19 mostram somente elegíveis, inclusive para observadores. Regras validam deltas zero nos alvos ausentes e recusam votante ausente.
+
+## Textos e Pix no pagamento (05/11/2026)
+- Formulário de pagamento exibe Pix e cópia do recebedor selecionado; acompanha troca de recebedor e snapshots de chaves, sem consulta adicional. Ausência de chave não ocupa espaço.
+- Sábado: grafia solicitada “Restrospectiva do meu an*”, preparo “levar material da apresentação”. Circuito e continuação: “roupas leves e pênis”, grafia intencional. Atualização parcial com backup e precondição de versão da agenda; horários preservados.

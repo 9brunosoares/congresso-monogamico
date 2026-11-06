@@ -213,3 +213,11 @@ test('primeira votação inclui oito presentes, sem voto nem multa dos que chega
  assert.throws(()=>applyBallot(undefined,{},'bruno',at));assert.equal(missedVotePoints({},VOTE_DAYS[0].deadline).length,8);assert.equal(votePeople(ALL,20).length,13);
  assert.equal(agendaFor([{start:departure('luan').start-1},{start:departure('luan').start}],'luan').length,1);assert.equal(availableDay('luan'),20);assert.equal(departure('bruno').time,'20:00');assert.equal(departure('luan').time,'08:00');
 });
+
+test('pagamento acompanha Pix do recebedor e não mantém chave de outra pessoa',()=>{
+ const {context,nodes}=ui();nodes['#pmTo']={value:'bruno'};nodes['#paymentRecipientPix']={innerHTML:'',hidden:false,querySelector:()=>null};
+ vm.runInContext("S={...S,loaded:{pix:true},pixKeys:{bruno:{type:'email',value:'bruno@example.com'},ob:{type:'email',value:'ob@example.com'}}};refreshRecipientPix()",context);
+ assert(nodes['#paymentRecipientPix'].innerHTML.includes('bruno@example.com'));
+ nodes['#pmTo'].value='ob';vm.runInContext('refreshRecipientPix()',context);assert(nodes['#paymentRecipientPix'].innerHTML.includes('ob@example.com'));assert(!nodes['#paymentRecipientPix'].innerHTML.includes('bruno@example.com'));
+ nodes['#pmTo'].value='igor';vm.runInContext('refreshRecipientPix()',context);assert(nodes['#paymentRecipientPix'].hidden);assert(!nodes['#paymentRecipientPix'].innerHTML.includes('ob@example.com'));
+});

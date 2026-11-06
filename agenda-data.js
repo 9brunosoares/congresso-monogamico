@@ -86,7 +86,7 @@ export const INITIAL_AGENDA = [
     "t": "10:00",
     "title": "Circuito",
     "place": "Casa",
-    "prep": "",
+    "prep": "roupas leves e pênis",
     "note": "Atividade diurna; formato a definir.",
     "pts": 0
   },
@@ -104,7 +104,7 @@ export const INITIAL_AGENDA = [
     "t": "14:00",
     "title": "Circuito — continuação",
     "place": "Casa",
-    "prep": "",
+    "prep": "roupas leves e pênis",
     "note": "Atividade diurna; formato a definir.",
     "pts": 0
   },
@@ -174,9 +174,9 @@ export const INITIAL_AGENDA = [
   {
     "d": 21,
     "t": "21:00",
-    "title": "Retrospectiva individual com objeto pessoal",
+    "title": "Restrospectiva do meu an*",
     "place": "Casa",
-    "prep": "Leve um objeto pessoal para apresentar na sua retrospectiva.",
+    "prep": "levar material da apresentação",
     "note": "",
     "pts": 0
   },
