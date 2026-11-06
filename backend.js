@@ -1,15 +1,16 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261105a';
-import {normalizePix} from './pix.js?v=20261105a';
-import {normalizeOfficialLinks} from './official-links.js?v=20261105a';
-import {REACTIONS} from './mural-reactions.js?v=20261105a';
+import {votePeople} from './travel.js?v=20261105b';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261105b';
+import {normalizePix} from './pix.js?v=20261105b';
+import {normalizeOfficialLinks} from './official-links.js?v=20261105b';
+import {REACTIONS} from './mural-reactions.js?v=20261105b';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
-import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261105a';
+import { ALL, P, EMOJIS } from './roster.js?v=20261105b';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261105b';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -349,7 +350,7 @@ export async function deleteChat(id){
 export async function setBudget(budget){admin();const snap=await getDocFromServer(doc(db,'settings','main'));return financeWrite('budget','main',{budget},snap.data().version);}
 export async function addSession(data){admin();return addDoc(collection(db,'agenda'),data);}
 export async function vote(ballot){
- member();if(!votingOpen())throw Error(Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':"A votação abre de quinta a domingo da viagem, até meio-dia (São Paulo).");
+ member();if(!votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(state.me))throw Error('Sua votação começa no dia 20.');if(!votingOpen())throw Error(Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':"A votação abre de quinta a domingo da viagem, até meio-dia (São Paulo).");
  const key=dayKey(),uid=auth.currentUser.uid,id=state.me;
  const total=doc(db,'querido',key),marker=doc(db,'querido',key,'voters',uid);
  const delta=applyBallot(undefined,ballot,id);

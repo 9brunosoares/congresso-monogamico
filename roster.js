@@ -5,7 +5,6 @@ export const PEOPLE = [
   {id:"igor", nick:"Igor", admin:true},
   {id:"pig", nick:"Pig", admin:true},
   {id:"pelado", nick:"Pelado"},
-  {id:"kirk", nick:"Kirk", frame:[1179,337,96,165,120]},
   {id:"gherardi", nick:"Gherardi"},
   {id:"nanu", nick:"Nanu"},
   {id:"sadano", nick:"Sadano", frame:[875,286,49,20,258]},

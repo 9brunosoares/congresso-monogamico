@@ -1,4 +1,5 @@
-import { ALL, EMOJIS } from './roster.js';
+import {votePeople} from './travel.js?v=20261105b';
+import { ALL, EMOJIS } from './roster.js?v=20261105b';
 export function validatePin(pin){if(!/^[0-9]{6}$/.test(pin))throw Error('Use um PIN de exatamente 6 dígitos.');}
 export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)/(24*60*60*1000)));}
 // Cada dígito hexadecimal guarda o total de um dos oito emojis, na ordem de EMOJIS.
@@ -7,12 +8,13 @@ export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)
 export function decodeTally(value=0){
  return Object.fromEntries(EMOJIS.map((emoji,i)=>[emoji,Math.floor(value/(16**i))%16]));
 }
-export function applyBallot(previous,ballot,voter){
- const others=ALL.filter(id=>id!==voter);
- if(!ALL.includes(voter)||Object.keys(ballot).length!==others.length||others.some(id=>!EMOJIS.includes(ballot[id])))throw Error('Escolha um emoji para cada um dos outros congressistas.');
+export function applyBallot(previous,ballot,voter,at=Date.now()){
+ const eligible=votePeople(ALL,Number(new Date(at-10800000).getUTCDate()));
+ const others=eligible.filter(id=>id!==voter);
+ if(!eligible.includes(voter)||Object.keys(ballot).length!==others.length||others.some(id=>!EMOJIS.includes(ballot[id])))throw Error('Escolha um emoji para cada um dos outros congressistas.');
  const counts=Object.fromEntries(ALL.map(id=>{
   const before=previous?.counts?.[id]||0;
-  return [id,id===voter?before:before+16**EMOJIS.indexOf(ballot[id])];
+  return [id,!others.includes(id)?before:before+16**EMOJIS.indexOf(ballot[id])];
  }));
  return {counts,voters:(previous?.voters||0)+1};
 }
@@ -36,5 +38,5 @@ export function scoringPoints(points=[],attendance={},ready,closure,at=Date.now(
 }
 export function notice(text){const value=String(text).trim().replace(/…$/,'');return /[.!?]$/.test(value)?value:value+'.';}
 export function missedVotePoints(attendance={},at=Date.now()){
- return VOTE_DAYS.filter(d=>at>=d.deadline).flatMap(d=>ALL.filter(id=>!attendance[d.key]?.[id]).map(who=>({id:`missed_${d.key}_${who}`,who,d:-5,kind:'inf',why:'Queridômetro não preenchido até meio-dia',at:`${d.day}/11/2026, 12:00`,createdAt:{toMillis:()=>d.deadline}})));
+ return VOTE_DAYS.filter(d=>at>=d.deadline).flatMap(d=>votePeople(ALL,d.day).filter(id=>!attendance[d.key]?.[id]).map(who=>({id:`missed_${d.key}_${who}`,who,d:-5,kind:'inf',why:'Queridômetro não preenchido até meio-dia',at:`${d.day}/11/2026, 12:00`,createdAt:{toMillis:()=>d.deadline}})));
 }

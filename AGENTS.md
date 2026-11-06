@@ -71,7 +71,6 @@ Usar apenas `nick` (apelido); não há campo de nome completo. O `id` é o apeli
 | igor | Igor | `img/igor.jpg` | sim |
 | pig | Pig | `img/pig.jpg` | sim |
 | pelado | Pelado | `img/pelado.jpg` |  |
-| kirk | Kirk | `img/kirk.jpg` |  |
 | gherardi | Gherardi | `img/gherardi.jpg` |  |
 | nanu | Nanu | `img/nanu.jpg` |  |
 | sadano | Sadano | `img/sadano.jpg` |  |
@@ -285,3 +284,8 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Chat abre no fim e acompanha novas mensagens somente quando perto do fim; leitura local por perfil e dispositivo. Consulta adicional limitada a última mensagem; pendência ADM consulta apenas um caso pendente. Pontos não lidos não revelam autoria.
 - Votação 06h<=hora<12h São Paulo no cliente e regras. Indicador piscante só durante janela e depois do marcador próprio carregar.
 - Participantes continuam apenas com tarefas positivas próprias; infração mostra Procure um adm. ADMs mantêm permissões. Tarefas abaixo da classificação; tabela removida.
+
+## Atualização oficial: 13 congressistas (05/11/2026)
+- Kirk não participa; removido do roster e das permissões, sem apagar históricos financeiros. Orçamento confirmado R$13.000; locação R$3.000/Pig passa ao rateio13. Migração administrativa com checkpoint e eventos antes/depois, sem apagar testes ou pagamentos.
+- Agenda por perfil oculta dias e eventos anteriores à saída; noite20h/manhã08h. Sadano desde quarta por falta de data. Home conta até a saída personalizada.
+- Queridômetro19: Igor, Pig, Pelado, Nanu, Cadu, OB, Diogo e Sadano. Oito votantes, sete alvos cada. Bruno/Ibrahim e Felipe/Gherardi/Luan excluídos de escolhas, envio e multas nesse dia. De20 em diante13 votantes/12alvos. Resultados19 mostram somente elegíveis, inclusive para observadores. Regras validam deltas zero nos alvos ausentes e recusam votante ausente.

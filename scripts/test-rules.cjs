@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {context}=require('./firebase-context.cjs');
 (async()=>{const c=await context();try{
  const {ALL,EMOJIS}=await import('../roster.js'),{applyBallot,dayKey}=await import('../shared.js');
- const testTime="2026-11-19T11:59:59-03:00";
+ const testTime="2026-11-20T11:59:59-03:00";
  const key=dayKey(Date.parse(testTime)),uid='test-rule-uid',prefix='/databases/(default)/documents',base=prefix+'/querido/'+key;
  const source=fs.readFileSync('firestore.rules','utf8'),ballot=id=>Object.fromEntries(ALL.filter(x=>x!==id).map(x=>[x,EMOJIS[0]]));
  const first=applyBallot(undefined,ballot('bruno'),'bruno'),second=applyBallot(first,ballot('ob'),'ob');
@@ -18,7 +18,7 @@ const {context}=require('./firebase-context.cjs');
  const missing=make('bruno',first);missing.expectation='DENY';delete missing.request.resource.data.counts.ob;cases.push(missing);
  const duplicate=make('ob',second,first);duplicate.expectation='DENY';duplicate.functionMocks.find(m=>m.function==='exists'&&m.args[0].exactValue.endsWith('/voters/'+uid)).result.value=true;cases.push(duplicate);
  const alone=make('ob',second,first,true);alone.expectation='DENY';alone.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue===base).result.value={data:first};cases.push(alone);
- for(const time of ['2026-11-19T05:59:59-03:00','2026-11-19T00:00:00-03:00','2026-11-19T12:00:00-03:00','2026-11-19T23:59:59-03:00','2026-11-18T10:00:00-03:00','2026-11-23T10:00:00-03:00']){
+ for(const time of ['2026-11-19T05:59:59-03:00','2026-11-19T00:00:00-03:00','2026-11-20T12:00:00-03:00','2026-11-19T23:59:59-03:00','2026-11-18T10:00:00-03:00','2026-11-23T10:00:00-03:00']){
   const denied=make('bruno',first);denied.expectation='DENY';denied.request.time=new Date(time).toISOString();
   const actual=dayKey(Date.parse(time));denied.request.path=denied.request.path.replace('/'+key,'/'+actual);
   for(const mock of denied.functionMocks)mock.args[0].exactValue=mock.args[0].exactValue.replace('/'+key,'/'+actual);
@@ -60,7 +60,7 @@ const {context}=require('./firebase-context.cjs');
   for(const method of ['create','update'])cases.push(pixTest(method,'bruno',data,'DENY'));
  }
  for(const data of [{type:'cpf',value:'52998224725'},{type:'telefone',value:'+5511999991234'},{type:'aleatoria',value:'12345678-abcd-1234-abcd-123456789012'}])cases.push(pixTest('create','bruno',data));
- for(const [time,expectation] of [['2026-11-19T11:59:59-03:00','DENY'],['2026-11-19T12:00:00-03:00','ALLOW'],['2026-11-19T20:00:00-03:00','ALLOW']]){
+ for(const [time,expectation] of [['2026-11-19T11:59:59-03:00','DENY'],['2026-11-20T12:00:00-03:00','ALLOW'],['2026-11-20T20:00:00-03:00','ALLOW']]){
   for(const endpoint of [base,prefix+'/participation/'+key+'/people/bruno']){
    const t=make('bruno',first);t.expectation=expectation;t.request.method='get';t.request.time=new Date(time).toISOString();t.request.path=endpoint;t.resource={data:first};cases.push(t);
   }
@@ -161,6 +161,13 @@ const {context}=require('./firebase-context.cjs');
  const forgedMessage=chatCase(chatPath,'create','DENY');forgedMessage.request.resource.data.threadKey='b'.repeat(32);cases.push(forgedMessage);
  const recolor=chatCase(chatPath,'update','DENY');recolor.request.resource.data.threadKey='b'.repeat(32);cases.push(recolor);
  const previous=chatCase(chatPath,'update');previous.resource={data:{...previous.resource.data}};delete previous.resource.data.threadKey;delete previous.request.resource.data.threadKey;cases.push(previous);
+
+ const earlyTime=Date.parse('2026-11-19T10:00:00-03:00'),earlyKey=dayKey(earlyTime),earlyIds=ALL.filter(id=>!['bruno','ibrahim','felipe','gherardi','luan'].includes(id));
+ const early=applyBallot(undefined,Object.fromEntries(earlyIds.filter(id=>id!=='igor').map(id=>[id,EMOJIS[0]])),'igor',earlyTime);
+ function earlyCase(id,expectation){const t=make(id,early);t.expectation=expectation;t.request.time=new Date(earlyTime).toISOString();t.request.path=t.request.path.replace('/'+key,'/'+earlyKey);for(const m of t.functionMocks)m.args[0].exactValue=m.args[0].exactValue.replace('/'+key,'/'+earlyKey);return t;}
+ cases.push(earlyCase('igor','ALLOW'),earlyCase('bruno','DENY'),earlyCase('felipe','DENY'));
+ const absentTarget=earlyCase('igor','DENY');absentTarget.request.resource.data.counts.bruno=1;cases.push(absentTarget);
+ const omittedPresent=earlyCase('igor','DENY');omittedPresent.request.resource.data.counts.pig=0;cases.push(omittedPresent);
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});

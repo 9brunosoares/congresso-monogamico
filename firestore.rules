@@ -39,7 +39,7 @@ rules_version = '2';
 // DiaSP é o número inteiro de dias desde epoch, descontando UTC-3.
 service cloud.firestore {
  match /databases/{database}/documents {
-  function ids() { return ['bruno', 'ob', 'luan', 'igor', 'pig', 'pelado', 'kirk', 'gherardi', 'nanu', 'sadano', 'ibrahim', 'cadu', 'diogo', 'felipe']; }
+  function ids() { return ['bruno', 'ob', 'luan', 'igor', 'pig', 'pelado', 'gherardi', 'nanu', 'sadano', 'ibrahim', 'cadu', 'diogo', 'felipe']; }
   function isAuthenticated() { return request.auth != null; }
   function isOwner(uid) { return isAuthenticated() && request.auth.uid == uid; }
   function personId() { return request.auth.token.email.split('@')[0]; }
@@ -175,7 +175,7 @@ service cloud.firestore {
     && d.amount == int(d.amount * 100 + 0.5) / 100.0
     && d.amountCents is int && d.amountCents > 0 && d.amountCents <= 100000000 && d.amount == d.amountCents / 100.0
     && (d.by in ids() || d.by == '') && d.status in ['active','cancelled'] && financeMeta(d)
-    && d.split is list && d.split.size() > 0 && d.split.size() <= 14
+    && d.split is list && d.split.size() > 0 && d.split.size() <= 13
     && d.split.toSet().size() == d.split.size() && d.split.hasOnly(ids()) && text(d.at,40) && d.createdAt is timestamp;
   }
   match /expenses/{id} {
@@ -254,7 +254,7 @@ service cloud.firestore {
     && d.budget is number && d.budget >= 0 && d.budget <= 1000000
     && d.expenseTotalCents is int && d.expenseTotalCents >= 0 && d.expenseTotalCents <= 1400000000
     && t is map && only(t,['from','to','amountCents']) && t.from is list && t.to is list && t.amountCents is list
-    && n <= 13 && t.to.size() == n && t.amountCents.size() == n && t.from.hasOnly(official) && t.to.hasOnly(official)
+    && n <= 12 && t.to.size() == n && t.amountCents.size() == n && t.from.hasOnly(official) && t.to.hasOnly(official)
     && validTransferAt(t,0,n) && validTransferAt(t,1,n) && validTransferAt(t,2,n) && validTransferAt(t,3,n)
     && validTransferAt(t,4,n) && validTransferAt(t,5,n) && validTransferAt(t,6,n) && validTransferAt(t,7,n)
     && validTransferAt(t,8,n) && validTransferAt(t,9,n) && validTransferAt(t,10,n) && validTransferAt(t,11,n) && validTransferAt(t,12,n)
@@ -314,7 +314,7 @@ service cloud.firestore {
     && validReactionFor(d.votes,'bruno') && validReactionFor(d.votes,'ob')
     && validReactionFor(d.votes,'luan') && validReactionFor(d.votes,'igor')
     && validReactionFor(d.votes,'pig') && validReactionFor(d.votes,'pelado')
-    && validReactionFor(d.votes,'kirk') && validReactionFor(d.votes,'gherardi')
+    && validReactionFor(d.votes,'gherardi')
     && validReactionFor(d.votes,'nanu') && validReactionFor(d.votes,'sadano')
     && validReactionFor(d.votes,'ibrahim') && validReactionFor(d.votes,'cadu')
     && validReactionFor(d.votes,'diogo') && validReactionFor(d.votes,'felipe');
@@ -400,6 +400,7 @@ service cloud.firestore {
   }
   // A subtração só aceita números; delta enumerado garante um único incremento.
   // A partir de zero, com 14 votantes e sem voto próprio, cada dígito tem máximo13.
+  function eligibleVoter(id) { return request.time.toMillis() >= 1795143600000 || !(id in ['bruno','ibrahim','felipe','gherardi','luan']); }
   function isValidTallyDelta(delta,self,increments) { return self ? delta == 0 : delta in increments; }
   function isValidVoteDay(d,old,day) {
    let me=personId();
@@ -407,22 +408,21 @@ service cloud.firestore {
    let after=d.counts;
    let official=ids();
    let increments=[1,16,256,4096,65536,1048576,16777216,268435456];
-   return isToday(day) && votingOpen() && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= 14
+   return isToday(day) && votingOpen() && eligibleVoter(me) && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= (eligibleVoter('bruno') ? 13 : 8)
     && d.counts is map && after.keys().hasAll(official) && after.keys().hasOnly(official)
-    && isValidTallyDelta(after['bruno']-before.get('bruno',0),'bruno'==me,increments)
-    && isValidTallyDelta(after['ob']-before.get('ob',0),'ob'==me,increments)
-    && isValidTallyDelta(after['luan']-before.get('luan',0),'luan'==me,increments)
-    && isValidTallyDelta(after['igor']-before.get('igor',0),'igor'==me,increments)
-    && isValidTallyDelta(after['pig']-before.get('pig',0),'pig'==me,increments)
-    && isValidTallyDelta(after['pelado']-before.get('pelado',0),'pelado'==me,increments)
-    && isValidTallyDelta(after['kirk']-before.get('kirk',0),'kirk'==me,increments)
-    && isValidTallyDelta(after['gherardi']-before.get('gherardi',0),'gherardi'==me,increments)
-    && isValidTallyDelta(after['nanu']-before.get('nanu',0),'nanu'==me,increments)
-    && isValidTallyDelta(after['sadano']-before.get('sadano',0),'sadano'==me,increments)
-    && isValidTallyDelta(after['ibrahim']-before.get('ibrahim',0),'ibrahim'==me,increments)
-    && isValidTallyDelta(after['cadu']-before.get('cadu',0),'cadu'==me,increments)
-    && isValidTallyDelta(after['diogo']-before.get('diogo',0),'diogo'==me,increments)
-    && isValidTallyDelta(after['felipe']-before.get('felipe',0),'felipe'==me,increments);
+    && isValidTallyDelta(after['bruno']-before.get('bruno',0),('bruno'==me || !eligibleVoter('bruno')),increments)
+    && isValidTallyDelta(after['ob']-before.get('ob',0),('ob'==me || !eligibleVoter('ob')),increments)
+    && isValidTallyDelta(after['luan']-before.get('luan',0),('luan'==me || !eligibleVoter('luan')),increments)
+    && isValidTallyDelta(after['igor']-before.get('igor',0),('igor'==me || !eligibleVoter('igor')),increments)
+    && isValidTallyDelta(after['pig']-before.get('pig',0),('pig'==me || !eligibleVoter('pig')),increments)
+    && isValidTallyDelta(after['pelado']-before.get('pelado',0),('pelado'==me || !eligibleVoter('pelado')),increments)
+    && isValidTallyDelta(after['gherardi']-before.get('gherardi',0),('gherardi'==me || !eligibleVoter('gherardi')),increments)
+    && isValidTallyDelta(after['nanu']-before.get('nanu',0),('nanu'==me || !eligibleVoter('nanu')),increments)
+    && isValidTallyDelta(after['sadano']-before.get('sadano',0),('sadano'==me || !eligibleVoter('sadano')),increments)
+    && isValidTallyDelta(after['ibrahim']-before.get('ibrahim',0),('ibrahim'==me || !eligibleVoter('ibrahim')),increments)
+    && isValidTallyDelta(after['cadu']-before.get('cadu',0),('cadu'==me || !eligibleVoter('cadu')),increments)
+    && isValidTallyDelta(after['diogo']-before.get('diogo',0),('diogo'==me || !eligibleVoter('diogo')),increments)
+    && isValidTallyDelta(after['felipe']-before.get('felipe',0),('felipe'==me || !eligibleVoter('felipe')),increments);
   }
   function emptyDay() { return {'counts':{},'voters':0}; }
   function previousVoters(day) {

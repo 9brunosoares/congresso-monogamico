@@ -1,4 +1,4 @@
-import {departureFor} from '../travel.js';
+import {departure,availableDay,agendaFor,votePeople,departureFor} from '../travel.js';
 import test from 'node:test';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from '../finance.js';
 import {PIX_TYPES} from '../pix.js';
@@ -35,14 +35,14 @@ test('votos somam um por alvo sem registrar autor nem voto próprio',()=>{
  assert.throws(()=>applyBallot(undefined,{...ballot,ob:'🌱'},'bruno'));
 });
 test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=>{
- assert.equal(ALL.length,14);assert.equal(new Set(ALL).size,14);
+ assert.equal(ALL.length,13);assert.equal(new Set(ALL).size,13);
  assert.deepEqual(PEOPLE.filter(p=>p.admin).map(p=>p.id),['bruno','igor','pig']);
  for(const p of PEOPLE){assert(p.nick);assert(!('name'in p));assert(fs.existsSync(new URL(`../img/${p.id}.jpg`,import.meta.url)));}
 });
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={},events={},timers=new Map();let timerId=0;const context={departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
@@ -107,17 +107,17 @@ test('chat agrupa falas por cor sem imprimir chave/identidade; mensagens antigas
 
 test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
  const {context,nodes,html}=ui();assert(!html.includes('xvi-congresso'));assert(!html.includes('base64'));
- vm.runInContext('S.ready=true;viewLogin();',context);assert.equal((nodes['#root'].innerHTML.match(/data-id=/g)||[]).length,14);
+ vm.runInContext('S.ready=true;viewLogin();',context);assert.equal((nodes['#root'].innerHTML.match(/data-id=/g)||[]).length,13);
  for(const id of ALL){vm.runInContext(`S={...S,me:'${id}',admin:false,ready:true};for(const key of Object.keys(LABELS)){tab=key;render();}`,context);assert(!nodes['#root'].innerHTML.includes('id="givePts"'));}
  vm.runInContext("S.me='bruno';S.admin=true;tab='placar';render()",context);assert(nodes['#root'].innerHTML.includes('id="givePts"'));
 });
 test('rateio entre 14 pessoas e acerto não perdem saldo',()=>{
- const {context}=ui();vm.runInContext("S.me='bruno';S.exps=[{payer:'bruno',amount:140,split:ALL}];",context);
+ const {context}=ui();vm.runInContext("S.me='bruno';S.exps=[{payer:'bruno',amount:130,split:ALL}];",context);
  const result=vm.runInContext('({balance:balances(),transfers:settle()})',context);
- assert.equal(result.balance.bruno,130);assert(ALL.filter(id=>id!=='bruno').every(id=>result.balance[id]===-10));assert.equal(result.transfers.length,13);assert.equal(result.transfers.reduce((s,t)=>s+t.v,0),130);
+ assert.equal(result.balance.bruno,120);assert(ALL.filter(id=>id!=='bruno').every(id=>result.balance[id]===-10));assert.equal(result.transfers.length,12);assert.equal(result.transfers.reduce((s,t)=>s+t.v,0),120);
 });
 test('14 votações completas não causam transporte entre os oito contadores',()=>{
- for(const emoji of EMOJIS){let state;for(const voter of ALL){state=applyBallot(state,Object.fromEntries(ALL.filter(id=>id!==voter).map(id=>[id,emoji])),voter);}assert.equal(state.voters,14);for(const id of ALL){const decoded=decodeTally(state.counts[id]);assert.equal(decoded[emoji],13);assert.equal(Object.values(decoded).reduce((a,b)=>a+b,0),13);}}
+ for(const emoji of EMOJIS){let state;for(const voter of ALL){state=applyBallot(state,Object.fromEntries(ALL.filter(id=>id!==voter).map(id=>[id,emoji])),voter);}assert.equal(state.voters,13);for(const id of ALL){const decoded=decodeTally(state.counts[id]);assert.equal(decoded[emoji],12);assert.equal(Object.values(decoded).reduce((a,b)=>a+b,0),12);}}
 });
 
 test('votação somente nas quatro manhãs e penalidade única após o prazo',()=>{
@@ -126,11 +126,11 @@ test('votação somente nas quatro manhãs e penalidade única após o prazo',()
   assert(!votingOpen(day.start));assert(!votingOpen(day.start+6*3600000-1));assert(votingOpen(day.start+6*3600000));assert(votingOpen(day.deadline-1));assert(!votingOpen(day.deadline));
  }
  assert(!votingOpen(Date.parse('2026-11-23T10:00:00-03:00')));
- const d=VOTE_DAYS[0],attendance={[d.key]:{bruno:true}};
+ const d=VOTE_DAYS[0],attendance={[d.key]:{igor:true}};
  assert.equal(missedVotePoints(attendance,d.deadline-1).length,0);
  const penalties=missedVotePoints(attendance,d.deadline);
- assert.equal(penalties.length,13);assert(!penalties.some(p=>p.who==='bruno'));assert(penalties.every(p=>p.d===-5));
- assert.equal(missedVotePoints({},VOTE_DAYS[3].deadline).length,56);
+ assert.equal(penalties.length,7);assert(!penalties.some(p=>p.who==='igor'));assert(penalties.every(p=>p.d===-5));
+ assert.equal(missedVotePoints({},VOTE_DAYS[3].deadline).length,47);
 });
 test('home mostra mural apenas após condenação; login sem selo ADM',()=>{
  const {context,nodes}=ui();vm.runInContext('S.ready=true;viewLogin()',context);
@@ -158,8 +158,8 @@ test('orçamento zero não mostra NaN ou Infinity',()=>{
 });
 
 test('orçamento é visível a membros e acerto mostra acesso à chave Pix',()=>{
- const {context,nodes}=ui();vm.runInContext("S={...S,me:'ob',admin:false,ready:true,budget:14000,loaded:{pix:true},pixKeys:{pig:{type:'email',value:'teste@example.com'}},exps:[{id:'rental-2026',title:'Locação da casa',cat:'casa',payer:'pig',amount:2640,amountCents:264000,split:ALL}]};tab='contas';contasSeg='orcamento';render()",context);
- assert(nodes['#root'].innerHTML.includes('14.000'));assert(nodes['#root'].innerHTML.includes('1.000 previstos'));assert(!nodes['#root'].innerHTML.includes('Ajustar orçamento (ADM)'));
+ const {context,nodes}=ui();vm.runInContext("S={...S,me:'ob',admin:false,ready:true,budget:13000,loaded:{pix:true},pixKeys:{pig:{type:'email',value:'teste@example.com'}},exps:[{id:'rental-2026',title:'Locação da casa',cat:'casa',payer:'pig',amount:2640,amountCents:264000,split:ALL}]};tab='contas';contasSeg='orcamento';render()",context);
+ assert(nodes['#root'].innerHTML.includes('13.000'));assert(nodes['#root'].innerHTML.includes('1.000 previstos'));assert(!nodes['#root'].innerHTML.includes('Ajustar orçamento (ADM)'));
  vm.runInContext("contasSeg='pagamentos';render()",context);assert(nodes['#root'].innerHTML.includes('Registrar pagamento'));assert(!nodes['#root'].innerHTML.includes('ainda não são registrados'));
 });
 test('fechamento oculta lançamentos e exibe relatório e confirmações',()=>{
@@ -180,8 +180,8 @@ test('resultado fica oculto mesmo com cache até meio-dia; domingo sem promessa 
 test('placar congelado não ganha multa de domingo; CPF padrão e novas categorias',()=>{
  const closeAt=Date.parse('2026-11-22T09:00:00-03:00'),later=Date.parse('2026-11-22T13:00:00-03:00');
  const before=scoringPoints([],{},undefined,{closedAt:{toMillis:()=>closeAt}},later);
- assert.equal(before.length,42);assert(!before.some(p=>p.id.includes(VOTE_DAYS.at(-1).key)));
- assert.equal(scoringPoints([],{},undefined,null,later).length,56);
+ assert.equal(before.length,34);assert(!before.some(p=>p.id.includes(VOTE_DAYS.at(-1).key)));
+ assert.equal(scoringPoints([],{},undefined,null,later).length,47);
  assert.equal(Object.keys(PIX_TYPES)[0],'cpf');
  const {context,nodes}=ui();vm.runInContext("S={...S,me:'bruno',admin:true,ready:true,scoreClosing:{closedAt:{toMillis:()=>Date.now()}}};tab='placar';render()",context);
  assert(!nodes['#root'].innerHTML.includes('id="givePts"'));assert(nodes['#root'].innerHTML.includes('Placar encerrado.'));
@@ -204,4 +204,12 @@ test('saídas personalizadas mantêm a agenda comum e respeitam carros e períod
 test('PIN é uma segunda etapa e possui volta discreta',()=>{
  const {context,nodes}=ui();vm.runInContext("loginPerson='ob';viewLogin()",context);const html=nodes['#root'].innerHTML;
  assert(html.includes('id="identityStep" hidden'));assert(!html.includes('id="pinStep" hidden'));assert(html.includes('id="backIdentity"'));
+});
+
+test('primeira votação inclui oito presentes, sem voto nem multa dos que chegam depois',()=>{
+ const at=Date.parse('2026-11-19T10:00:00-03:00'),eligible=votePeople(ALL,19);assert.equal(eligible.length,8);assert(eligible.includes('sadano'));assert(!eligible.includes('bruno'));
+ let state;for(const voter of eligible)state=applyBallot(state,Object.fromEntries(eligible.filter(id=>id!==voter).map(id=>[id,EMOJIS[0]])),voter,at);
+ assert.equal(state.voters,8);for(const id of eligible)assert.equal(decodeTally(state.counts[id])[EMOJIS[0]],7);assert.equal(state.counts.bruno,0);
+ assert.throws(()=>applyBallot(undefined,{},'bruno',at));assert.equal(missedVotePoints({},VOTE_DAYS[0].deadline).length,8);assert.equal(votePeople(ALL,20).length,13);
+ assert.equal(agendaFor([{start:departure('luan').start-1},{start:departure('luan').start}],'luan').length,1);assert.equal(availableDay('luan'),20);assert.equal(departure('bruno').time,'20:00');assert.equal(departure('luan').time,'08:00');
 });

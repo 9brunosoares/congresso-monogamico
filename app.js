@@ -1,16 +1,16 @@
-import {departureFor} from './travel.js';
+import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261105b';
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261105a';
-import {PIX_TYPES} from './pix.js?v=20261105a';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261105a';
-import {REACTIONS} from './mural-reactions.js?v=20261105a';
-import {createChatColors} from './chat-colors.js?v=20261105a';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261105b';
+import {PIX_TYPES} from './pix.js?v=20261105b';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261105b';
+import {REACTIONS} from './mural-reactions.js?v=20261105b';
+import {createChatColors} from './chat-colors.js?v=20261105b';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
-import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261105a';
-import * as backend from './backend.js?v=20261105a';
+import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261105b';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261105b';
+import * as backend from './backend.js?v=20261105b';
 /* ===================== DADOS ===================== */
-const first = id => P[id].nick;
+const first = id => P[id]?.nick||id;
 
 // Viagem: quarta 18 à noite até domingo 22/11/2026 no começo da tarde.
 const DAYS = [
@@ -53,14 +53,14 @@ const brl = v => "R$ " + v.toLocaleString("pt-BR",{minimumFractionDigits:2,maxim
 const brl0 = v => "R$ " + Math.round(v).toLocaleString("pt-BR");
 // Enquadra as fotos das capturas originais sem alterar seus pixels.
 const photoStyle = id => {
-  const frame=P[id].frame;
+  const frame=P[id]?.frame;
   if(!frame)return "";
   const [w,h,x,y,size]=frame;
   return `width:${w/size*100}%;height:${h/size*100}%;left:${-x/size*100}%;top:${-y/size*100}%;object-fit:fill`;
 };
-const av = (id,cls="") => `<span class="av ${cls}" aria-hidden="true">${esc(P[id].nick[0])}<img src="img/${id}.jpg" style="${photoStyle(id)}" alt="" onerror="this.remove()"></span>`;
+const av = (id,cls="") => `<span class="av ${cls}" aria-hidden="true">${esc(P[id]?.nick?.[0]||'?')}<img src="img/${id}.jpg" style="${photoStyle(id)}" alt="" onerror="this.remove()"></span>`;
 const isAdm = () => S.me && S.admin;
-const allPoints = () => scoringPoints(S.points,S.attendance,S.attendanceReady,S.scoreClosing);
+const allPoints = () => scoringPoints(S.points,S.attendance,S.attendanceReady,S.scoreClosing).filter(p=>ALL.includes(p.who));
 const score = id => allPoints().filter(x=>x.who===id).reduce((a,x)=>a+x.d,0);
 const ranking = () => ALL.map(id=>({id,s:score(id),n:allPoints().filter(x=>x.who===id).length})).sort((a,b)=>b.s-a.s||P[a.id].nick.localeCompare(P[b.id].nick));
 const pts = d => `<span class="pts ${d<0?"neg":"pos"}">${d>0?"+":""}${d}</span>`;
@@ -127,9 +127,11 @@ function header(){
 }
 
 function nextItem(){
-  const t=now();
-  const cur = AGENDA.find(a=>a.start<=t && t<a.end);
-  const nxt = AGENDA.find(a=>a.start>t);
+  const t=now(),trip=departure(S.me);
+  const personal=agendaFor(AGENDA,S.me);
+  if(trip)personal.unshift({d:trip.day,title:`Saída · carro de ${first(trip.driver)}`,place:trip.people.map(first).join(' · '),start:trip.start,end:trip.start});
+  const cur = personal.find(a=>a.start<=t && t<a.end);
+  const nxt = personal.find(a=>a.start>t);
   return {cur,nxt};
 }
 
@@ -153,9 +155,9 @@ function viewInicio(){
 
   <button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>
 
-  ${(()=>{const d=dayKey(); const done=(S.qvoted[d]||[]).includes(S.me);
-    return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
-    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${done?(dayKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?(S.scoreClosing?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
+  ${(()=>{const d=dayKey();const blocked=VOTE_DAYS.find(v=>v.key===d)?.day===19&&!votePeople(ALL,19).includes(S.me); const done=(S.qvoted[d]||[]).includes(S.me);
+    return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${blocked||done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
+    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(dayKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?(S.scoreClosing?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
 
   <div class="sec-h"><h3>Seu placar</h3><button class="link" data-go="placar" type="button">Ranking completo</button></div>
   <div class="card row">
@@ -181,11 +183,13 @@ function podium(rk){
 
 function viewPrograma(){
   const t=now();
-  const items = AGENDA.filter(a=>a.d===day);
-  const car=departureFor(S.me,day);
+  const visibleDays=DAYS.filter(d=>d.d>=availableDay(S.me));
+  if(day<availableDay(S.me))day=availableDay(S.me);
+  const items = agendaFor(AGENDA,S.me).filter(a=>a.d===day);
+  const car=departureFor(S.me,day);const trip=departure(S.me);
   return `
-  <div class="days" role="tablist">${DAYS.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
-  ${car?`<article class="card" style="margin-top:12px"><div class="eyebrow">Sua saída · ${car.period}</div><h3>Carro de ${esc(first(car.driver))}</h3><p>${car.people.map(first).map(esc).join(' · ')}</p>${car.note?`<small class="muted">${esc(car.note)}</small>`:''}</article>`:''}<section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
+  <div class="days" role="tablist">${visibleDays.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
+  ${car?`<article class="card departure-card" style="margin-top:12px"><div class="eyebrow">Sua saída · ${trip.time}</div><h3>Carro de ${esc(first(car.driver))}</h3><p>${car.people.map(first).map(esc).join(' · ')}</p>${car.note?`<small class="muted">${esc(car.note)}</small>`:''}</article>`:''}<section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
   <div class="card" style="padding-block:4px">${items.map(a=>{
     const st = t>=a.end?"done":(t>=a.start?"now":"");
     return `<div class="slot ${st}"><time>${a.t}</time><div><h4>${esc(a.title)}</h4>
@@ -304,8 +308,10 @@ function viewQuerido(){
   const total = id => Object.values(res[id]||{}).reduce((a,b)=>a+b,0);
   const top = em => ALL.map(id=>({id,n:(res[id]||{})[em]||0})).sort((a,b)=>b.n-a.n)[0];
   const highlights = [["❤️","Mais amado"],["🐍","Mais cobra"],["🍪","Mais biscoiteiro"],["🎯","Mais alvo"]].map(([em,l])=>{const t=top(em);return t.n?`<div class="qhl">${av(t.id)}<div><div class="eyebrow">${l}</div><b>${esc(first(t.id))}</b> <span class="qn">${em} ${t.n}</span></div></div>`:""}).join("");
-  const others = ALL.filter(id=>id!==S.me);
-  const form = voted || !votingOpen() ? "" : `
+  const eligible=votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate()));
+  const others = eligible.filter(id=>id!==S.me);
+  if(!eligible.includes(S.me)&&!revealed)return '<div class="card"><h2>Seu Queridômetro começa no dia 20.</h2></div>';
+  const form = voted || !eligible.includes(S.me) || !votingOpen() ? "" : `
     <div class="card"><div class="eyebrow">Votação de ${new Date().toLocaleDateString("pt-BR")}</div>
       <h2 class="qtitle">Dê um emoji para cada congressista</h2>
       <p class="muted" style="margin:6px 0 0;font-size:14px">Vote até meio-dia (São Paulo). ${S.scoreClosing?'':'Não preencher custa 5 pontos. '}As escolhas são anônimas.</p>
@@ -318,7 +324,7 @@ function viewQuerido(){
   const results = !revealed?'':!S.loaded?.['votes-'+d]?'<p role="status" class="muted">Carregando resultado…</p>':`
     <div class="sec-h"><h3>Resultado de ${revealed.day}/11</h3><span class="muted" style="font-size:13px">${S.voterCount} votantes</span></div>
     ${highlights?`<div class="card qhls">${highlights}</div>`:""}
-    <div class="card" style="margin-top:12px;padding-block:4px">${ALL.slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
+    <div class="card" style="margin-top:12px;padding-block:4px">${votePeople(ALL,revealed.day).slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
       return `<div class="qres ${id===S.me?"me-row":""}">${av(id)}<div style="min-width:0"><div class="nm">${esc(P[id].nick)}</div><div class="qchips">${chips||'<span class="muted" style="font-size:13px">sem votos ainda</span>'}</div></div><span class="muted num" style="font-size:13px">${total(id)}</span></div>`}).join("")}</div>`;
   return (!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>${Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'De 19 a 22/11, pela manhã até meio-dia (São Paulo).'}</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${dayKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos de hoje foram enviados.'}</div></div>`:form) + (!revealed&&VOTE_DAYS.some(v=>v.key===dayKey())?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'') + results;
@@ -489,7 +495,7 @@ function sheetMe(){
  <div class="stack">${isAdm()?`<div class="eyebrow">Painel do ADM</div>
  ${S.scoreClosing?'':'<button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>'}
  <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias</button>${S.closing?'':'<button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>'}`:''}
- <button class="btn ghost block" data-a="out" type="button">Sair / trocar de congressista</button></div>`,s=>{
+ <button class="btn ghost block" data-a="out" type="button">Sair</button></div>`,s=>{
  s.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a==='out'){act(b,async()=>{await backend.logout();s.remove();});return;}s.remove();
  if(a==='give')sheetPoints(false);if(a==='take')sheetPoints(true);if(a==='tribunal')go('tribunal');if(a==='budget')sheetBudget();};});
@@ -537,7 +543,7 @@ function render(){
   const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
-    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votingOpen()&&S.loaded?.['voted-'+dayKey()]&&!(S.qvoted[dayKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
+    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+dayKey()]&&!(S.qvoted[dayKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
   tick();watchCasePhotos();
 }
@@ -557,7 +563,7 @@ function selectAgendaDay(next){
  const strip=$('.days'),selected=$(`[data-day="${day}"]`);
  if(strip&&selected)strip.scrollTo({left:strip.scrollLeft+selected.getBoundingClientRect().left-strip.getBoundingClientRect().left-(strip.clientWidth-selected.offsetWidth)/2,behavior:'smooth'});
 }
-bindAgendaSwipe(document,()=>tab==='programa'&&S.ready&&!!S.me,direction=>selectAgendaDay(adjacentDay(DAYS.map(d=>d.d),day,direction)));
+bindAgendaSwipe(document,()=>tab==='programa'&&S.ready&&!!S.me,direction=>selectAgendaDay(adjacentDay(DAYS.filter(d=>d.d>=availableDay(S.me)).map(d=>d.d),day,direction)));
 function showReactionPicker(id){const y=scrollY;reactionPicker=id;render();scrollTo(0,y);}
 let reactionHold,heldReaction=null,reactionTouch=null;
 document.addEventListener('pointerdown',e=>{
