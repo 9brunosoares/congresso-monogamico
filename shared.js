@@ -22,7 +22,7 @@ export const VOTE_DAYS=[19,20,21,22].map(d=>{
  const start=Date.parse(`2026-11-${d}T00:00:00-03:00`);
  return {key:dayKey(start),day:d,start,deadline:start+12*3600000};
 });
-export function votingOpen(at=Date.now()){return VOTE_DAYS.some(d=>at>=d.start&&at<d.deadline);}
+export function votingOpen(at=Date.now()){return VOTE_DAYS.some(d=>at>=d.start+6*3600000&&at<d.deadline);}
 export function resultDay(at=Date.now()){
  const today=VOTE_DAYS.find(d=>d.key===dayKey(at));
  return today?(at>=today.deadline?today:null):at>=VOTE_DAYS.at(-1).deadline?VOTE_DAYS.at(-1):null;

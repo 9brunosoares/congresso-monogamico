@@ -1,7 +1,7 @@
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261101a';
-import {normalizePix} from './pix.js?v=20261101a';
-import {normalizeOfficialLinks} from './official-links.js?v=20261101a';
-import {REACTIONS} from './mural-reactions.js?v=20261101a';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261105a';
+import {normalizePix} from './pix.js?v=20261105a';
+import {normalizeOfficialLinks} from './official-links.js?v=20261105a';
+import {REACTIONS} from './mural-reactions.js?v=20261105a';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -9,7 +9,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261101a';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261105a';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -70,6 +70,8 @@ function syncData(){
  if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){
   listen('reactions-'+item.id,doc(db,'caseReactions',item.id),snap=>{state.caseReactions={...state.caseReactions,[item.id]:snap.data()?.votes||{}}});
  }
+ listen('latestChat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(1)),snap=>{state.latestChat=snap.docs[0]?.id||null});
+ if(state.admin)listen('adminPending',query(collection(db,'cases'),where('status','==','pend'),limit(1)),snap=>{state.adminPending=!snap.empty});
  const key=dayKey(),votingDay=VOTE_DAYS.find(d=>d.key===key);
  if(key!==currentDay){currentDay=key;state.qvoted={};state.querido={};state.voterCount=0;}
  if(votingDay){

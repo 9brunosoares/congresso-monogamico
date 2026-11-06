@@ -278,3 +278,10 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - Transação lê o caso e o mapa atual para preservar reações concorrentes de outras pessoas. Remover última reação deixa mapa vazio. Não colocar reações no documento de foto nem na coleção de pontos.
 - Listener de um documento pequeno por publicação carregada, somente enquanto no mural; usa pool/cache/pausa existentes e acompanha paginação. Nada de reações é consultado na home/chat/Tribunal. Novos documentos são criados só ao reagir, sem migração ou publicações fictícias.
 - Na futura limpeza, remover reações dos casos de teste junto com esses casos; checkpoint descobre a coleção automaticamente. Preservar locação corrigida para R$3.000 e configurações reais.
+
+## Agenda e avisos (05/11/2026)
+- travel.js adiciona saídas personalizadas por período, sem inventar hora e sem remover sessões anteriores. Igor/Pig/Pelado e Nanu/Cadu/OB/Diogo quarta à noite; Bruno/Ibrahim quinta à noite; Felipe/Gherardi/Luan sexta de manhã. Sadano sozinho e Kirk sem atribuição não têm saída. Volta não definida.
+- Login em duas etapas, seleção ocultada durante PIN; Voltar discreto.
+- Chat abre no fim e acompanha novas mensagens somente quando perto do fim; leitura local por perfil e dispositivo. Consulta adicional limitada a última mensagem; pendência ADM consulta apenas um caso pendente. Pontos não lidos não revelam autoria.
+- Votação 06h<=hora<12h São Paulo no cliente e regras. Indicador piscante só durante janela e depois do marcador próprio carregar.
+- Participantes continuam apenas com tarefas positivas próprias; infração mostra Procure um adm. ADMs mantêm permissões. Tarefas abaixo da classificação; tabela removida.

@@ -1,3 +1,4 @@
+import {departureFor} from '../travel.js';
 import test from 'node:test';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from '../finance.js';
 import {PIX_TYPES} from '../pix.js';
@@ -41,7 +42,7 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={},events={},timers=new Map();let timerId=0;const context={moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
@@ -122,7 +123,7 @@ test('14 votações completas não causam transporte entre os oito contadores',(
 test('votação somente nas quatro manhãs e penalidade única após o prazo',()=>{
  assert(!votingOpen(Date.parse('2026-11-18T10:00:00-03:00')));
  for(const day of VOTE_DAYS){
-  assert(votingOpen(day.start));assert(votingOpen(day.deadline-1));assert(!votingOpen(day.deadline));
+  assert(!votingOpen(day.start));assert(!votingOpen(day.start+6*3600000-1));assert(votingOpen(day.start+6*3600000));assert(votingOpen(day.deadline-1));assert(!votingOpen(day.deadline));
  }
  assert(!votingOpen(Date.parse('2026-11-23T10:00:00-03:00')));
  const d=VOTE_DAYS[0],attendance={[d.key]:{bruno:true}};
@@ -192,4 +193,15 @@ test('links ficam compactos na home; modal oculta edição a membros e não exp�
  assert(nodes['#root'].innerHTML.includes('Links oficiais'));assert(!nodes['#root'].innerHTML.includes('senha-exemplo'));assert(!nodes['#root'].innerHTML.includes('https://open.spotify.com'));
  assert(!context.modal.includes('editOfficialLinks'));assert(context.modal.includes('Em breve'));assert(context.modal.includes('noopener noreferrer'));assert(context.modal.includes('Copiar senha'));assert(!context.modal.includes('href=""'));
  vm.runInContext('S.admin=true;sheetOfficialLinks()',context);assert(context.modal.includes('editOfficialLinks'));
+});
+
+test('saídas personalizadas mantêm a agenda comum e respeitam carros e períodos',()=>{
+ assert.equal(departureFor('bruno',19).driver,'bruno');assert.equal(departureFor('ibrahim',19).period,'À noite');
+ assert.equal(departureFor('pig',18).driver,'igor');assert.equal(departureFor('diogo',18).driver,'nanu');
+ assert.equal(departureFor('luan',20).driver,'felipe');assert.equal(departureFor('sadano',18),null);assert.equal(departureFor('kirk',18),null);
+ const {context}=ui();vm.runInContext("S={...S,me:'ibrahim'};day=19",context);const html=vm.runInContext('viewPrograma()',context);assert(html.includes('Carro de Bruno'));
+});
+test('PIN é uma segunda etapa e possui volta discreta',()=>{
+ const {context,nodes}=ui();vm.runInContext("loginPerson='ob';viewLogin()",context);const html=nodes['#root'].innerHTML;
+ assert(html.includes('id="identityStep" hidden'));assert(!html.includes('id="pinStep" hidden'));assert(html.includes('id="backIdentity"'));
 });

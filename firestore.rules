@@ -396,7 +396,7 @@ service cloud.firestore {
   }
   function votingOpen() {
    let local=request.time.toMillis()-10800000;
-   return local >= 1795046400000 && local < 1795392000000 && local % 86400000 < 43200000;
+   return local >= 1795046400000 && local < 1795392000000 && local % 86400000 >= 21600000 && local % 86400000 < 43200000;
   }
   // A subtração só aceita números; delta enumerado garante um único incremento.
   // A partir de zero, com 14 votantes e sem voto próprio, cada dígito tem máximo13.

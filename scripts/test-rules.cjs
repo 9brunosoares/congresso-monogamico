@@ -18,7 +18,7 @@ const {context}=require('./firebase-context.cjs');
  const missing=make('bruno',first);missing.expectation='DENY';delete missing.request.resource.data.counts.ob;cases.push(missing);
  const duplicate=make('ob',second,first);duplicate.expectation='DENY';duplicate.functionMocks.find(m=>m.function==='exists'&&m.args[0].exactValue.endsWith('/voters/'+uid)).result.value=true;cases.push(duplicate);
  const alone=make('ob',second,first,true);alone.expectation='DENY';alone.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue===base).result.value={data:first};cases.push(alone);
- for(const time of ['2026-11-19T12:00:00-03:00','2026-11-19T23:59:59-03:00','2026-11-18T10:00:00-03:00','2026-11-23T10:00:00-03:00']){
+ for(const time of ['2026-11-19T05:59:59-03:00','2026-11-19T00:00:00-03:00','2026-11-19T12:00:00-03:00','2026-11-19T23:59:59-03:00','2026-11-18T10:00:00-03:00','2026-11-23T10:00:00-03:00']){
   const denied=make('bruno',first);denied.expectation='DENY';denied.request.time=new Date(time).toISOString();
   const actual=dayKey(Date.parse(time));denied.request.path=denied.request.path.replace('/'+key,'/'+actual);
   for(const mock of denied.functionMocks)mock.args[0].exactValue=mock.args[0].exactValue.replace('/'+key,'/'+actual);

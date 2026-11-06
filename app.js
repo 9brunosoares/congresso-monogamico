@@ -1,13 +1,14 @@
+import {departureFor} from './travel.js';
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261101a';
-import {PIX_TYPES} from './pix.js?v=20261101a';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261101a';
-import {REACTIONS} from './mural-reactions.js?v=20261101a';
-import {createChatColors} from './chat-colors.js?v=20261101a';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261105a';
+import {PIX_TYPES} from './pix.js?v=20261105a';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261105a';
+import {REACTIONS} from './mural-reactions.js?v=20261105a';
+import {createChatColors} from './chat-colors.js?v=20261105a';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261101a';
-import * as backend from './backend.js?v=20261101a';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261105a';
+import * as backend from './backend.js?v=20261105a';
 /* ===================== DADOS ===================== */
 const first = id => P[id].nick;
 
@@ -89,21 +90,23 @@ async function act(button,run){
   finally{if(key)busyActions.delete(key);if(button){button.disabled=false;button.removeAttribute("aria-busy");button.innerHTML=button.dataset.original;}const current=key?document.getElementById?.(key):null;if(current)current.disabled=false;}
 }
 function loader(){return '<span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span>';}
+let loginPerson=null;
 function viewLogin(){
-  let sel=null;
+  let sel=loginPerson;
   $('#root').innerHTML=`<div class="app"><form class="login" id="loginForm">
     <div class="badge"><div class="lanyard"><span>CREDENCIAL</span><span>XVI CONGRESSO</span></div><div class="body">
     <div class="eyebrow">Bem-vindo ao</div><h1><em>XVI</em> Congresso Monogâmico</h1>
     <p class="muted" style="margin:10px 0 0">Escolha sua foto e use seu PIN. No primeiro acesso, crie um PIN de 6 dígitos.</p></div></div>
-    <h2 style="margin-top:22px">Quem é você?</h2><div class="pick" id="pick">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="false">${av(p.id)}<span>${esc(p.nick)}</span></button>`).join('')}</div>
-    <label class="f">PIN de 6 dígitos<input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="current-password" required placeholder="••••••"></label>
+    <div id="identityStep" ${sel?'hidden':''}><h2 style="margin-top:22px">Quem é você?</h2><div class="pick" id="pick">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="false">${av(p.id)}<span>${esc(p.nick)}</span></button>`).join('')}</div>
+    </div><div id="pinStep" ${sel?'':'hidden'}>${sel?`<button class="link" type="button" id="backIdentity">← Voltar</button><h2>${av(sel)} ${esc(first(sel))}</h2>`:''}<label class="f">PIN de 6 dígitos<input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="current-password" required placeholder="••••••"></label>
     <label style="display:flex;align-items:center;gap:8px;margin:16px 0"><input id="newAccount" type="checkbox">Primeiro acesso: criar meu PIN</label>
     <label class="f" id="confirmPin" style="display:none;margin-bottom:14px">Confirme seu PIN<input id="pinAgain" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" placeholder="••••••"></label>
     ${S.error?`<p role="alert">${esc(S.error)}</p>`:''}
     <button class="btn seal block" id="enter" type="submit">Entrar no congresso</button>
-    <p class="muted" style="font-size:12px;text-align:center">O celular mantém sua sessão. Esqueceu o PIN? Fale com um ADM.</p>
+    <p class="muted" style="font-size:12px;text-align:center">O celular mantém sua sessão. Esqueceu o PIN? Fale com um ADM.</p></div>
   </form></div>`;
-  $('#pick').onclick=e=>{const b=e.target.closest('button');if(!b)return;sel=b.dataset.id;document.querySelectorAll('#pick button').forEach(x=>x.setAttribute('aria-pressed',x===b));};
+  $('#pick').onclick=e=>{const b=e.target.closest('button');if(!b)return;loginPerson=b.dataset.id;viewLogin();$('#pin')?.focus();};
+  if($('#backIdentity'))$('#backIdentity').onclick=()=>{loginPerson=null;viewLogin();};
   $('#newAccount').onchange=()=>{const create=$('#newAccount').checked;$('#confirmPin').style.display=create?'flex':'none';$('#pinAgain').required=create;$('#pin').autocomplete=create?'new-password':'current-password';$('#enter').textContent=create?'Criar PIN e entrar':'Entrar no congresso';};
   $('#loginForm').onsubmit=e=>{e.preventDefault();const pin=$('#pin').value,create=$('#newAccount').checked;
     if(!sel){toast('Escolha sua foto primeiro.');return;}
@@ -115,7 +118,7 @@ function viewLogin(){
 function header(){
   return `<div class="top">
     <div class="brand"><div class="roman">XVI CONGRESSO</div><h1>Monogâmico</h1></div>
-    <button class="me" id="meBtn" type="button">${av(S.me,"sm")}<span>${esc(first(S.me))}</span>${isAdm()?'<span class="adm">ADM</span>':""}</button>
+    <button class="me" id="meBtn" type="button">${av(S.me,"sm")}${S.adminPending?'<i class="notice-dot" aria-label="Pendência de ADM"></i>':''}<span>${esc(first(S.me))}</span>${isAdm()?'<span class="adm">ADM</span>':""}</button>
   </div>
   <div class="demo">
     <span>Agora: <b class="num" id="clock"></b></span>
@@ -179,9 +182,10 @@ function podium(rk){
 function viewPrograma(){
   const t=now();
   const items = AGENDA.filter(a=>a.d===day);
+  const car=departureFor(S.me,day);
   return `
   <div class="days" role="tablist">${DAYS.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
-  <section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
+  ${car?`<article class="card" style="margin-top:12px"><div class="eyebrow">Sua saída · ${car.period}</div><h3>Carro de ${esc(first(car.driver))}</h3><p>${car.people.map(first).map(esc).join(' · ')}</p>${car.note?`<small class="muted">${esc(car.note)}</small>`:''}</article>`:''}<section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
   <div class="card" style="padding-block:4px">${items.map(a=>{
     const st = t>=a.end?"done":(t>=a.start?"now":"");
     return `<div class="slot ${st}"><time>${a.t}</time><div><h4>${esc(a.title)}</h4>
@@ -199,17 +203,13 @@ function viewPlacar(){
   const approvals=tasks.length?`<div class="sec-h"><h3>${isAdm()?'Tarefas':'Minhas tarefas'}</h3></div><div class="card stack">${tasks.map(t=>`<div class="row"><div class="grow"><b>${esc(first(t.who))}</b> · ${esc(t.why)}${S.points.some(p=>p.id==='task_'+t.id)?` (+${t.d})`:''}<div class="muted" style="font-size:12px">${esc(t.at||'')}</div></div>${isAdm()&&!S.scoreClosing?`<button class="link" data-delete-task="${esc(t.id)}" type="button" aria-label="Excluir tarefa de ${esc(first(t.who))}">Excluir</button>`:''}</div>`).join('')}</div>`:'';
   return `
   <div class="card">${podium(rk)}</div>
-  ${isAdm()?(!S.scoreClosing?`<div class="fab-row" style="margin-top:12px"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`:''):`<button class="btn ghost block" style="margin-top:12px" id="quickReport" type="button">Fiz uma tarefa</button>`}
+  ${isAdm()?(!S.scoreClosing?`<div class="fab-row" style="margin-top:12px"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`:''):`<div class="fab-row"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`}
   ${S.scoreClosing?'<p class="muted" style="font-size:13px">Placar encerrado.</p>':isAdm()?'<button class="link" style="margin-top:12px;font-size:13px" id="closeScores" type="button">Encerrar placar</button>':''}
-  ${approvals}<div class="sec-h"><h3>Classificação</h3><span class="muted" style="font-size:13px">${ALL.length} congressistas</span></div>
+  <div class="sec-h"><h3>Classificação</h3><span class="muted" style="font-size:13px">${ALL.length} congressistas</span></div>
   <div class="card rank" style="padding-block:4px">${rk.map((r,i)=>`<div class="rk ${r.id===S.me?"me-row":""}"><span class="pos">${i+1}</span>${av(r.id)}<div><div class="nm">${esc(P[r.id].nick)}</div><div class="sub">${r.n} lançamentos</div></div><span class="score">${r.s}</span></div>`).join("")}</div>
   <div class="sec-h"><h3>Últimos lançamentos</h3></div>
   <div class="card" style="padding-block:4px">${log.map(x=>`<div class="log">${av(x.who,"sm")}<div><b>${esc(first(x.who))}</b> · ${esc(x.why)}<div class="muted" style="font-size:12px">${esc(x.at)}</div></div>${pts(x.d)}</div>`).join("")}</div>
-  <div class="sec-h"><h3>Tabela de pontos</h3></div>
-  <div class="card rules">
-    <div><h4 style="color:var(--good)">Somam</h4><ul>${RULES.plus.map(([n,v])=>`<li><span>${n}</span><span class="pts pos">+${v}</span></li>`).join("")}</ul></div>
-    <div><h4 style="color:var(--bad)">Tiram</h4><ul>${RULES.minus.map(([n,v])=>`<li><span>${n}</span><span class="pts neg">${v}</span></li>`).join("")}<li><span>Não votar até meio-dia (automático)</span><span class="pts neg">−5</span></li></ul></div>
-  </div>`;
+  <button class="btn ghost" id="quickReport" type="button">Fiz uma tarefa</button>${approvals}`;
 }
 
 function viewContas(){
@@ -347,10 +347,10 @@ function sheet(html, onMount){
 const personOpts = (sel)=>PEOPLE.map(p=>`<option value="${p.id}" ${p.id===sel?"selected":""}>${esc(p.nick)}</option>`).join("");
 
 function sheetPoints(neg){
- if(!isAdm())return;
+ if(!isAdm()){if(neg)return toast('Procure um adm.');return sheetTask();}
  const opts=(neg?RULES.minus:RULES.plus.concat([["Jogo: 1º lugar",20],["Jogo: 2º lugar",10],["Participação",5]])).filter(o=>typeof o[1]==='number');
  sheet(`<h3>${neg?'Registrar infração':'Lançar pontos'}</h3><div class="stack">
- <label class="f">Congressista<select id="spWho">${personOpts()}</select></label>
+ <label class="f">Congressista<select id="spWho" ${isAdm()?'':'disabled'}>${personOpts(S.me)}</select></label>
  <label class="f">Motivo<select id="spWhy">${opts.map(([n,v])=>`<option value="${v}">${n} (${v>0?'+':''}${v})</option>`).join('')}</select></label>
  <label class="f">Pontos<input id="spVal" type="number" min="-100" max="100" step="1" inputmode="numeric"></label>
  <button class="btn seal block" id="spOk" type="button">Confirmar pontos</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
@@ -524,8 +524,12 @@ const ICONS={
 };
 const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Queridômetro",contas:"Contas",fofoca:"Fofoca"};
 
-function go(t){ if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); scrollTo({top:0}); }
+let enterChat=false;
+function go(t){if(t==='fofoca'&&tab!=='fofoca')enterChat=true; if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); if(t==='fofoca')scrollChat();else scrollTo({top:0}); }
 
+function chatSeenKey(){return 'xvi-chat-seen-'+S.me;}
+function unreadChat(){try{return !!S.latestChat&&S.latestChat!==localStorage.getItem(chatSeenKey());}catch{return false;}}
+function scrollChat(){requestAnimationFrame(()=>{if(tab!=='fofoca')return;scrollTo(0,document.documentElement.scrollHeight);try{if(S.latestChat)localStorage.setItem(chatSeenKey(),S.latestChat);document.querySelector('[data-go="fofoca"] .notice-dot')?.remove();}catch{}});}
 function render(){
   backend.setView?.(tab);
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
@@ -533,7 +537,7 @@ function render(){
   const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
-    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
+    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votingOpen()&&S.loaded?.['voted-'+dayKey()]&&!(S.qvoted[dayKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
   tick();watchCasePhotos();
 }
@@ -601,6 +605,7 @@ function tick(){
     const parts = dd?[[dd,"dias"],[h,"h"],[m,"min"]]:[[h,"h"],[m,"min"],[s,"seg"]];
     box.innerHTML=parts.map(([v,l])=>`<div><b>${String(v).padStart(2,"0")}</b><span>${l}</span></div>`).join(""); }
 }
+document.addEventListener('scroll',()=>{if(tab==='fofoca'&&document.documentElement.scrollHeight-innerHeight-scrollY<80){try{if(S.latestChat)localStorage.setItem(chatSeenKey(),S.latestChat);document.querySelector('[data-go="fofoca"] .notice-dot')?.remove();}catch{}}},{passive:true});
 document.addEventListener('submit',e=>{
  if(e.target.id!=='chatForm')return;e.preventDefault();
  const input=$('#chatIn'),text=input.value.trim();if(!text)return;
@@ -611,8 +616,8 @@ setInterval(()=>{tick();const phase=votingOpen();if(phase!==votingPhase){votingP
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me;S=data;if(!S.admin)demo=false;if(previous!==S.me){qDraft={};chatColors.reset();}
+ const previous=S.me;S=data;if(previous!==S.me){loginPerson=null;enterChat=tab==='fofoca';}if(!S.admin)demo=false;if(previous!==S.me){qDraft={};chatColors.reset();}
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
- const y=scrollY;render();scrollTo(0,y);
+ const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);
  if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}
 }).catch(e=>{S.ready=true;S.error=backend.errorText(e);render();});
