@@ -306,3 +306,6 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 ## Denúncia e vitrine aprovadas (07/11/2026)
 - Denunciar é atalho flutuante circular de sirene, em todas as telas autenticadas, acima do menu. Atrás das folhas modais; espaço reservado no fim das páginas e à direita do compositor do chat. Sem animação contínua.
 - Home usa Mural da Vergonha com carimbo Em exposição e até3 retratos de perfis condenados em molduras. Só aparece com condenação, sem contador total nem anexos de denúncias. Consulta hasMural existente passa de limit1 a limit3 e fornece os perfis; sem consulta adicional ou fotos no Firestore.
+
+## Denúncia apenas na Home (07/11/2026)
+- Substitui botão flutuante: linha compacta na Home com mural à esquerda e sirene à direita. Sem condenados, atalho horizontal alinhado à direita, sem espaço reservado para mural. Removido Em exposição; retratos/molduras mantidos. Restaurado espaço normal das páginas e compositor do chat.
