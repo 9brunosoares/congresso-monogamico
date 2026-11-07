@@ -311,6 +311,28 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 .install-status{font-size:13px;color:var(--muted);margin:10px 0 0}
 [hidden]{display:none!important}.notice-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--seal);flex-shrink:0}.tabs .notice-dot{position:absolute;right:-5px;top:0}.notice-dot.pulse{animation:noticePulse 1.5s ease-in-out infinite}@keyframes noticePulse{50%{opacity:.25}}@media(prefers-reduced-motion:reduce){.notice-dot.pulse{animation:none}}
 .departure-card{border-color:var(--seal);background:color-mix(in srgb,var(--seal) 6%,var(--surface));box-shadow:inset 3px 0 var(--seal)}
+
+/* Ação de emergência e vitrine dos casos condenados. */
+.app.auth-view{padding-bottom:calc(180px + env(safe-area-inset-bottom,0px))}
+.emergency-report{position:fixed;right:max(16px,calc((100vw - 520px)/2 + 16px));bottom:calc(85px + env(safe-area-inset-bottom,0px));z-index:30;width:68px;padding:0;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;touch-action:manipulation}
+.emergency-disc{width:56px;height:56px;display:grid;place-items:center;border-radius:50%;background:#c4122f;color:#f1eef8;border:2px solid #ee6278;box-shadow:0 4px 16px #0004,inset 0 2px 0 #ffffff25}
+.emergency-disc svg{width:29px;height:29px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.emergency-label{font-size:10px;font-weight:800;line-height:15px;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:1px 7px;border-radius:12px}
+.emergency-report:active .emergency-disc{transform:scale(.95)}
+.emergency-report:focus-visible{outline:3px solid var(--seal);outline-offset:5px;border-radius:30px}
+.app.chat-view .composer{margin-right:78px}
+.mural-teaser{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:17px 16px;margin:0 0 14px;border:1px solid #81404f;border-left:3px solid #c4122f;border-radius:18px;background:#1b1530;color:#f1eef8;cursor:pointer;box-shadow:0 3px 12px #0001}
+.mural-teaser-copy{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:9px}
+.mural-teaser strong{font-family:var(--f-display);font-size:21px;line-height:1.12;font-weight:800}
+.exposure-stamp{display:inline-block;padding:3px 6px;border:1px solid #ee6278;border-radius:3px;color:#ffa6b5;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;transform:rotate(-3deg)}
+.exposure-portraits{display:flex;align-items:center;flex-shrink:0;padding:3px}
+.exposure-frame{display:inline-flex;padding:3px 3px 8px;background:#f1eef8;border-radius:3px;box-shadow:0 2px 5px #0006;transform:rotate(-6deg)}
+.exposure-frame+.exposure-frame{margin-left:-7px;transform:rotate(4deg)}
+.exposure-frame:nth-child(3){transform:rotate(-3deg)}
+.exposure-frame .av{width:34px;height:40px;border:0;border-radius:1px}
+.mural-teaser-arrow{font-size:27px;color:#f295a7;line-height:1;flex-shrink:0}
+.mural-teaser:focus-visible{outline:3px solid var(--seal);outline-offset:3px}
+
 </style>
 
 <style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}[hidden]{display:none!important}.notice-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--seal);flex-shrink:0}.tabs .notice-dot{position:absolute;right:-5px;top:0}.notice-dot.pulse{animation:noticePulse 1.5s ease-in-out infinite}@keyframes noticePulse{50%{opacity:.25}}@media(prefers-reduced-motion:reduce){.notice-dot.pulse{animation:none}}
@@ -321,7 +343,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261107a"></script>
+<script type="module" src="install.js?v=20261107b"></script>
 
 </body>
 </html>

@@ -1,17 +1,17 @@
-import {departure} from './travel.js?v=20261106b';
-import {votePeople} from './travel.js?v=20261106b';
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261106b';
-import {normalizePix} from './pix.js?v=20261106b';
-import {normalizeOfficialLinks} from './official-links.js?v=20261106b';
-import {REACTIONS} from './mural-reactions.js?v=20261106b';
+import {departure} from './travel.js?v=20261107b';
+import {votePeople} from './travel.js?v=20261107b';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261107b';
+import {normalizePix} from './pix.js?v=20261107b';
+import {normalizeOfficialLinks} from './official-links.js?v=20261107b';
+import {REACTIONS} from './mural-reactions.js?v=20261107b';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
-import { ALL, P, EMOJIS } from './roster.js?v=20261106b';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261106b';
+import { ALL, P, EMOJIS } from './roster.js?v=20261107b';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261107b';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -67,7 +67,7 @@ function syncData(){
  listen('scoreClosing',doc(db,'scoreClosures','main'),snapshot=>{state.scoreClosing=snapshot.exists()?snapshot.data():null},true);
  listen('settings',doc(db,'settings','main'),snap=>{state.budget=snap.data()?.budget||0},true);
  listen('agenda',collection(db,'agenda'),snapshot=>{state.agenda=rows(snapshot).sort((a,b)=>a.start-b.start)},true);
- listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(1)),snap=>{state.hasMural=!snap.empty},true);
+ listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(3)),snap=>{state.hasMural=!snap.empty;state.muralPreview=[...new Set(snap.docs.map(d=>d.data().who))].filter(id=>ALL.includes(id))},true);
  const car=departure(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
  if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){

@@ -1,14 +1,14 @@
-import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261107a';
+import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261107b';
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261107a';
-import {PIX_TYPES} from './pix.js?v=20261107a';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261107a';
-import {REACTIONS} from './mural-reactions.js?v=20261107a';
-import {createChatColors} from './chat-colors.js?v=20261107a';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261107b';
+import {PIX_TYPES} from './pix.js?v=20261107b';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261107b';
+import {REACTIONS} from './mural-reactions.js?v=20261107b';
+import {createChatColors} from './chat-colors.js?v=20261107b';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
-import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107a';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261107a';
-import * as backend from './backend.js?v=20261107a';
+import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107b';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261107b';
+import * as backend from './backend.js?v=20261107b';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -135,13 +135,18 @@ function nextItem(){
   return {cur,nxt};
 }
 
+function muralTeaser(){
+ if(!(S.hasMural??S.shame.some(c=>c.status==='ok')))return '';
+ const people=[...new Set(S.muralPreview||S.shame.filter(c=>c.status==='ok').map(c=>c.who))].filter(id=>P[id]).slice(0,3);
+ return `<button class="mural-teaser" data-go="mural" type="button"><span class="mural-teaser-copy"><span class="exposure-stamp">Em exposição</span><strong>Mural da Vergonha</strong></span><span class="exposure-portraits" aria-hidden="true">${people.map(id=>`<span class="exposure-frame">${av(id)}</span>`).join('')}</span><span class="mural-teaser-arrow" aria-hidden="true">›</span></button>`;
+}
+function emergencyButton(){return `<button class="emergency-report" id="homeReport" type="button" aria-haspopup="dialog" aria-label="Fazer denúncia"><span class="emergency-disc"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 24v-9a7 7 0 0 1 14 0v9M7 24h18v4H7zM16 2v3M4 8l3 2M28 8l-3 2M3 17h3M29 17h-3"/><path d="M13 17v-2a3 3 0 0 1 3-3"/></svg></span><span class="emergency-label">Denunciar</span></button>`;}
 function viewInicio(){
   const {cur,nxt} = nextItem();
   const rk = ranking();
   const myPos = rk.findIndex(r=>r.id===S.me)+1;
   return `
-  <button class="btn seal block" id="homeReport" type="button" style="margin-bottom:14px">Fazer denúncia</button>
-  ${(S.hasMural??S.shame.some(s=>s.status==="ok"))?'<button class="btn block mural-alert" data-go="mural" type="button" style="margin-bottom:14px">Ver mural da vergonha →</button>':''}
+  ${muralTeaser()}
   ${nxt ? `<section class="card next">
     <div class="sealmark" aria-hidden="true">XVI</div>
     <div class="eyebrow">Próxima sessão · ${dayOf(nxt.start).wd} ${fmtTime(nxt.start)}</div>
@@ -550,9 +555,9 @@ function render(){
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
   const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
-  $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
+  $("#root").innerHTML = `<div class="app auth-view ${tab==='fofoca'?'chat-view':''}">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
-    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
+    ${emergencyButton()}<nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
   tick();watchCasePhotos();refreshRecipientPix();
 }

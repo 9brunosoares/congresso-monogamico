@@ -136,14 +136,14 @@ test('home mostra mural apenas após condenação; login sem selo ADM',()=>{
  const {context,nodes}=ui();vm.runInContext('S.ready=true;viewLogin()',context);
  assert(nodes['#root'].innerHTML.includes('Quem é você?'));assert(!nodes['#root'].innerHTML.includes('class="adm"'));
  vm.runInContext("S.me='bruno';S.shame=[{status:'ok'}];tab='inicio';render()",context);
- assert(nodes['#root'].innerHTML.includes('Fazer denúncia'));assert(nodes['#root'].innerHTML.includes('Ver mural da vergonha'));
+ assert(nodes['#root'].innerHTML.includes('Fazer denúncia'));assert(nodes['#root'].innerHTML.includes('Mural da Vergonha'));
  assert(!nodes['#root'].innerHTML.includes('Relógio real'));
 });
 
 test('Fofoca só tem chat; mural não expõe pendentes e usa foto ou avatar',()=>{
  const {context,nodes}=ui();
  vm.runInContext("S={...S,me:'bruno',admin:false,ready:true,shame:[{id:'pending',who:'ob',by:'bruno',what:'Pendente',status:'pend'}]};tab='inicio';render()",context);
- assert(!nodes['#root'].innerHTML.includes('Ver mural da vergonha'));
+ assert(!nodes['#root'].innerHTML.includes('Mural da Vergonha'));
  vm.runInContext("tab='fofoca';render()",context);assert(nodes['#root'].innerHTML.includes('Chat anônimo'));assert(!nodes['#root'].innerHTML.includes('Mural da Vergonha'));assert(!nodes['#root'].innerHTML.includes('data-fseg'));
  vm.runInContext("S.shame.push({id:'approved',who:'ob',what:'Título condenado',status:'ok'});tab='mural';render()",context);
  assert(nodes['#root'].innerHTML.includes('Título condenado'));assert(!nodes['#root'].innerHTML.includes('Pendente'));assert(nodes['#root'].innerHTML.includes('img/ob.jpg'));

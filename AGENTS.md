@@ -302,3 +302,7 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 ## Encaixe da saída na agenda (07/11/2026)
 - Card de saída dentro da seção do dia, imediatamente abaixo do cabeçalho de data e antes das atividades. Contagem de sessões com singular correto.
 - Redesenho do botão de denúncia e acesso ao Mural ainda aguarda aprovação; não aplicar junto desta correção.
+
+## Denúncia e vitrine aprovadas (07/11/2026)
+- Denunciar é atalho flutuante circular de sirene, em todas as telas autenticadas, acima do menu. Atrás das folhas modais; espaço reservado no fim das páginas e à direita do compositor do chat. Sem animação contínua.
+- Home usa Mural da Vergonha com carimbo Em exposição e até3 retratos de perfis condenados em molduras. Só aparece com condenação, sem contador total nem anexos de denúncias. Consulta hasMural existente passa de limit1 a limit3 e fornece os perfis; sem consulta adicional ou fotos no Firestore.
