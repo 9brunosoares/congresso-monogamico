@@ -298,3 +298,7 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 - TEST_VOTE: votação única até07/11/2026 12h SP; chave fixa07/11, todos13 elegíveis, resultado após fechamento. Não integra VOTE_DAYS nem gera multas; período oficial permanece. Marcador/contagem/participação continuam atômicos e regras recusam fora da janela.
 - ADM edita os nove campos da atividade, com duração e transação recusando dados desatualizados. Agenda completa permite editar dias ocultos pela própria chegada; não altera a personalização dos membros.
 - Saídas Igor e Nanu quarta19h; Bruno quinta20h. Endereços em travelPlans/{driver}, leitura autenticada e escrita ADM validada, uma consulta ao carro próprio. Nunca inserir endereços reais em JS público.
+
+## Encaixe da saída na agenda (07/11/2026)
+- Card de saída dentro da seção do dia, imediatamente abaixo do cabeçalho de data e antes das atividades. Contagem de sessões com singular correto.
+- Redesenho do botão de denúncia e acesso ao Mural ainda aguarda aprovação; não aplicar junto desta correção.
