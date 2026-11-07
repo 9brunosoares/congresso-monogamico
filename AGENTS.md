@@ -293,3 +293,8 @@ A versão aprovada é a **"vermelha"**. Outras foram testadas e descartadas: cad
 ## Textos e Pix no pagamento (05/11/2026)
 - Formulário de pagamento exibe Pix e cópia do recebedor selecionado; acompanha troca de recebedor e snapshots de chaves, sem consulta adicional. Ausência de chave não ocupa espaço.
 - Sábado: grafia solicitada “Restrospectiva do meu an*”, preparo “levar material da apresentação”. Circuito e continuação: “roupas leves e pênis”, grafia intencional. Atualização parcial com backup e precondição de versão da agenda; horários preservados.
+
+## Janela de teste e edição (06/11/2026)
+- TEST_VOTE: votação única até07/11/2026 12h SP; chave fixa07/11, todos13 elegíveis, resultado após fechamento. Não integra VOTE_DAYS nem gera multas; período oficial permanece. Marcador/contagem/participação continuam atômicos e regras recusam fora da janela.
+- ADM edita os nove campos da atividade, com duração e transação recusando dados desatualizados. Agenda completa permite editar dias ocultos pela própria chegada; não altera a personalização dos membros.
+- Saídas Igor e Nanu quarta19h; Bruno quinta20h. Endereços em travelPlans/{driver}, leitura autenticada e escrita ADM validada, uma consulta ao carro próprio. Nunca inserir endereços reais em JS público.

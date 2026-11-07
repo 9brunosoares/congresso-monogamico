@@ -1,16 +1,17 @@
-import {votePeople} from './travel.js?v=20261105c';
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261105c';
-import {normalizePix} from './pix.js?v=20261105c';
-import {normalizeOfficialLinks} from './official-links.js?v=20261105c';
-import {REACTIONS} from './mural-reactions.js?v=20261105c';
+import {departure} from './travel.js?v=20261106a';
+import {votePeople} from './travel.js?v=20261106a';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261106a';
+import {normalizePix} from './pix.js?v=20261106a';
+import {normalizeOfficialLinks} from './official-links.js?v=20261106a';
+import {REACTIONS} from './mural-reactions.js?v=20261106a';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
-import { ALL, P, EMOJIS } from './roster.js?v=20261105c';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261105c';
+import { ALL, P, EMOJIS } from './roster.js?v=20261106a';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261106a';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -67,13 +68,14 @@ function syncData(){
  listen('settings',doc(db,'settings','main'),snap=>{state.budget=snap.data()?.budget||0},true);
  listen('agenda',collection(db,'agenda'),snapshot=>{state.agenda=rows(snapshot).sort((a,b)=>a.start-b.start)},true);
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(1)),snap=>{state.hasMural=!snap.empty},true);
+ const car=departure(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
  if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){
   listen('reactions-'+item.id,doc(db,'caseReactions',item.id),snap=>{state.caseReactions={...state.caseReactions,[item.id]:snap.data()?.votes||{}}});
  }
  listen('latestChat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(1)),snap=>{state.latestChat=snap.docs[0]?.id||null});
  if(state.admin)listen('adminPending',query(collection(db,'cases'),where('status','==','pend'),limit(1)),snap=>{state.adminPending=!snap.empty});
- const key=dayKey(),votingDay=VOTE_DAYS.find(d=>d.key===key);
+ const key=votingKey(),votingDay=[...VOTE_DAYS,TEST_VOTE].find(d=>d.key===key);
  if(key!==currentDay){currentDay=key;state.qvoted={};state.querido={};state.voterCount=0;}
  if(votingDay){
   listen('voted-'+key,doc(db,'querido',key,'voters',auth.currentUser.uid),snap=>{state.qvoted={[key]:snap.exists()?[state.me]:[]}},true);
@@ -349,9 +351,10 @@ export async function deleteChat(id){
 }
 export async function setBudget(budget){admin();const snap=await getDocFromServer(doc(db,'settings','main'));return financeWrite('budget','main',{budget},snap.data().version);}
 export async function addSession(data){admin();return addDoc(collection(db,'agenda'),data);}
+export async function editSession(id,data,expected){admin();await runTransaction(db,async tx=>{const ref=doc(db,'agenda',id),snap=await tx.get(ref);if(!snap.exists())throw Error('Atividade não encontrada.');if(Object.keys(data).some(k=>snap.data()[k]!==expected[k]))throw Error('A atividade foi alterada. Reabra para editar.');tx.set(ref,data);});}
 export async function vote(ballot){
  member();if(!votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(state.me))throw Error('Sua votação começa no dia 20.');if(!votingOpen())throw Error(Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':"A votação abre de quinta a domingo da viagem, até meio-dia (São Paulo).");
- const key=dayKey(),uid=auth.currentUser.uid,id=state.me;
+ const key=votingKey(),uid=auth.currentUser.uid,id=state.me;
  const total=doc(db,'querido',key),marker=doc(db,'querido',key,'voters',uid);
  const delta=applyBallot(undefined,ballot,id);
  if((state.qvoted[key]||[]).includes(id))throw Error(alreadyVotedMessage());

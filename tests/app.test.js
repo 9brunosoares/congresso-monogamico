@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {ALL,PEOPLE,P,EMOJIS} from '../roster.js';
-import {dayKey,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
+import {dayKey,validatePin,applyBallot,decodeTally,VOTE_DAYS,TEST_VOTE,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
 
 test('PIN aceita exatamente seis algarismos',()=>{
  for(const pin of ['000000','123456','098765'])assert.doesNotThrow(()=>validatePin(pin));
@@ -42,7 +42,7 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={},events={},timers=new Map();let timerId=0;const context={departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,TEST_VOTE,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
@@ -220,4 +220,11 @@ test('pagamento acompanha Pix do recebedor e não mantém chave de outra pessoa'
  assert(nodes['#paymentRecipientPix'].innerHTML.includes('bruno@example.com'));
  nodes['#pmTo'].value='ob';vm.runInContext('refreshRecipientPix()',context);assert(nodes['#paymentRecipientPix'].innerHTML.includes('ob@example.com'));assert(!nodes['#paymentRecipientPix'].innerHTML.includes('bruno@example.com'));
  nodes['#pmTo'].value='igor';vm.runInContext('refreshRecipientPix()',context);assert(nodes['#paymentRecipientPix'].hidden);assert(!nodes['#paymentRecipientPix'].innerHTML.includes('ob@example.com'));
+});
+
+test('votação de teste atravessa meia-noite, fecha07/11 às12h e não gera multa',()=>{
+ const a=Date.parse('2026-11-06T22:00:00-03:00'),b=Date.parse('2026-11-07T11:59:59-03:00');assert(votingOpen(a));assert(votingOpen(b));assert.equal(votingKey(a),votingKey(b));assert.equal(resultDay(a),null);assert(!votingOpen(TEST_VOTE.deadline));assert.equal(resultDay(TEST_VOTE.deadline).key,TEST_VOTE.key);assert.equal(missedVotePoints({},TEST_VOTE.deadline).length,0);
+});
+test('editor da agenda só é oferecido a ADM, inclusive na agenda completa',()=>{
+ const {context}=ui();vm.runInContext("S={...S,me:'bruno',admin:true};AGENDA.push({id:'x',d:18,t:'21:00',title:'Teste',start:1795046400000,end:1795050000000});agendaAdminMode=true;day=18",context);assert(vm.runInContext('viewPrograma()',context).includes('data-edit-activity="x"'));vm.runInContext('S.admin=false',context);assert(!vm.runInContext('viewPrograma()',context).includes('data-edit-activity'));
 });

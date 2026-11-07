@@ -1,14 +1,14 @@
-import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261105c';
+import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261106a';
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261105c';
-import {PIX_TYPES} from './pix.js?v=20261105c';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261105c';
-import {REACTIONS} from './mural-reactions.js?v=20261105c';
-import {createChatColors} from './chat-colors.js?v=20261105c';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261106a';
+import {PIX_TYPES} from './pix.js?v=20261106a';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261106a';
+import {REACTIONS} from './mural-reactions.js?v=20261106a';
+import {createChatColors} from './chat-colors.js?v=20261106a';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
-import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261105c';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261105c';
-import * as backend from './backend.js?v=20261105c';
+import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261106a';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261106a';
+import * as backend from './backend.js?v=20261106a';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -155,9 +155,9 @@ function viewInicio(){
 
   <button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>
 
-  ${(()=>{const d=dayKey();const blocked=VOTE_DAYS.find(v=>v.key===d)?.day===19&&!votePeople(ALL,19).includes(S.me); const done=(S.qvoted[d]||[]).includes(S.me);
+  ${(()=>{const d=votingKey();const blocked=VOTE_DAYS.find(v=>v.key===d)?.day===19&&!votePeople(ALL,19).includes(S.me); const done=(S.qvoted[d]||[]).includes(S.me);
     return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${blocked||done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
-    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(dayKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?(S.scoreClosing?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
+    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(votingKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?(S.scoreClosing?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
 
   <div class="sec-h"><h3>Seu placar</h3><button class="link" data-go="placar" type="button">Ranking completo</button></div>
   <div class="card row">
@@ -181,18 +181,19 @@ function podium(rk){
   return `<div class="podium">${one(b,"p2","2º")}${one(a,"p1","1º")}${one(c,"p3","3º")}</div>`;
 }
 
+let agendaAdminMode=false;
 function viewPrograma(){
   const t=now();
-  const visibleDays=DAYS.filter(d=>d.d>=availableDay(S.me));
-  if(day<availableDay(S.me))day=availableDay(S.me);
-  const items = agendaFor(AGENDA,S.me).filter(a=>a.d===day);
+  const visibleDays=DAYS.filter(d=>(agendaAdminMode&&isAdm())||d.d>=availableDay(S.me));
+  if(!(agendaAdminMode&&isAdm())&&day<availableDay(S.me))day=availableDay(S.me);
+  const items = (agendaAdminMode&&isAdm()?AGENDA:agendaFor(AGENDA,S.me)).filter(a=>a.d===day);
   const car=departureFor(S.me,day);const trip=departure(S.me);
   return `
-  <div class="days" role="tablist">${visibleDays.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
-  ${car?`<article class="card departure-card" style="margin-top:12px"><div class="eyebrow">Sua saída · ${trip.time}</div><h3>Carro de ${esc(first(car.driver))}</h3><p>${car.people.map(first).map(esc).join(' · ')}</p>${car.note?`<small class="muted">${esc(car.note)}</small>`:''}</article>`:''}<section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
+  ${isAdm()?`<button class="link" id="fullAgenda" type="button">${agendaAdminMode?'Minha agenda':'Agenda completa'}</button>`:''}<div class="days" role="tablist">${visibleDays.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
+  ${car?`<article class="card departure-card" style="margin-top:12px"><div class="eyebrow">Sua saída · ${trip.time}</div><h3>Carro de ${esc(first(car.driver))}</h3><p>${car.people.map(first).map(esc).join(' · ')}</p>${S.travelPlan?.address?`<p>${esc(S.travelPlan.address)}</p>`:''}${car.note?`<small class="muted">${esc(car.note)}</small>`:''}</article>`:''}<section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} sessões</span></div>
   <div class="card" style="padding-block:4px">${items.map(a=>{
     const st = t>=a.end?"done":(t>=a.start?"now":"");
-    return `<div class="slot ${st}"><time>${a.t}</time><div><h4>${esc(a.title)}</h4>
+    return `<div class="slot ${st}"><time>${a.t}</time><div><h4>${esc(a.title)}</h4>${isAdm()?`<button class="link" data-edit-activity="${esc(a.id)}" type="button">Editar</button>`:''}
       ${a.note?`<div class="note">${esc(a.note)}</div>`:""}
       <div class="meta">${st==="now"?'<span class="tag live">Agora</span>':""}${a.place?`<span class="tag">${esc(a.place)}</span>`:""}${a.pts?`<span class="pts">até ${a.pts} pts</span>`:""}${a.prep?`<span class="tag prepn">Preparação</span>`:""}</div>
       ${a.prep?`<div class="note"><b style="color:var(--ink)">Leve/prepare:</b> ${esc(a.prep)}</div>`:""}
@@ -301,7 +302,7 @@ function viewTribunal(){
 function todayNum(){ const t=now(); const d=new Date(t).getDate(); return DAYS.some(x=>x.d===d)?d:null; }
 
 function viewQuerido(){
-  const revealed=resultDay(),d = revealed?.key||dayKey();
+  const revealed=resultDay(),d = revealed?.key||votingKey();
   if(!S.querido[d]) S.querido[d] = Object.fromEntries(ALL.map(id=>[id,{}]));
   const voted = (S.qvoted[d]||[]).includes(S.me);
   const res = S.querido[d];
@@ -327,7 +328,7 @@ function viewQuerido(){
     <div class="card" style="margin-top:12px;padding-block:4px">${votePeople(ALL,revealed.day).slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
       return `<div class="qres ${id===S.me?"me-row":""}">${av(id)}<div style="min-width:0"><div class="nm">${esc(P[id].nick)}</div><div class="qchips">${chips||'<span class="muted" style="font-size:13px">sem votos ainda</span>'}</div></div><span class="muted num" style="font-size:13px">${total(id)}</span></div>`}).join("")}</div>`;
-  return (!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>${Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'De 19 a 22/11, pela manhã até meio-dia (São Paulo).'}</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${dayKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos de hoje foram enviados.'}</div></div>`:form) + (!revealed&&VOTE_DAYS.some(v=>v.key===dayKey())?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'') + results;
+  return (votingKey()===TEST_VOTE.key?'<p class="muted">Votação de teste · até 7/11, meio-dia.</p>':'')+(!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>${Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'De 19 a 22/11, pela manhã até meio-dia (São Paulo).'}</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${votingKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos de hoje foram enviados.'}</div></div>`:form) + (!revealed&&VOTE_DAYS.some(v=>v.key===votingKey())?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'') + results;
 }
 
 function viewFofoca(){
@@ -513,15 +514,15 @@ function sheetBudget(){
  <button class="btn block" id="bgOk" type="button">Salvar</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
  s.querySelector('#bgOk').onclick=()=>act(s.querySelector('#bgOk'),async()=>{const budget=Number(s.querySelector('#bgV').value);if(!Number.isFinite(budget)||budget<0||budget>1000000)throw Error('Use um valor entre 0 e 1.000.000.');await backend.setBudget(budget);s.remove();toast('Orçamento atualizado');});});
 }
-function sheetActivity(){
+function sheetActivity(activity=null){
  if(!isAdm())return;
- sheet(`<h3>Nova sessão</h3><div class="stack">
- <label class="f">Dia<select id="acD">${DAYS.map(d=>`<option value="${d.d}" ${d.d===day?'selected':''}>${d.wd} ${d.d}/11</option>`).join('')}</select></label>
- <label class="f">Horário<input id="acT" type="time" value="18:00"></label><label class="f">Título<input id="acN" maxlength="120"></label>
- <label class="f">Pontos (opcional)<input id="acP" type="number" min="0" max="100" step="1" inputmode="numeric"></label><label class="f">Preparação (opcional)<input id="acR" maxlength="500"></label>
- <button class="btn block" id="acOk" type="button">Adicionar à programação</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
+ sheet(`<h3>${activity?'Editar atividade':'Nova sessão'}</h3><div class="stack">
+ <label class="f">Dia<select id="acD">${DAYS.map(d=>`<option value="${d.d}" ${d.d===(activity?.d||day)?'selected':''}>${d.wd} ${d.d}/11</option>`).join('')}</select></label>
+ <label class="f">Horário<input id="acT" type="time" value="${esc(activity?.t||'18:00')}"></label><label class="f">Título<input id="acN" maxlength="120" value="${esc(activity?.title||'')}"></label>
+ <label class="f">Pontos (opcional)<input id="acP" value="${activity?.pts||0}" type="number" min="0" max="100" step="1" inputmode="numeric"></label><label class="f">Preparação (opcional)<input id="acR" maxlength="500" value="${esc(activity?.prep||'')}"></label>
+ <label class="f">Local<input id="acPlace" maxlength="100" value="${esc(activity?.place||'')}"></label><label class="f">Observações<input id="acNote" maxlength="500" value="${esc(activity?.note||'')}"></label><label class="f">Duração (min)<input id="acDuration" type="number" min="1" max="1440" value="${activity?Math.round((activity.end-activity.start)/60000):90}"></label><button class="btn block" id="acOk" type="button">${activity?'Salvar alterações':'Adicionar à programação'}</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
  s.querySelector('#acOk').onclick=()=>act(s.querySelector('#acOk'),async()=>{const d=+s.querySelector('#acD').value,t=s.querySelector('#acT').value,title=s.querySelector('#acN').value.trim();if(!title||!t)throw Error('Preencha título e horário.');const pts=+s.querySelector('#acP').value||0;if(!Number.isInteger(pts)||pts<0||pts>100)throw Error('Use pontos inteiros entre 0 e 100.');
- const [h,m]=t.split(':').map(Number),start=new Date(`2026-11-${String(d).padStart(2,'0')}T${t}:00-03:00`).getTime();await backend.addSession({d,t,title,place:'',pts,prep:s.querySelector('#acR').value.trim(),note:'',start,end:start+90*60000});day=d;s.remove();toast('Sessão adicionada');});});
+ const [h,m]=t.split(':').map(Number),start=new Date(`2026-11-${String(d).padStart(2,'0')}T${t}:00-03:00`).getTime();const duration=Number(s.querySelector('#acDuration').value);if(!Number.isInteger(duration)||duration<1||duration>1440)throw Error('Confira a duração.');const data={d,t,title,place:s.querySelector('#acPlace').value.trim(),pts,prep:s.querySelector('#acR').value.trim(),note:s.querySelector('#acNote').value.trim(),start,end:start+duration*60000};if(activity)await backend.editSession(activity.id,data,activity);else await backend.addSession(data);day=d;s.remove();toast(activity?'Atividade atualizada.':'Sessão adicionada.');});});
 }
 
 function stamp(){ const t=now(); return `${dayOf(t)?.wd||""} ${fmtTime(t)}`.trim(); }
@@ -550,7 +551,7 @@ function render(){
   const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
-    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+dayKey()]&&!(S.qvoted[dayKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
+    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
   tick();watchCasePhotos();refreshRecipientPix();
 }
@@ -570,7 +571,7 @@ function selectAgendaDay(next){
  const strip=$('.days'),selected=$(`[data-day="${day}"]`);
  if(strip&&selected)strip.scrollTo({left:strip.scrollLeft+selected.getBoundingClientRect().left-strip.getBoundingClientRect().left-(strip.clientWidth-selected.offsetWidth)/2,behavior:'smooth'});
 }
-bindAgendaSwipe(document,()=>tab==='programa'&&S.ready&&!!S.me,direction=>selectAgendaDay(adjacentDay(DAYS.filter(d=>d.d>=availableDay(S.me)).map(d=>d.d),day,direction)));
+bindAgendaSwipe(document,()=>tab==='programa'&&S.ready&&!!S.me,direction=>selectAgendaDay(adjacentDay(DAYS.filter(d=>(agendaAdminMode&&isAdm())||d.d>=availableDay(S.me)).map(d=>d.d),day,direction)));
 function showReactionPicker(id){const y=scrollY;reactionPicker=id;render();scrollTo(0,y);}
 let reactionHold,heldReaction=null,reactionTouch=null;
 document.addEventListener('pointerdown',e=>{
@@ -594,6 +595,7 @@ document.addEventListener('click',e=>{
  const reaction=e.target.closest('[data-react]');if(reaction){if(!reaction.disabled){const id=reaction.dataset.react,emoji=S.caseReactions?.[id]?.[S.me]===reaction.dataset.emoji?null:reaction.dataset.emoji;showReactionPicker(null);backend.setCaseReaction(id,emoji).catch(error=>{backend.reportError(error);toast(backend.errorText(error));});}return;}
  if(reactionPicker&&!e.target.closest('.case-reaction-bar'))showReactionPicker(null);
  const pr=e.target.closest('[data-photo-retry]');if(pr){backend.loadCasePhoto(pr.dataset.photoRetry,true);return;}
+ const edit=e.target.closest('[data-edit-activity]');if(edit){sheetActivity(AGENDA.find(a=>a.id===edit.dataset.editActivity));return;}
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}
  const q=e.target.closest('[data-q]');if(q){qDraft[q.dataset.q]=qDraft[q.dataset.q]===q.dataset.em?undefined:q.dataset.em;if(!qDraft[q.dataset.q])delete qDraft[q.dataset.q];const y=scrollY;render();scrollTo(0,y);return;}
@@ -606,7 +608,7 @@ document.addEventListener('click',e=>{
  const dl=e.target.closest('[data-del]');if(dl){act(dl,()=>backend.deleteChat(dl.dataset.del));return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
- ({officialLinks:sheetOfficialLinks,closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
+ ({fullAgenda:()=>{agendaAdminMode=!agendaAdminMode;render();},officialLinks:sheetOfficialLinks,closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
  qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
  clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Demonstração encerrada');}})[id]?.();
 });

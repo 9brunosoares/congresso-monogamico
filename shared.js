@@ -1,5 +1,5 @@
-import {votePeople} from './travel.js?v=20261105c';
-import { ALL, EMOJIS } from './roster.js?v=20261105c';
+import {votePeople} from './travel.js?v=20261106a';
+import { ALL, EMOJIS } from './roster.js?v=20261106a';
 export function validatePin(pin){if(!/^[0-9]{6}$/.test(pin))throw Error('Use um PIN de exatamente 6 dígitos.');}
 export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)/(24*60*60*1000)));}
 // Cada dígito hexadecimal guarda o total de um dos oito emojis, na ordem de EMOJIS.
@@ -24,8 +24,11 @@ export const VOTE_DAYS=[19,20,21,22].map(d=>{
  const start=Date.parse(`2026-11-${d}T00:00:00-03:00`);
  return {key:dayKey(start),day:d,start,deadline:start+12*3600000};
 });
-export function votingOpen(at=Date.now()){return VOTE_DAYS.some(d=>at>=d.start+6*3600000&&at<d.deadline);}
+export const TEST_VOTE={key:'20764',day:7,start:1793934000000,deadline:1794063600000};
+export function votingKey(at=Date.now()){return at>=TEST_VOTE.start&&at<VOTE_DAYS[0].start?TEST_VOTE.key:dayKey(at);}
+export function votingOpen(at=Date.now()){return (at>=TEST_VOTE.start&&at<TEST_VOTE.deadline)||VOTE_DAYS.some(d=>at>=d.start+6*3600000&&at<d.deadline);}
 export function resultDay(at=Date.now()){
+ if(at>=TEST_VOTE.deadline&&at<VOTE_DAYS[0].start)return TEST_VOTE;
  const today=VOTE_DAYS.find(d=>d.key===dayKey(at));
  return today?(at>=today.deadline?today:null):at>=VOTE_DAYS.at(-1).deadline?VOTE_DAYS.at(-1):null;
 }

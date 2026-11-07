@@ -136,6 +136,8 @@ service cloud.firestore {
     && d.start is number && d.start > 0 && d.start < 4102444800000
     && d.end is number && d.end > d.start && d.end <= d.start + 86400000;
   }
+  // travelPlans/{driver}: address string<=300, authenticated members only.
+  match /travelPlans/{driver} { allow read: if isMember(); allow create,update: if isAdmin() && driver in ids() && only(request.resource.data,['address']) && text(request.resource.data.address,300); allow delete: if false; }
   match /agenda/{id} {
    allow read: if isMember();
    allow create, update: if isAdmin() && isValidAgenda(request.resource.data);
@@ -390,39 +392,40 @@ service cloud.firestore {
     && getAfter(/databases/$(database)/documents/chat/$(id)).data.createdAt == request.time;
    allow update,delete: if false;
   }
-  function isToday(day) { return day == string(int((request.time.toMillis() - 10800000) / 86400000)); }
+  function testWindow() { return request.time.toMillis() >= 1793934000000 && request.time.toMillis() < 1794063600000; }
+  function isToday(day) { return testWindow() ? day == '20764' : day == string(int((request.time.toMillis() - 10800000) / 86400000)); }
   function resultsReleased(day) {
-   return day in ['20776','20777','20778','20779'] && request.time.toMillis() >= int(day) * 86400000 + 54000000;
+   return (day == '20764' && request.time.toMillis() >= 1794063600000) || day in ['20776','20777','20778','20779'] && request.time.toMillis() >= int(day) * 86400000 + 54000000;
   }
   function votingOpen() {
    let local=request.time.toMillis()-10800000;
-   return local >= 1795046400000 && local < 1795392000000 && local % 86400000 >= 21600000 && local % 86400000 < 43200000;
+   return testWindow() || local >= 1795046400000 && local < 1795392000000 && local % 86400000 >= 21600000 && local % 86400000 < 43200000;
   }
   // A subtração só aceita números; delta enumerado garante um único incremento.
   // A partir de zero, com 14 votantes e sem voto próprio, cada dígito tem máximo13.
-  function eligibleVoter(id) { return request.time.toMillis() >= 1795143600000 || !(id in ['bruno','ibrahim','felipe','gherardi','luan']); }
   function isValidTallyDelta(delta,self,increments) { return self ? delta == 0 : delta in increments; }
   function isValidVoteDay(d,old,day) {
    let me=personId();
+   let early=day=='20776';
    let before=old.counts;
    let after=d.counts;
    let official=ids();
    let increments=[1,16,256,4096,65536,1048576,16777216,268435456];
-   return isToday(day) && votingOpen() && eligibleVoter(me) && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= (eligibleVoter('bruno') ? 13 : 8)
+   return isToday(day) && votingOpen() && !(early && me in ['bruno','ibrahim','felipe','gherardi','luan']) && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= (early ? 8 : 13)
     && d.counts is map && after.keys().hasAll(official) && after.keys().hasOnly(official)
-    && isValidTallyDelta(after['bruno']-before.get('bruno',0),('bruno'==me || !eligibleVoter('bruno')),increments)
-    && isValidTallyDelta(after['ob']-before.get('ob',0),('ob'==me || !eligibleVoter('ob')),increments)
-    && isValidTallyDelta(after['luan']-before.get('luan',0),('luan'==me || !eligibleVoter('luan')),increments)
-    && isValidTallyDelta(after['igor']-before.get('igor',0),('igor'==me || !eligibleVoter('igor')),increments)
-    && isValidTallyDelta(after['pig']-before.get('pig',0),('pig'==me || !eligibleVoter('pig')),increments)
-    && isValidTallyDelta(after['pelado']-before.get('pelado',0),('pelado'==me || !eligibleVoter('pelado')),increments)
-    && isValidTallyDelta(after['gherardi']-before.get('gherardi',0),('gherardi'==me || !eligibleVoter('gherardi')),increments)
-    && isValidTallyDelta(after['nanu']-before.get('nanu',0),('nanu'==me || !eligibleVoter('nanu')),increments)
-    && isValidTallyDelta(after['sadano']-before.get('sadano',0),('sadano'==me || !eligibleVoter('sadano')),increments)
-    && isValidTallyDelta(after['ibrahim']-before.get('ibrahim',0),('ibrahim'==me || !eligibleVoter('ibrahim')),increments)
-    && isValidTallyDelta(after['cadu']-before.get('cadu',0),('cadu'==me || !eligibleVoter('cadu')),increments)
-    && isValidTallyDelta(after['diogo']-before.get('diogo',0),('diogo'==me || !eligibleVoter('diogo')),increments)
-    && isValidTallyDelta(after['felipe']-before.get('felipe',0),('felipe'==me || !eligibleVoter('felipe')),increments);
+    && isValidTallyDelta(after['bruno']-before.get('bruno',0),('bruno'==me || early),increments)
+    && isValidTallyDelta(after['ob']-before.get('ob',0),'ob'==me,increments)
+    && isValidTallyDelta(after['luan']-before.get('luan',0),('luan'==me || early),increments)
+    && isValidTallyDelta(after['igor']-before.get('igor',0),'igor'==me,increments)
+    && isValidTallyDelta(after['pig']-before.get('pig',0),'pig'==me,increments)
+    && isValidTallyDelta(after['pelado']-before.get('pelado',0),'pelado'==me,increments)
+    && isValidTallyDelta(after['gherardi']-before.get('gherardi',0),('gherardi'==me || early),increments)
+    && isValidTallyDelta(after['nanu']-before.get('nanu',0),'nanu'==me,increments)
+    && isValidTallyDelta(after['sadano']-before.get('sadano',0),'sadano'==me,increments)
+    && isValidTallyDelta(after['ibrahim']-before.get('ibrahim',0),('ibrahim'==me || early),increments)
+    && isValidTallyDelta(after['cadu']-before.get('cadu',0),'cadu'==me,increments)
+    && isValidTallyDelta(after['diogo']-before.get('diogo',0),'diogo'==me,increments)
+    && isValidTallyDelta(after['felipe']-before.get('felipe',0),('felipe'==me || early),increments);
   }
   function emptyDay() { return {'counts':{},'voters':0}; }
   function previousVoters(day) {

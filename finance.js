@@ -1,5 +1,5 @@
-import {ALL} from './roster.js?v=20261105c';
-import {P} from './roster.js?v=20261105c';
+import {ALL} from './roster.js?v=20261106a';
+import {P} from './roster.js?v=20261106a';
 export const SETTLEMENT_START=Date.parse('2026-11-22T00:00:00-03:00');
 export const settlementsOpen=(time=Date.now())=>time>=SETTLEMENT_START;
 export const activeExpenses=expenses=>expenses.filter(e=>e.status!=='cancelled');

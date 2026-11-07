@@ -168,6 +168,15 @@ const {context}=require('./firebase-context.cjs');
  cases.push(earlyCase('igor','ALLOW'),earlyCase('bruno','DENY'),earlyCase('felipe','DENY'));
  const absentTarget=earlyCase('igor','DENY');absentTarget.request.resource.data.counts.bruno=1;cases.push(absentTarget);
  const omittedPresent=earlyCase('igor','DENY');omittedPresent.request.resource.data.counts.pig=0;cases.push(omittedPresent);
+
+ const testDay='20764';
+ function temporaryCase(time,method='create',expectation='ALLOW'){
+  const t=make('bruno',first);t.expectation=expectation;t.request.time=new Date(time).toISOString();t.request.method=method;t.request.path=t.request.path.replace('/'+key,'/'+testDay);for(const m of t.functionMocks)m.args[0].exactValue=m.args[0].exactValue.replace('/'+key,'/'+testDay);return t;
+ }
+ cases.push(temporaryCase('2026-11-06T10:00:00-03:00'),temporaryCase('2026-11-07T11:59:59-03:00'),temporaryCase('2026-11-07T12:00:00-03:00','create','DENY'),temporaryCase('2026-11-05T23:59:59-03:00','create','DENY'),temporaryCase('2026-11-06T10:00:00-03:00','get','DENY'),temporaryCase('2026-11-07T12:00:00-03:00','get','ALLOW'));
+ const wrongTestKey=temporaryCase('2026-11-06T10:00:00-03:00','create','DENY');wrongTestKey.request.path=wrongTestKey.request.path.replace(testDay,'20763');cases.push(wrongTestKey);
+ for(const admin of [true,false]){const t=photoTest('update',{address:'Ponto de encontro'},'pend',admin,admin?'ALLOW':'DENY');t.request.path=prefix+'/travelPlans/bruno';t.resource={data:{address:'Anterior'}};cases.push(t);}
+ const oversized=photoTest('update',{address:'x'.repeat(301)},'pend',true,'DENY');oversized.request.path=prefix+'/travelPlans/bruno';oversized.resource={data:{address:'Anterior'}};cases.push(oversized);
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});
