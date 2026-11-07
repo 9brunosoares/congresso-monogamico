@@ -173,7 +173,14 @@ test('resultado fica oculto mesmo com cache até meio-dia; domingo sem promessa 
   Date.now=()=>Date.parse('2026-11-19T11:59:59-03:00');const {context,nodes}=ui(),key=dayKey();
   vm.runInContext(`S={...S,me:'ob',ready:true,loaded:{'votes-${key}':true},qvoted:{'${key}':['ob']},querido:{'${key}':{bruno:{'❤️':13}}}};tab='querido';render()`,context);
   assert(!nodes['#root'].innerHTML.includes('class="qres'));assert(nodes['#root'].innerHTML.includes('revelado ao meio-dia'));
+  assert(!vm.runInContext('viewInicio()',context).includes('Os votos foram revelados!'));
   Date.now=()=>Date.parse('2026-11-19T12:00:00-03:00');vm.runInContext('render()',context);assert(nodes['#root'].innerHTML.includes('Resultado de 19/11'));assert(nodes['#root'].innerHTML.includes('class="qres'));
+  for(const me of ['ob','bruno']){
+   const home=vm.runInContext(`S.me='${me}';viewInicio()`,context);
+   assert.match(home,/class="card q-reveal" data-go="querido"/);
+   assert(home.includes('Os votos foram revelados!'));assert(!home.includes('Você já votou hoje.'));
+  }
+  vm.runInContext("S.me='ob'",context);
   Date.now=()=>Date.parse('2026-11-22T10:00:00-03:00');const final=dayKey();vm.runInContext(`S.qvoted={'${final}':['ob']};render()`,context);assert(nodes['#root'].innerHTML.includes('Esta foi a última votação do congresso.'));assert(!nodes['#root'].innerHTML.includes('Amanhã'));
  }finally{Date.now=previous;}
 });

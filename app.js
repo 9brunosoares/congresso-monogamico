@@ -141,6 +141,20 @@ function muralTeaser(){
  return `<button class="mural-teaser" data-go="mural" type="button"><span class="mural-teaser-copy"><strong>Mural da Vergonha</strong></span><span class="exposure-portraits" aria-hidden="true">${people.map(id=>`<span class="exposure-frame">${av(id)}</span>`).join('')}</span><span class="mural-teaser-arrow" aria-hidden="true">›</span></button>`;
 }
 function emergencyButton(){return `<button class="emergency-report" id="homeReport" type="button" aria-haspopup="dialog" aria-label="Fazer denúncia"><span class="emergency-disc"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 24v-9a7 7 0 0 1 14 0v9M7 24h18v4H7zM16 2v3M4 8l3 2M28 8l-3 2M3 17h3M29 17h-3"/><path d="M13 17v-2a3 3 0 0 1 3-3"/></svg></span><span class="emergency-label">Denunciar</span></button>`;}
+function homeQueridometro(){
+  const revealed=resultDay();
+  if(revealed)return `<div class="sec-h"><h3>Queridômetro</h3></div>
+    <button class="card q-reveal" data-go="querido" type="button">
+      <span class="q-reveal-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS.querido}</svg></span>
+      <span class="grow"><span class="eyebrow">${revealed.key===TEST_VOTE.key?'Rodada de teste · ':''}${revealed.day}/11</span><strong>Os votos foram revelados!</strong><small>Ver resultado</small></span>
+      <span class="q-reveal-arrow" aria-hidden="true">›</span>
+    </button>`;
+  const d=votingKey();
+  const blocked=VOTE_DAYS.find(v=>v.key===d)?.day===19&&!votePeople(ALL,19).includes(S.me);
+  const done=(S.qvoted[d]||[]).includes(S.me);
+  return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${blocked||done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
+    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?((S.scoreClosing||d===TEST_VOTE.key)?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`;
+}
 function viewInicio(){
   const {cur,nxt} = nextItem();
   const rk = ranking();
@@ -160,9 +174,7 @@ function viewInicio(){
 
   <button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>
 
-  ${(()=>{const d=votingKey();const blocked=VOTE_DAYS.find(v=>v.key===d)?.day===19&&!votePeople(ALL,19).includes(S.me); const done=(S.qvoted[d]||[]).includes(S.me);
-    return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${blocked||done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
-    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(votingKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?((S.scoreClosing||votingKey()===TEST_VOTE.key)?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`})()}
+  ${homeQueridometro()}
 
   <div class="sec-h"><h3>Seu placar</h3><button class="link" data-go="placar" type="button">Ranking completo</button></div>
   <div class="card row">
@@ -329,12 +341,13 @@ function viewQuerido(){
     </div>`).join("")}</div>
     <button class="btn seal block" style="margin-top:14px" id="qSend" type="button">Enviar votos (${Object.keys(qDraft).filter(k=>others.includes(k)).length} de ${others.length})</button>`;
   const results = !revealed?'':!S.loaded?.['votes-'+d]?'<p role="status" class="muted">Carregando resultado…</p>':`
-    <div class="sec-h"><h3>Resultado de ${revealed.day}/11</h3><span class="muted" style="font-size:13px">${S.voterCount} votantes</span></div>
+    <div class="sec-h"><h3>${revealed.key===TEST_VOTE.key?'Resultado do teste':'Resultado'} de ${revealed.day}/11</h3><span class="muted" style="font-size:13px">${S.voterCount} ${S.voterCount===1?'votante':'votantes'}</span></div>
     ${highlights?`<div class="card qhls">${highlights}</div>`:""}
     <div class="card" style="margin-top:12px;padding-block:4px">${votePeople(ALL,revealed.day).slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
       return `<div class="qres ${id===S.me?"me-row":""}">${av(id)}<div style="min-width:0"><div class="nm">${esc(P[id].nick)}</div><div class="qchips">${chips||'<span class="muted" style="font-size:13px">sem votos ainda</span>'}</div></div><span class="muted num" style="font-size:13px">${total(id)}</span></div>`}).join("")}</div>`;
-  return (votingKey()===TEST_VOTE.key?'<p class="muted">Votação de teste · até 7/11, meio-dia.</p>':'')+(!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>${Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'De 19 a 22/11, pela manhã até meio-dia (São Paulo).'}</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${votingKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos foram enviados.'}</div></div>`:form) + (!revealed&&VOTE_DAYS.some(v=>v.key===votingKey())?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'') + results;
+  if(revealed)return results+(revealed.day===VOTE_DAYS.at(-1).day?'<p class="muted">Esta foi a última votação do congresso.</p>':'');
+  return (d===TEST_VOTE.key?'<p class="muted">Votação de teste · até 7/11, meio-dia.</p>':'')+(!votingOpen()&&!voted?'<div class="card"><h2>Votação fechada</h2><p>De 19 a 22/11, pela manhã até meio-dia (São Paulo).</p></div>':voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos foram enviados.'}</div></div>`:form) + (VOTE_DAYS.some(v=>v.key===d)?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'');
 }
 
 function viewFofoca(){
@@ -632,8 +645,9 @@ document.addEventListener('submit',e=>{
  const input=$('#chatIn'),text=input.value.trim();if(!text)return;
  act(e.target.querySelector('button'),async()=>{await backend.sendChat(text);if($('#chatIn')?.value.trim()===text)$('#chatIn').value='';$('#chatIn')?.focus();});
 });
-let votingPhase=votingOpen();
-setInterval(()=>{tick();const phase=votingOpen();if(phase!==votingPhase){votingPhase=phase;backend.refreshTime?.();render();}},1000);
+function votingPhaseAt(at=Date.now()){return resultDay(at)?.key??votingOpen(at);}
+let votingPhase=votingPhaseAt();
+setInterval(()=>{tick();const phase=votingPhaseAt();if(phase!==votingPhase){votingPhase=phase;backend.refreshTime?.();render();}},1000);
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
