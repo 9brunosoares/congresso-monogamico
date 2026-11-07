@@ -1,17 +1,17 @@
-import {departure} from './travel.js?v=20261106a';
-import {votePeople} from './travel.js?v=20261106a';
-import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261106a';
-import {normalizePix} from './pix.js?v=20261106a';
-import {normalizeOfficialLinks} from './official-links.js?v=20261106a';
-import {REACTIONS} from './mural-reactions.js?v=20261106a';
+import {departure} from './travel.js?v=20261106b';
+import {votePeople} from './travel.js?v=20261106b';
+import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261106b';
+import {normalizePix} from './pix.js?v=20261106b';
+import {normalizeOfficialLinks} from './official-links.js?v=20261106b';
+import {REACTIONS} from './mural-reactions.js?v=20261106b';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
-import { ALL, P, EMOJIS } from './roster.js?v=20261106a';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261106a';
+import { ALL, P, EMOJIS } from './roster.js?v=20261106b';
+import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261106b';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.

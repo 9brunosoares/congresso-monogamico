@@ -1,5 +1,5 @@
-import {votePeople} from './travel.js?v=20261106a';
-import { ALL, EMOJIS } from './roster.js?v=20261106a';
+import {votePeople} from './travel.js?v=20261106b';
+import { ALL, EMOJIS } from './roster.js?v=20261106b';
 export function validatePin(pin){if(!/^[0-9]{6}$/.test(pin))throw Error('Use um PIN de exatamente 6 dígitos.');}
 export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)/(24*60*60*1000)));}
 // Cada dígito hexadecimal guarda o total de um dos oito emojis, na ordem de EMOJIS.
@@ -33,6 +33,7 @@ export function resultDay(at=Date.now()){
  return today?(at>=today.deadline?today:null):at>=VOTE_DAYS.at(-1).deadline?VOTE_DAYS.at(-1):null;
 }
 export function alreadyVotedMessage(at=Date.now()){
+ if(votingKey(at)===TEST_VOTE.key)return 'Você já participou desta votação de teste.';
  return dayKey(at)===VOTE_DAYS.at(-1).key||at>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'Você já votou hoje. Amanhã abre de novo.';
 }
 export function scoringPoints(points=[],attendance={},ready,closure,at=Date.now()){

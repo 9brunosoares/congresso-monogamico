@@ -1,14 +1,14 @@
-import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261106a';
+import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261106b';
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261106a';
-import {PIX_TYPES} from './pix.js?v=20261106a';
-import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261106a';
-import {REACTIONS} from './mural-reactions.js?v=20261106a';
-import {createChatColors} from './chat-colors.js?v=20261106a';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261106b';
+import {PIX_TYPES} from './pix.js?v=20261106b';
+import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261106b';
+import {REACTIONS} from './mural-reactions.js?v=20261106b';
+import {createChatColors} from './chat-colors.js?v=20261106b';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
-import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261106a';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261106a';
-import * as backend from './backend.js?v=20261106a';
+import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261106b';
+import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261106b';
+import * as backend from './backend.js?v=20261106b';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -328,7 +328,7 @@ function viewQuerido(){
     <div class="card" style="margin-top:12px;padding-block:4px">${votePeople(ALL,revealed.day).slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
       return `<div class="qres ${id===S.me?"me-row":""}">${av(id)}<div style="min-width:0"><div class="nm">${esc(P[id].nick)}</div><div class="qchips">${chips||'<span class="muted" style="font-size:13px">sem votos ainda</span>'}</div></div><span class="muted num" style="font-size:13px">${total(id)}</span></div>`}).join("")}</div>`;
-  return (votingKey()===TEST_VOTE.key?'<p class="muted">Votação de teste · até 7/11, meio-dia.</p>':'')+(!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>${Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'De 19 a 22/11, pela manhã até meio-dia (São Paulo).'}</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${votingKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos de hoje foram enviados.'}</div></div>`:form) + (!revealed&&VOTE_DAYS.some(v=>v.key===votingKey())?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'') + results;
+  return (votingKey()===TEST_VOTE.key?'<p class="muted">Votação de teste · até 7/11, meio-dia.</p>':'')+(!votingOpen()&&!voted?`<div class="card"><h2>Votação fechada</h2><p>${Date.now()>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'De 19 a 22/11, pela manhã até meio-dia (São Paulo).'}</p></div>`:voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${votingKey()===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos foram enviados.'}</div></div>`:form) + (!revealed&&VOTE_DAYS.some(v=>v.key===votingKey())?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'') + results;
 }
 
 function viewFofoca(){
