@@ -205,10 +205,32 @@ const {context}=require('./firebase-context.cjs');
  cases.push(tripCase('update',postPath,'bruno',{...postData,reactions:{bruno:'😂'}},'DENY'));
  cases.push(tripCase('update',postPath,'ob',{...postData,author:'pig',reactions:{ob:'😂'}},'DENY'));
  cases.push(tripCase('update',tripPhotoPath,'bruno',photo,'DENY'));
+ function privateTripCase(time,method,kind,actor,expectation){
+  const timestamp=new Date(time).toISOString(),id=dayKey(Date.parse('2026-11-09T20:00:00-03:00'))+'_bruno';
+  const testPost=prefix+'/tripTests/bruno/tripPosts/'+id,testPhoto=prefix+'/tripTests/bruno/tripPhotos/'+id;
+  const data={...postData,createdAt:timestamp},target=kind==='photo'?testPhoto:testPost;
+  const next=kind==='photo'?photo:method==='update'?{...data,reactions:{bruno:'👏'}}:data;
+  return {expectation,request:{auth:{uid,token:{email:actor+'@congresso.app'}},time:timestamp,path:target,method,resource:{data:next}},resource:{data:kind==='photo'?photo:data},functionMocks:[
+   mock('get',prefix+'/people/'+actor,{data:{uid}}),mock('getAfter',testPost,{data}),mock('getAfter',testPhoto,{data:photo}),mock('exists',testPost,method!=='create')
+  ]};
+ }
+ const duringTest='2026-11-09T23:59:59-03:00',afterTest='2026-11-10T00:00:00-03:00';
+ for(const kind of ['post','photo']){
+  for(const method of ['create','get']){
+   cases.push(privateTripCase(duringTest,method,kind,'bruno','ALLOW'),privateTripCase(duringTest,method,kind,'igor','DENY'),privateTripCase(afterTest,method,kind,'bruno','DENY'));
+  }
+ }
+ cases.push(privateTripCase(duringTest,'update','post','bruno','ALLOW'),privateTripCase(duringTest,'update','post','igor','DENY'),privateTripCase(afterTest,'update','post','bruno','DENY'));
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
- const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});
- fs.writeFileSync('.private/rules-report.json',JSON.stringify(result.body,null,2));
- const results=result.body.testResults||[];console.log(JSON.stringify({issues:result.body.issues,testResults:results.map((t,i)=>({case:i+1,state:t.state,debugMessages:t.debugMessages,errorPosition:t.errorPosition}))},null,2));
+ const report={issues:[],testResults:[]};
+ const batchSize=200;
+ for(let offset=0;offset<cases.length;offset+=batchSize){
+  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases.slice(offset,offset+batchSize)}},{skipLog:{body:true}});
+  report.issues.push(...(result.body.issues||[]));
+  report.testResults.push(...(result.body.testResults||[]));
+ }
+ fs.writeFileSync('.private/rules-report.json',JSON.stringify(report,null,2));
+ const results=report.testResults;console.log(JSON.stringify({issues:report.issues,testResults:results.map((t,i)=>({case:i+1,state:t.state,debugMessages:t.debugMessages,errorPosition:t.errorPosition}))},null,2));
  assert.equal(results.length,cases.length);assert(results.every(t=>t.state==='SUCCESS'),'Há regras com falha no relatório.');console.log(`OK: ${cases.length} cenários de votação, prazo, fotos e denúncias.`);
 }finally{await c.close();}})().catch(e=>{console.error(e.message);process.exitCode=1;});

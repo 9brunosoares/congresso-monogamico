@@ -78,6 +78,24 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   const late=await api.submitTask({why:'Tirar o lixo',d:5});await assert.rejects(api.deleteTask(late.id),/encerrado/);await api.judgeCase('case-after',true);
   assert.equal(records.get(late.path).status,'ok');assert(!records.has('points/task_'+late.id));assert.equal(records.get('cases/case-after').status,'ok');
   assert.equal([...records.keys()].filter(k=>k.startsWith('points/')).length,pointsBefore);
+
+  time=Date.parse('2026-11-08T20:00:00-03:00');api.setView('inicio');await auth('bruno');
+  assert(state.tripTesting);assert(state.loaded.tripFeedTest);
+  const photo='data:image/jpeg;base64,AAAA',firstId='20765_bruno',testRoot='tripTests/bruno/';
+  const uploads=await Promise.allSettled([api.addTripPhoto(photo),api.addTripPhoto(photo)]);
+  assert.equal(uploads.filter(r=>r.status==='fulfilled').length,1);
+  assert.match(uploads.find(r=>r.status==='rejected').reason.message,/já publicou/);
+  assert.equal(records.get(testRoot+'tripPhotos/'+firstId).dataUrl,photo);
+  await api.loadTripPhoto(firstId);assert.equal(state.tripPhotos[firstId],photo);
+  assert(!records.has('tripPosts/'+firstId));
+  await api.setTripReaction(firstId,'👏');assert.equal(records.get(testRoot+'tripPosts/'+firstId).reactions.bruno,'👏');
+  await api.setTripReaction(firstId,null);assert.deepEqual(records.get(testRoot+'tripPosts/'+firstId).reactions,{});
+  await auth('igor');assert(!state.tripTesting);assert.deepEqual(state.tripPosts,[]);await assert.rejects(api.addTripPhoto(photo),/abrem/);
+  time=Date.parse('2026-11-09T00:00:00-03:00');await auth('bruno');await api.addTripPhoto(photo);
+  assert(records.has(testRoot+'tripPosts/20766_bruno'));
+  time=Date.parse('2026-11-10T00:00:00-03:00');api.refreshTime();await flush();
+  assert(!state.tripTesting);assert.deepEqual(state.tripPosts,[]);assert.deepEqual(state.tripPhotos,{});
+  await assert.rejects(api.addTripPhoto(photo),/abrem/);
   // Reações não dependem do placar nem das contas abertas e não geram pontos.
   await api.setCaseReaction('case-after','😂');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😂'});
   await api.setCaseReaction('case-after','😱');assert.deepEqual(records.get('caseReactions/case-after').votes,{bruno:'😱'});

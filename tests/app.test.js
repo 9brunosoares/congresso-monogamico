@@ -58,6 +58,9 @@ test('Home termina com o feed de fotos e usa o seletor de reações do mural',()
  vm.runInContext("tab='fotos';render()",context);
  assert.equal((nodes['#root'].innerHTML.match(/data-trip-photo=/g)||[]).length,3);
  assert(!nodes['#root'].innerHTML.includes('id="addTripPhoto"'));
+ vm.runInContext("tab='inicio';S.tripTesting=true;S.loaded.tripFeedTest=true;render()",context);
+ assert.match(nodes['#root'].innerHTML,/Fotos da viagem · teste/);
+ assert.match(nodes['#root'].innerHTML,/data-reaction-picker="b"/);
 });
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');

@@ -7,8 +7,8 @@ import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
-import {dayKey,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261108a';
-import * as backend from './backend.js?v=20261108a';
+import {dayKey,tripPhotoDay,tripPhotoTest,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261108b';
+import * as backend from './backend.js?v=20261108b';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -157,7 +157,7 @@ function homeQueridometro(){
 }
 function tripPost(post){
   const {id,author,reactions={}}=post,photo=S.tripPhotos?.[id],nick=esc(first(author));
-  const canReact=author!==S.me;
+  const canReact=author!==S.me||S.tripTesting===true;
   return `<article class="card trip-post">
     <div class="trip-post-meta row">${av(author,'sm')}<div><b>${nick}</b><small>${esc(backend.formatStamp(post.createdAt))}</small></div></div>
     ${photo?`<img class="trip-image" src="${esc(photo)}" alt="Registro de ${nick}" decoding="async" loading="lazy">`:
@@ -166,12 +166,13 @@ function tripPost(post){
   </article>`;
 }
 function tripFeed(full=false){
-  const posts=S.tripPosts||[],ready=S.loaded?.[full?'tripGallery':'tripFeed'];
+  const key=(full?'tripGallery':'tripFeed')+(S.tripTesting?'Test':'');
+  const posts=S.tripPosts||[],ready=S.loaded?.[key],title=S.tripTesting?'Fotos da viagem · teste':'Fotos da viagem';
   const content=!ready?'<p class="muted trip-empty" role="status">Carregando fotos…</p>':posts.length?
     `<div class="stack">${(full?posts:posts.slice(0,2)).map(tripPost).join('')}</div>`:
     '<p class="muted trip-empty">A primeira foto ainda não chegou.</p>';
-  return full?`<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">Fotos da viagem</h2>${content}`:
-    `<section aria-labelledby="trip-title"><div class="sec-h"><h3 id="trip-title">Fotos da viagem</h3>${ready&&posts.length?'<button class="link" type="button" data-go="fotos">Ver todas</button>':''}</div>${content}</section>`;
+  return full?`<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">${title}</h2>${content}`:
+    `<section aria-labelledby="trip-title"><div class="sec-h"><h3 id="trip-title">${title}</h3>${ready&&posts.length?'<button class="link" type="button" data-go="fotos">Ver todas</button>':''}</div>${content}</section>`;
 }
 function viewInicio(){
   const {cur,nxt} = nextItem();
@@ -524,13 +525,13 @@ function sheetReport(){
 }
 
 function sheetTripPhoto(){
- const day=tripPhotoDay();
+ const day=tripPhotoDay(S.me);
  if(!day||S.tripPostedDay===day){
   const message=day?'Você já publicou sua foto de hoje.':Date.now()<Date.parse('2026-11-18T00:00:00-03:00')?'As publicações abrem em 18 de novembro.':'As publicações da viagem foram encerradas.';
   return sheet(`<h3>Foto da viagem</h3><p class="muted">${message}</p><button class="btn ghost block" type="button" data-close>Fechar</button>`);
  }
  let photo='',job=0;
- sheet(`<h3>Publicar foto</h3><div class="stack">
+ sheet(`<h3>${tripPhotoTest(S.me)?'Publicar foto de teste':'Publicar foto'}</h3><div class="stack">
   <label class="f">Uma foto por dia<input id="tripFile" type="file" accept="image/*"></label>
   <img class="case-preview" id="tripPreview" alt="Prévia da publicação" hidden>
   <p class="muted trip-empty" role="status" id="tripStatus" hidden></p>

@@ -4,7 +4,14 @@ export function validatePin(pin){if(!/^[0-9]{6}$/.test(pin))throw Error('Use um 
 export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)/(24*60*60*1000)));}
 const tripPhotoStart=Date.parse('2026-11-18T00:00:00-03:00');
 const tripPhotoEnd=Date.parse('2026-11-23T00:00:00-03:00');
-export function tripPhotoDay(at=Date.now()){return at>=tripPhotoStart&&at<tripPhotoEnd?dayKey(at):null;}
+const tripPhotoTestStart=Date.parse('2026-11-08T00:00:00-03:00');
+const tripPhotoTestEnd=Date.parse('2026-11-10T00:00:00-03:00');
+export function tripPhotoTest(person,at=Date.now()){
+ return person==='bruno'&&at>=tripPhotoTestStart&&at<tripPhotoTestEnd;
+}
+export function tripPhotoDay(person,at=Date.now()){
+ return tripPhotoTest(person,at)||(at>=tripPhotoStart&&at<tripPhotoEnd)?dayKey(at):null;
+}
 // Cada dígito hexadecimal guarda o total de um dos oito emojis, na ordem de EMOJIS.
 // No máximo 13 recebidos por alvo: não há transporte entre dígitos (base 16).
 // O número guarda somente totais; não preserva ordem nem autor de cada voto.

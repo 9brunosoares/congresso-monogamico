@@ -11,7 +11,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js?v=20261107c';
-import { dayKey, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261108a';
+import { dayKey, tripPhotoDay, tripPhotoTest, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261108b';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -45,16 +45,16 @@ const pool=subscriptionPool(spec=>{
  },error=>{if(active&&spec.version===generation)failed(error)});
  return ()=>{active=false;stop()};
 });
-async function readPhoto(collectionName,id){
- const ref=doc(db,collectionName,id);
+async function readPhoto(ref){
  try{const cached=await getDocFromCache(ref);if(cached.exists())return cached.data().dataUrl;}catch{}
  return (await getDoc(ref)).data()?.dataUrl;
 }
-const photos=photoLoader(id=>readPhoto('casePhotos',id),{valid:validReportPhoto,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['mural','tribunal'].includes(currentView)&&state.shame.some(x=>x.id===id&&x.hasPhoto&&(x.status==='ok'||state.admin)),
+const photos=photoLoader(id=>readPhoto(doc(db,'casePhotos',id)),{valid:validReportPhoto,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['mural','tribunal'].includes(currentView)&&state.shame.some(x=>x.id===id&&x.hasPhoto&&(x.status==='ok'||state.admin)),
  onValue(id,value){const next={...state.casePhotos};delete next[id];next[id]=value;state.casePhotos=Object.fromEntries(Object.entries(next).slice(-24));delete state.photoErrors[id];emit();},
  onError(id,error){state.photoErrors={...state.photoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}});
-const tripPhotos=photoLoader(id=>readPhoto('tripPhotos',id),{
- valid:validReportPhoto,max:65,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['inicio','fotos'].includes(currentView)&&state.tripPosts.some(post=>post.id===id),
+const tripPath=(name,testing)=>testing?['tripTests','bruno',name]:[name];
+const tripPhotos=photoLoader(id=>readPhoto(doc(db,...tripPath('tripPhotos',state.tripTesting),id)),{
+ valid:validReportPhoto,max:65,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&!!state.tripTesting===tripPhotoTest(state.me)&&['inicio','fotos'].includes(currentView)&&state.tripPosts.some(post=>post.id===id),
  onValue(id,value){state.tripPhotos={...state.tripPhotos,[id]:value};delete state.tripPhotoErrors[id];emit();},
  onError(id,error){state.tripPhotoErrors={...state.tripPhotoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}
 });
@@ -76,14 +76,22 @@ function syncData(){
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(3)),snap=>{state.hasMural=!snap.empty;state.muralPreview=[...new Set(snap.docs.map(d=>d.data().who))].filter(id=>ALL.includes(id))},true);
  const car=departure(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
+ const at=Date.now(),testing=tripPhotoTest(state.me,at);
+ if(!!state.tripTesting!==testing){
+  tripPhotos.clear();
+  Object.assign(state,{tripTesting:testing,tripPosts:[],tripPhotos:{},tripPhotoErrors:{},tripPostedDay:null,tripReactionPending:{}});
+  for(const key of ['tripFeed','tripGallery','tripFeedTest','tripGalleryTest'])delete state.loaded[key];
+ }
+ const tripPostsPath=tripPath('tripPosts',testing);
  if(['inicio','fotos'].includes(currentView)){
   const full=currentView==='fotos';
-  listen(full?'tripGallery':'tripFeed',query(collection(db,'tripPosts'),orderBy('createdAt','desc'),limit(full?65:2)),snap=>{
+  const key=(full?'tripGallery':'tripFeed')+(testing?'Test':'');
+  listen(key,query(collection(db,...tripPostsPath),orderBy('createdAt','desc'),limit(full&&!testing?65:2)),snap=>{
    state.tripPosts=snap.docs.map(post=>({...post.data(),id:post.id}));
   });
  }
- const photoDay=tripPhotoDay();
- if(currentView==='inicio'&&photoDay)listen('tripOwn-'+photoDay,doc(db,'tripPosts',photoDay+'_'+state.me),snap=>{
+ const photoDay=tripPhotoDay(state.me,at);
+ if(currentView==='inicio'&&photoDay)listen('tripOwn-'+photoDay,doc(db,...tripPostsPath,photoDay+'_'+state.me),snap=>{
   state.tripPostedDay=snap.exists()?photoDay:null;
  });
  if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){
@@ -213,36 +221,38 @@ const created=data=>({...data,at:stamp(),createdAt:serverTimestamp()});
 
 export async function addTripPhoto(photo){
  member();
- const day=tripPhotoDay(),actor=state.me,version=generation;
+ const actor=state.me,version=generation,at=Date.now(),day=tripPhotoDay(actor,at),testing=tripPhotoTest(actor,at);
  if(!day)throw Error('As publicações abrem de 18 a 22 de novembro.');
  if(!validReportPhoto(photo))throw Error('Escolha uma foto válida.');
- const id=day+'_'+actor,ref=doc(db,'tripPosts',id);
+ const id=day+'_'+actor,ref=doc(db,...tripPath('tripPosts',testing),id);
  await runTransaction(db,async tx=>{
   const previous=await tx.get(ref);
   if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
   if(previous.exists())throw Error('Você já publicou sua foto de hoje.');
   tx.set(ref,{author:actor,createdAt:serverTimestamp(),reactions:{}});
-  tx.set(doc(db,'tripPhotos',id),{dataUrl:photo});
+  tx.set(doc(db,...tripPath('tripPhotos',testing),id),{dataUrl:photo});
  });
- if(version===generation){state.tripPostedDay=day;emit();}
+ if(version===generation&&testing===tripPhotoTest(actor)){state.tripPostedDay=day;emit();}
 }
 export async function setTripReaction(id,emoji){
  member();
  if(emoji!==null&&!REACTIONS.some(r=>r.emoji===emoji))throw Error('Escolha uma reação válida.');
  if(state.tripReactionPending?.[id])return;
- const actor=state.me,version=generation,ref=doc(db,'tripPosts',id);
+ const actor=state.me,version=generation,testing=!!state.tripTesting;
+ if(testing!==tripPhotoTest(actor))throw Error('A janela de teste terminou.');
+ const ref=doc(db,...tripPath('tripPosts',testing),id);
  state.tripReactionPending={...state.tripReactionPending,[id]:true};emit();
  try{await runTransaction(db,async tx=>{
    const snapshot=await tx.get(ref);
    if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
    if(!snapshot.exists())throw Error('Esta foto não está disponível.');
    const {author,reactions}=snapshot.data();
-   if(author===actor)throw Error('Só os outros congressistas podem reagir à sua foto.');
+   if(!testing&&author===actor)throw Error('Só os outros congressistas podem reagir à sua foto.');
    if((reactions[actor]??null)===emoji)return;
    const next={...reactions};
    if(emoji===null)delete next[actor];else next[actor]=emoji;
    tx.update(ref,{reactions:next});
- });}finally{if(version===generation){delete state.tripReactionPending[id];emit();}}
+ });}finally{if(version===generation&&!!state.tripTesting===testing){delete state.tripReactionPending[id];emit();}}
 }
 export async function addPoints(data){admin();const ref=doc(collection(db,'points'));await runTransaction(db,async tx=>{const closed=await tx.get(doc(db,'scoreClosures','main'));if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,created(data));});return ref;}
 export async function saveOfficialLinks(data,expectedVersion){
