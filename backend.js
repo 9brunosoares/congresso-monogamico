@@ -53,9 +53,17 @@ const photos=photoLoader(id=>readPhoto(doc(db,'casePhotos',id)),{valid:validRepo
  onValue(id,value){const next={...state.casePhotos};delete next[id];next[id]=value;state.casePhotos=Object.fromEntries(Object.entries(next).slice(-24));delete state.photoErrors[id];emit();},
  onError(id,error){state.photoErrors={...state.photoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}});
 const tripPath=(name,testing)=>testing?['tripTests','bruno',name]:[name];
+function sameTripUpload(a,b){return a!=null&&b!=null&&(a===b||a.isEqual?.(b)===true);}
 const tripPhotos=photoLoader(async id=>{
  const ref=doc(db,...tripPath('tripPhotos',state.tripTesting),id);
- return state.tripTesting?(await getDocFromServer(ref)).data()?.dataUrl:readPhoto(ref);
+ const stamp=state.tripPosts.find(post=>post.id===id)?.createdAt;
+ try{
+  const cached=(await getDocFromCache(ref)).data();
+  if(sameTripUpload(stamp,cached?.createdAt))return cached.dataUrl;
+ }catch{}
+ const current=(await getDocFromServer(ref)).data();
+ if(current?.createdAt&&!sameTripUpload(stamp,current.createdAt))throw Error('A foto foi substituída.');
+ return current?.dataUrl;
 },{
  valid:validReportPhoto,max:65,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&!!state.tripTesting===tripPhotoTest(state.me)&&['inicio','fotos'].includes(currentView)&&state.tripPosts.some(post=>post.id===id),
  onValue(id,value){state.tripPhotos={...state.tripPhotos,[id]:value};delete state.tripPhotoErrors[id];emit();},
@@ -91,22 +99,22 @@ function syncData(){
   const key=(full?'tripGallery':'tripFeed')+(testing?'Test':'');
   listen(key,query(collection(db,...tripPostsPath),orderBy('createdAt','desc'),limit(full&&!testing?65:2)),snap=>{
    const posts=snap.docs.map(post=>({...post.data(),id:post.id}));
-   // Uma foto de teste pode ser excluída e reenviada no mesmo dia, com o mesmo ID.
-   if(testing&&state.tripPosts.some(previous=>{
+   // Um reenvio no mesmo dia reutiliza o ID e tem um novo horário de publicação.
+   if(state.tripPosts.some(previous=>{
     const current=posts.find(post=>post.id===previous.id);
     if(!current)return true;
     const before=previous.createdAt,after=current.createdAt;
-    return after!==before&&!(before&&after?.isEqual?.(before));
+    return after!==before&&!sameTripUpload(after,before);
    })){
     tripPhotos.clear();state.tripPhotos={};state.tripPhotoErrors={};
    }
    state.tripPosts=posts;
   });
+  const photoDay=tripPhotoDay(state.me,at);
+  if(photoDay)listen('tripOwn-'+photoDay,doc(db,...tripPostsPath,photoDay+'_'+state.me),snap=>{
+   state.tripPostedDay=snap.exists()?photoDay:null;
+  });
  }
- const photoDay=tripPhotoDay(state.me,at);
- if(currentView==='inicio'&&photoDay)listen('tripOwn-'+photoDay,doc(db,...tripPostsPath,photoDay+'_'+state.me),snap=>{
-  state.tripPostedDay=snap.exists()?photoDay:null;
- });
  if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){
   listen('reactions-'+item.id,doc(db,'caseReactions',item.id),snap=>{state.caseReactions={...state.caseReactions,[item.id]:snap.data()?.votes||{}}});
  }
@@ -245,9 +253,24 @@ export async function addTripPhoto(photo,caption=''){
   if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
   if(previous.exists())throw Error('Você já publicou sua foto de hoje.');
   tx.set(ref,{author:actor,createdAt:serverTimestamp(),reactions:{},...(text?{caption:text}:{})});
-  tx.set(doc(db,...tripPath('tripPhotos',testing),id),{dataUrl:photo});
+  tx.set(doc(db,...tripPath('tripPhotos',testing),id),{dataUrl:photo,createdAt:serverTimestamp()});
  });
  if(version===generation&&testing===tripPhotoTest(actor)){state.tripPostedDay=day;emit();}
+}
+export async function deleteTripPhoto(id,createdAt,testing=!!state.tripTesting){
+ member();
+ const actor=state.me,version=generation;
+ if(testing!==tripPhotoTest(actor))throw Error('A janela de teste mudou. Reabra o feed.');
+ const post=doc(db,...tripPath('tripPosts',testing),id),image=doc(db,...tripPath('tripPhotos',testing),id);
+ await runTransaction(db,async tx=>{
+  const current=await tx.get(post);
+  if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
+  if(!current.exists())return;
+  const data=current.data();
+  if(data.author!==actor)throw Error('Só o autor pode apagar a foto.');
+  if(!sameTripUpload(createdAt,data.createdAt))throw Error('A foto já foi substituída.');
+  tx.delete(post);tx.delete(image);
+ });
 }
 export async function setTripReaction(id,emoji){
  member();
@@ -256,12 +279,14 @@ export async function setTripReaction(id,emoji){
  const actor=state.me,version=generation,testing=!!state.tripTesting;
  if(testing!==tripPhotoTest(actor))throw Error('A janela de teste terminou.');
  const ref=doc(db,...tripPath('tripPosts',testing),id);
+ const createdAt=state.tripPosts.find(post=>post.id===id)?.createdAt;
  state.tripReactionPending={...state.tripReactionPending,[id]:true};emit();
  try{await runTransaction(db,async tx=>{
    const snapshot=await tx.get(ref);
    if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
    if(!snapshot.exists())throw Error('Esta foto não está disponível.');
-   const {author,reactions}=snapshot.data();
+   const data=snapshot.data(),{author,reactions}=data;
+   if(!sameTripUpload(createdAt,data.createdAt))throw Error('A foto foi substituída.');
    if(!testing&&author===actor)throw Error('Só os outros congressistas podem reagir à sua foto.');
    if((reactions[actor]??null)===emoji)return;
    const next={...reactions};

@@ -8,7 +8,7 @@ import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripPhotoDay,tripPhotoTest,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261108b';
-import * as backend from './backend.js?v=20261108c';
+import * as backend from './backend.js?v=20261108d';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -159,7 +159,7 @@ function tripPost(post){
   const {id,author,reactions={}}=post,photo=S.tripPhotos?.[id],nick=esc(first(author));
   const canReact=author!==S.me||S.tripTesting===true;
   return `<article class="card trip-post">
-    <div class="trip-post-meta row">${av(author,'sm')}<div><b>${nick}</b><small>${esc(backend.formatStamp(post.createdAt))}</small></div></div>
+    <div class="trip-post-meta row">${av(author,'sm')}<div class="grow"><b>${nick}</b><small>${esc(backend.formatStamp(post.createdAt))}</small></div>${author===S.me&&post.createdAt?`<button class="link trip-delete" data-trip-delete="${esc(id)}" type="button" aria-haspopup="dialog" aria-label="Apagar sua foto">Apagar</button>`:''}</div>
     ${photo?`<img class="trip-image" src="${esc(photo)}" alt="Registro de ${nick}" decoding="async" loading="lazy">`:
     `<div class="trip-image trip-placeholder" ${S.tripPhotoErrors?.[id]?'':`data-trip-photo="${esc(id)}"`}>${S.tripPhotoErrors?.[id]?`<button class="link" data-trip-retry="${esc(id)}" type="button">Tentar de novo</button>`:''}</div>`}
     ${post.caption?`<p class="trip-caption">${esc(post.caption)}</p>`:''}
@@ -536,7 +536,7 @@ function sheetTripPhoto(){
   <label class="f">Uma foto por dia<input id="tripFile" type="file" accept="image/*"></label>
   <img class="case-preview" id="tripPreview" alt="Prévia da publicação" hidden>
   <p class="muted trip-empty" role="status" id="tripStatus" hidden></p>
-  <label class="f">Legenda (opcional)<input id="tripCaption" type="text" maxlength="140" placeholder="Até 140 caracteres"></label>
+  <label class="f">Legenda<input id="tripCaption" type="text" maxlength="140"></label>
   <button class="btn seal block" id="tripPublish" type="button" disabled>Publicar foto</button>
   <button class="btn ghost block" type="button" data-close>Cancelar</button></div>`,s=>{
    const input=s.querySelector('#tripFile'),preview=s.querySelector('#tripPreview'),status=s.querySelector('#tripStatus'),button=s.querySelector('#tripPublish'),caption=s.querySelector('#tripCaption');
@@ -552,6 +552,16 @@ function sheetTripPhoto(){
     try{await backend.addTripPhoto(photo,caption.value);s.remove();toast('Foto publicada');}
     finally{input.disabled=caption.disabled=false;}
    });
+ });
+}
+
+function sheetDeleteTripPhoto(id){
+ const post=S.tripPosts?.find(item=>item.id===id);
+ if(!post?.createdAt||post.author!==S.me)return;
+ const testing=!!S.tripTesting;
+ sheet('<h3>Apagar esta foto?</h3><div class="stack"><button class="btn seal block" id="tripDeleteOk" type="button">Apagar foto</button><button class="btn ghost block" data-close type="button">Voltar</button></div>',s=>{
+  const button=s.querySelector('#tripDeleteOk');
+  button.onclick=()=>act(button,async()=>{await backend.deleteTripPhoto(id,post.createdAt,testing);s.remove();toast('Foto apagada.');});
  });
 }
 
@@ -668,6 +678,7 @@ document.addEventListener('click',e=>{
  if(reactionPicker&&!e.target.closest('.case-reaction-bar'))showReactionPicker(null);
  const pr=e.target.closest('[data-photo-retry]');if(pr){backend.loadCasePhoto(pr.dataset.photoRetry,true);return;}
  const tripRetry=e.target.closest('[data-trip-retry]');if(tripRetry){backend.loadTripPhoto(tripRetry.dataset.tripRetry,true);return;}
+ const tripDelete=e.target.closest('[data-trip-delete]');if(tripDelete){sheetDeleteTripPhoto(tripDelete.dataset.tripDelete);return;}
  if(e.target.closest('#addTripPhoto')){sheetTripPhoto();return;}
  const edit=e.target.closest('[data-edit-activity]');if(edit){sheetActivity(AGENDA.find(a=>a.id===edit.dataset.editActivity));return;}
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}

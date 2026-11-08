@@ -31,7 +31,7 @@ rules_version = '2';
 // caseReactions/{caseId}: votes mapa de até14 IDs oficiais para um dos cinco emojis.
 // Só publicações condenadas; cada membro altera somente a própria entrada.
 // tripPosts/{diaSP_apelido}: author oficial, createdAt timestamp, reactions mapa apelido → emoji, caption opcional até140 caracteres.
-// tripPhotos/{diaSP_apelido}: dataUrl JPEG <=180000 caracteres, criação atômica com tripPosts.
+// tripPhotos/{diaSP_apelido}: dataUrl JPEG <=180000 caracteres e createdAt; exclusão/criação junto com tripPosts.
 // Uma publicação por autor e dia de 18 a 22/11; só membros leem e reagem às fotos dos outros.
 // tripTests/bruno/{tripPosts|tripPhotos}/{diaSP_apelido}: mesmo esquema, só Bruno em 08–09/11.
 // querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
@@ -331,36 +331,48 @@ service cloud.firestore {
     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
     && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly([personId()]);
   }
+  function validTripPhoto(d) {
+   return d.keys().hasOnly(['dataUrl','createdAt']) && validPhoto({'dataUrl':d.dataUrl})
+    && d.get('createdAt',request.time) == request.time;
+  }
+  function removeTripPost(photoPath) {
+   return resource.data.author == personId() && !existsAfter(photoPath);
+  }
+  function removeTripImage(postPath) {
+   return get(postPath).data.author == personId() && !existsAfter(postPath);
+  }
   match /tripPosts/{id} {
    allow get: if tripMember();
    allow list: if tripMember() && request.query.limit <= 65;
    allow create: if tripMember() && newTripPost(request.resource.data,id,false)
-    && validPhoto(getAfter(/databases/$(database)/documents/tripPhotos/$(id)).data);
+    && validTripPhoto(getAfter(/databases/$(database)/documents/tripPhotos/$(id)).data);
    allow update: if tripMember() && tripReactionUpdate(false);
-   allow delete: if false;
+   allow delete: if tripMember() && removeTripPost(/databases/$(database)/documents/tripPhotos/$(id));
   }
   match /tripPhotos/{id} {
    allow get: if tripMember() && exists(/databases/$(database)/documents/tripPosts/$(id));
-   allow create: if tripMember() && validPhoto(request.resource.data)
+   allow create: if tripMember() && validTripPhoto(request.resource.data)
     && !exists(/databases/$(database)/documents/tripPosts/$(id))
     && newTripPost(getAfter(/databases/$(database)/documents/tripPosts/$(id)).data,id,false);
-   allow list,update,delete: if false;
+   allow delete: if tripMember() && removeTripImage(/databases/$(database)/documents/tripPosts/$(id));
+   allow list,update: if false;
   }
   match /tripTests/bruno {
    match /tripPosts/{id} {
     allow get: if tripTester();
     allow list: if tripTester() && request.query.limit <= 2;
     allow create: if tripTester() && newTripPost(request.resource.data,id,true)
-     && validPhoto(getAfter(/databases/$(database)/documents/tripTests/bruno/tripPhotos/$(id)).data);
+     && validTripPhoto(getAfter(/databases/$(database)/documents/tripTests/bruno/tripPhotos/$(id)).data);
     allow update: if tripTester() && tripReactionUpdate(true);
-    allow delete: if false;
+    allow delete: if tripTester() && removeTripPost(/databases/$(database)/documents/tripTests/bruno/tripPhotos/$(id));
    }
    match /tripPhotos/{id} {
     allow get: if tripTester() && exists(/databases/$(database)/documents/tripTests/bruno/tripPosts/$(id));
-    allow create: if tripTester() && validPhoto(request.resource.data)
+    allow create: if tripTester() && validTripPhoto(request.resource.data)
      && !exists(/databases/$(database)/documents/tripTests/bruno/tripPosts/$(id))
      && newTripPost(getAfter(/databases/$(database)/documents/tripTests/bruno/tripPosts/$(id)).data,id,true);
-    allow list,update,delete: if false;
+    allow delete: if tripTester() && removeTripImage(/databases/$(database)/documents/tripTests/bruno/tripPosts/$(id));
+    allow list,update: if false;
    }
   }
   function validReaction(value) { return value in ['😂','😱','🤦','👏','❤️']; }

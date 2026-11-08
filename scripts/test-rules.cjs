@@ -208,6 +208,14 @@ const {context}=require('./firebase-context.cjs');
  cases.push(tripCase('create',postPath,'bruno',{...postData,caption:'a'.repeat(140)}));
  for(const caption of ['a'.repeat(141),123,null])cases.push(tripCase('create',postPath,'bruno',{...postData,caption},'DENY'));
  cases.push(tripCase('update',postPath,'ob',{...postData,caption:'Troca indevida.',reactions:{ob:'👏'}},'DENY'));
+ cases.push(tripCase('create',tripPhotoPath,'bruno',{...photo,createdAt:postData.createdAt}));
+ cases.push(tripCase('create',tripPhotoPath,'bruno',{...photo,createdAt:'2026-11-18T12:00:00.000Z'},'DENY'));
+ for(const [target,pair] of [[postPath,tripPhotoPath],[tripPhotoPath,postPath]]){
+  for(const [actor,pairExists,expectation] of [['bruno',false,'ALLOW'],['bruno',true,'DENY'],['igor',false,'DENY']]){
+   const t=tripCase('delete',target,actor,{},expectation);
+   t.functionMocks.push(mock('get',postPath,{data:postData}),mock('existsAfter',pair,pairExists));cases.push(t);
+  }
+ }
  function privateTripCase(time,method,kind,actor,expectation){
   const timestamp=new Date(time).toISOString(),id=dayKey(Date.parse('2026-11-09T20:00:00-03:00'))+'_bruno';
   const testPost=prefix+'/tripTests/bruno/tripPosts/'+id,testPhoto=prefix+'/tripTests/bruno/tripPhotos/'+id;
@@ -224,6 +232,11 @@ const {context}=require('./firebase-context.cjs');
   }
  }
  cases.push(privateTripCase(duringTest,'update','post','bruno','ALLOW'),privateTripCase(duringTest,'update','post','igor','DENY'),privateTripCase(afterTest,'update','post','bruno','DENY'));
+ for(const [kind,pair] of [['post','tripPhotos'],['photo','tripPosts']]){
+  const t=privateTripCase(duringTest,'delete',kind,'bruno','ALLOW');
+  const root=prefix+'/tripTests/bruno/',id='20766_bruno';
+  t.functionMocks.push(mock('get',root+'tripPosts/'+id,{data:postData}),mock('existsAfter',root+pair+'/'+id,false));cases.push(t);
+ }
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const report={issues:[],testResults:[]};

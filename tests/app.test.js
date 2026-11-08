@@ -42,13 +42,14 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
 test('Home termina com o feed de fotos e usa o seletor de reações do mural',()=>{
  const {context,nodes}=ui();
  vm.runInContext(`S={...S,ready:true,me:'bruno',loaded:{tripFeed:true,tripGallery:true},tripPosts:[
-  {id:'a',author:'ob',caption:'Chegamos! <3',reactions:{bruno:'😂',igor:'😂'}},{id:'b',author:'bruno',reactions:{ob:'👏'}},{id:'c',author:'igor',reactions:{}}
+  {id:'a',author:'ob',createdAt:'stamp',caption:'Chegamos! <3',reactions:{bruno:'😂',igor:'😂'}},{id:'b',author:'bruno',createdAt:'stamp',reactions:{ob:'👏'}},{id:'c',author:'igor',reactions:{}}
  ]};render()`,context);
  const home=nodes['#root'].innerHTML;
  assert(home.indexOf('id="trip-title"')>home.indexOf('<h3>Queridômetro</h3>'));
  for(const section of ['Seu placar','Liderança','Suas contas'])assert(!home.includes(`<h3>${section}</h3>`));
  assert.equal((home.match(/data-trip-photo=/g)||[]).length,2);
  assert.match(home,/<p class="trip-caption">Chegamos! &lt;3<\/p>/);
+ assert.match(home,/data-trip-delete="b"/);assert(!home.includes('data-trip-delete="a"'));
  assert.match(home,/reaction-trigger selected" data-reaction-picker="a"/);
  assert(!home.includes('data-reaction-picker="b"'));
  assert(home.includes('Rindo: 2'));assert(home.includes('Palmas: 1'));assert(!home.includes('Amei: 0'));
