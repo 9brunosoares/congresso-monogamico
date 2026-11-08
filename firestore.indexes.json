@@ -16,6 +16,8 @@
     }
   ],
   "fieldOverrides": [
+    {"collectionGroup":"tripPhotos","fieldPath":"dataUrl","indexes":[]},
+    {"collectionGroup":"tripPosts","fieldPath":"reactions","indexes":[]},
     {"collectionGroup":"financeHistory","fieldPath":"before","indexes":[]},
     {"collectionGroup":"financeHistory","fieldPath":"after","indexes":[]},
     {

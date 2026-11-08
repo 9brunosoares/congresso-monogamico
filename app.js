@@ -7,8 +7,8 @@ import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
-import {dayKey,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261107c';
-import * as backend from './backend.js?v=20261107c';
+import {dayKey,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261108a';
+import * as backend from './backend.js?v=20261108a';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -155,10 +155,26 @@ function homeQueridometro(){
   return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${blocked||done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
     <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?((S.scoreClosing||d===TEST_VOTE.key)?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`;
 }
+function tripPost(post){
+  const {id,author,reactions={}}=post,photo=S.tripPhotos?.[id],nick=esc(first(author));
+  const canReact=author!==S.me;
+  return `<article class="card trip-post">
+    <div class="trip-post-meta row">${av(author,'sm')}<div><b>${nick}</b><small>${esc(backend.formatStamp(post.createdAt))}</small></div></div>
+    ${photo?`<img class="trip-image" src="${esc(photo)}" alt="Registro de ${nick}" decoding="async" loading="lazy">`:
+    `<div class="trip-image trip-placeholder" ${S.tripPhotoErrors?.[id]?'':`data-trip-photo="${esc(id)}"`}>${S.tripPhotoErrors?.[id]?`<button class="link" data-trip-retry="${esc(id)}" type="button">Tentar de novo</button>`:''}</div>`}
+    ${reactionBar(id,reactions,{source:'trip',canReact,busy:!!S.tripReactionPending?.[id]})}
+  </article>`;
+}
+function tripFeed(full=false){
+  const posts=S.tripPosts||[],ready=S.loaded?.[full?'tripGallery':'tripFeed'];
+  const content=!ready?'<p class="muted trip-empty" role="status">Carregando fotos…</p>':posts.length?
+    `<div class="stack">${(full?posts:posts.slice(0,2)).map(tripPost).join('')}</div>`:
+    '<p class="muted trip-empty">A primeira foto ainda não chegou.</p>';
+  return full?`<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">Fotos da viagem</h2>${content}`:
+    `<section aria-labelledby="trip-title"><div class="sec-h"><h3 id="trip-title">Fotos da viagem</h3>${ready&&posts.length?'<button class="link" type="button" data-go="fotos">Ver todas</button>':''}</div>${content}</section>`;
+}
 function viewInicio(){
   const {cur,nxt} = nextItem();
-  const rk = ranking();
-  const myPos = rk.findIndex(r=>r.id===S.me)+1;
   return `
   <div class="home-actions ${(S.hasMural??S.shame.some(c=>c.status==='ok'))?'':'is-empty'}">${muralTeaser()}${emergencyButton()}</div>
   ${nxt ? `<section class="card next">
@@ -176,19 +192,7 @@ function viewInicio(){
 
   ${homeQueridometro()}
 
-  <div class="sec-h"><h3>Seu placar</h3><button class="link" data-go="placar" type="button">Ranking completo</button></div>
-  <div class="card row">
-    ${av(S.me,"lg")}
-    <div class="grow"><div class="eyebrow">${myPos}º lugar de ${ALL.length}</div><div class="bigfig num">${score(S.me)} <span style="font-size:16px;font-family:var(--f-body)" class="muted">pontos</span></div></div>
-    <button class="btn sm ghost" id="quickReport" type="button">Fiz uma tarefa</button>
-  </div>
-
-  <div class="sec-h"><h3>Liderança</h3></div>
-  <div class="card">${podium(rk)}</div>
-
-  <div class="sec-h"><h3>Suas contas</h3><button class="link" data-go="contas" type="button">Abrir contas</button></div>
-  ${(()=>{const b=balances()[S.me];return `<div class="card row"><div class="grow"><div class="eyebrow">${b>=0?"Você tem a receber":"Você deve"}</div><div class="bigfig num" style="color:${b>=0?"var(--good)":"var(--bad)"}">${brl(Math.abs(b))}</div></div>${S.closing?'':'<button class="btn sm" id="quickExp" type="button">Lançar gasto</button>'}</div>`})()}
-
+  ${tripFeed()}
   `;
 }
 
@@ -285,15 +289,18 @@ function viewFinanceHistory(){
 }
 
 function caseReactions(id){
- const votes=S.caseReactions?.[id]||{},loading=!S.loaded?.['reactions-'+id],busy=!!S.reactionPending?.[id];
+ return reactionBar(id,S.caseReactions?.[id]||{},{loading:!S.loaded?.['reactions-'+id],busy:!!S.reactionPending?.[id]});
+}
+function reactionBar(id,votes,{source='case',canReact=true,loading=false,busy=false}={}){
+ if(!canReact&&!Object.keys(votes).length)return '';
  const options=REACTIONS.map(({emoji,label})=>{
   const count=Object.values(votes).filter(value=>value===emoji).length,selected=votes[S.me]===emoji;
   return {emoji,label,count,selected};
  });
  return `<div class="case-reaction-bar" ${busy?'aria-busy="true"':''}>
  <div class="reaction-totals" aria-label="Reações recebidas">${options.filter(r=>r.count>0).map(r=>`<span class="reaction-total${r.selected?' mine':''}" aria-label="${r.label}: ${r.count}"><span aria-hidden="true">${r.emoji}</span><span aria-hidden="true">${r.count}</span></span>`).join('')}</div>
- <button class="reaction-trigger${votes[S.me]?' selected':''}" data-reaction-picker="${esc(id)}" type="button" aria-label="${votes[S.me]?'Alterar reação':'Reagir'}" aria-expanded="${reactionPicker===id}" aria-controls="reaction-picker-${esc(id)}" ${loading||busy?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="12" r="8"/><path d="M8 14a4 4 0 0 0 6 0M8 10h.01M14 10h.01M20 3v6M17 6h6"/></svg></button>
- ${reactionPicker===id?`<div class="reaction-picker" id="reaction-picker-${esc(id)}" role="group" aria-label="Escolha uma reação">${options.map(r=>`<button class="reaction-option${r.selected?' selected':''}" data-react="${esc(id)}" data-emoji="${r.emoji}" type="button" aria-pressed="${r.selected}" aria-label="${r.label}${r.selected?'. Sua reação. Toque para retirar.':'.'}" ${loading||busy?'disabled':''}>${r.emoji}</button>`).join('')}</div>`:''}</div>`;
+ ${canReact?`<button class="reaction-trigger${votes[S.me]?' selected':''}" data-reaction-picker="${esc(id)}" type="button" aria-label="${votes[S.me]?'Alterar reação':'Reagir'}" aria-expanded="${reactionPicker===id}" aria-controls="reaction-picker-${esc(id)}" ${loading||busy?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="12" r="8"/><path d="M8 14a4 4 0 0 0 6 0M8 10h.01M14 10h.01M20 3v6M17 6h6"/></svg></button>`:''}
+ ${canReact&&reactionPicker===id?`<div class="reaction-picker" id="reaction-picker-${esc(id)}" role="group" aria-label="Escolha uma reação">${options.map(r=>`<button class="reaction-option${r.selected?' selected':''}" data-react="${esc(id)}" data-reaction-source="${source}" data-emoji="${r.emoji}" type="button" aria-pressed="${r.selected}" aria-label="${r.label}${r.selected?'. Sua reação. Toque para retirar.':'.'}" ${loading||busy?'disabled':''}>${r.emoji}</button>`).join('')}</div>`:''}</div>`;
 }
 function caseCard(item,pending=false){
  const photo=S.casePhotos?.[item.id];
@@ -516,6 +523,35 @@ function sheetReport(){
  });});
 }
 
+function sheetTripPhoto(){
+ const day=tripPhotoDay();
+ if(!day||S.tripPostedDay===day){
+  const message=day?'Você já publicou sua foto de hoje.':Date.now()<Date.parse('2026-11-18T00:00:00-03:00')?'As publicações abrem em 18 de novembro.':'As publicações da viagem foram encerradas.';
+  return sheet(`<h3>Foto da viagem</h3><p class="muted">${message}</p><button class="btn ghost block" type="button" data-close>Fechar</button>`);
+ }
+ let photo='',job=0;
+ sheet(`<h3>Publicar foto</h3><div class="stack">
+  <label class="f">Uma foto por dia<input id="tripFile" type="file" accept="image/*"></label>
+  <img class="case-preview" id="tripPreview" alt="Prévia da publicação" hidden>
+  <p class="muted trip-empty" role="status" id="tripStatus" hidden></p>
+  <button class="btn seal block" id="tripPublish" type="button" disabled>Publicar foto</button>
+  <button class="btn ghost block" type="button" data-close>Cancelar</button></div>`,s=>{
+   const input=s.querySelector('#tripFile'),preview=s.querySelector('#tripPreview'),status=s.querySelector('#tripStatus'),button=s.querySelector('#tripPublish');
+   input.onchange=async()=>{
+    const current=++job,file=input.files[0];photo='';preview.hidden=true;button.disabled=true;status.hidden=!file;
+    if(!file)return;
+    status.textContent='Preparando foto…';
+    try{const result=await prepareReportPhoto(file);if(current!==job)return;photo=result;preview.src=photo;preview.hidden=false;status.hidden=true;button.disabled=false;}
+    catch(e){if(current===job){status.textContent=notice(e.message);input.value='';}}
+   };
+   button.onclick=()=>act(button,async()=>{
+    input.disabled=true;
+    try{await backend.addTripPhoto(photo);s.remove();toast('Foto publicada');}
+    finally{input.disabled=false;}
+   });
+ });
+}
+
 function sheetMe(){
  sheet(`<div class="badge" style="margin-bottom:14px"><div class="lanyard"><span>CREDENCIAL</span><span>${isAdm()?'ORGANIZAÇÃO':'CONGRESSISTA'}</span></div>
  <div class="body row">${av(S.me,'xl')}<div><h3 style="margin:0">${esc(first(S.me))}</h3><div class="muted">${score(S.me)} pontos</div></div></div></div>
@@ -567,21 +603,24 @@ function render(){
   backend.setView?.(tab);
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
-  const body = ({inicio:viewInicio,programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
-  $("#root").innerHTML = `<div class="app auth-view ${tab==='fofoca'?'chat-view':''}">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
+  const body = ({inicio:viewInicio,fotos:()=>tripFeed(true),programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
+  $("#root").innerHTML = `<div class="app auth-view ${tab==='fofoca'?'chat-view':tab==='inicio'?'home-view':''}">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
+    ${tab==='inicio'?'<button class="trip-add" id="addTripPhoto" type="button" aria-haspopup="dialog" aria-label="Publicar foto da viagem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>':''}
     <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
-  tick();watchCasePhotos();refreshRecipientPix();
+  tick();watchPhotos();refreshRecipientPix();
 }
 
 let photoObserver;
-function watchCasePhotos(){
+function watchPhotos(){
  photoObserver?.disconnect();
- if(!['mural','tribunal'].includes(tab))return;
- const nodes=[...document.querySelectorAll('[data-photo-id]')];
- if(typeof IntersectionObserver==='undefined'){nodes.slice(0,3).forEach(node=>backend.loadCasePhoto?.(node.dataset.photoId));return;}
- photoObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){photoObserver.unobserve(entry.target);backend.loadCasePhoto?.(entry.target.dataset.photoId)}},{rootMargin:'160px'});
+ const trip=['inicio','fotos'].includes(tab);
+ if(!trip&&!['mural','tribunal'].includes(tab))return;
+ const nodes=[...document.querySelectorAll(trip?'[data-trip-photo]':'[data-photo-id]')];
+ const load=node=>trip?backend.loadTripPhoto?.(node.dataset.tripPhoto):backend.loadCasePhoto?.(node.dataset.photoId);
+ if(typeof IntersectionObserver==='undefined'){(trip?nodes:nodes.slice(0,3)).forEach(load);return;}
+ photoObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){photoObserver.unobserve(entry.target);load(entry.target)}},{rootMargin:'160px'});
  nodes.forEach(node=>photoObserver.observe(node));
 }
 function selectAgendaDay(next){
@@ -611,9 +650,22 @@ document.addEventListener('click',e=>{
  // então consumi-lo também fora do botão evita fechar o seletor imediatamente.
  if(heldReaction&&!e.target.closest('[data-react]')){heldReaction=null;return;}
  const picker=e.target.closest('[data-reaction-picker]');if(picker){if(picker.disabled)return;showReactionPicker(reactionPicker===picker.dataset.reactionPicker?null:picker.dataset.reactionPicker);if(e.detail===0&&reactionPicker)document.querySelector('.reaction-option.selected, .reaction-option')?.focus();return;}
- const reaction=e.target.closest('[data-react]');if(reaction){if(!reaction.disabled){const id=reaction.dataset.react,emoji=S.caseReactions?.[id]?.[S.me]===reaction.dataset.emoji?null:reaction.dataset.emoji;showReactionPicker(null);backend.setCaseReaction(id,emoji).catch(error=>{backend.reportError(error);toast(backend.errorText(error));});}return;}
+ const reaction=e.target.closest('[data-react]');
+ if(reaction){
+  if(!reaction.disabled){
+   const {react:id,emoji,reactionSource}=reaction.dataset;
+   const trip=reactionSource==='trip';
+   const votes=trip?S.tripPosts?.find(post=>post.id===id)?.reactions:S.caseReactions?.[id];
+   const setReaction=trip?backend.setTripReaction:backend.setCaseReaction;
+   showReactionPicker(null);
+   setReaction(id,votes?.[S.me]===emoji?null:emoji).catch(error=>{backend.reportError(error);toast(backend.errorText(error));});
+  }
+  return;
+ }
  if(reactionPicker&&!e.target.closest('.case-reaction-bar'))showReactionPicker(null);
  const pr=e.target.closest('[data-photo-retry]');if(pr){backend.loadCasePhoto(pr.dataset.photoRetry,true);return;}
+ const tripRetry=e.target.closest('[data-trip-retry]');if(tripRetry){backend.loadTripPhoto(tripRetry.dataset.tripRetry,true);return;}
+ if(e.target.closest('#addTripPhoto')){sheetTripPhoto();return;}
  const edit=e.target.closest('[data-edit-activity]');if(edit){sheetActivity(AGENDA.find(a=>a.id===edit.dataset.editActivity));return;}
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}

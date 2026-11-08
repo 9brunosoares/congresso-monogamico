@@ -30,6 +30,9 @@ rules_version = '2';
 // chatAuthors/{uid}/messages/{id}: owned:true, privado ao UID. Criação atômica com mensagem.
 // caseReactions/{caseId}: votes mapa de até14 IDs oficiais para um dos cinco emojis.
 // Só publicações condenadas; cada membro altera somente a própria entrada.
+// tripPosts/{diaSP_apelido}: author oficial, createdAt timestamp, reactions mapa apelido → emoji.
+// tripPhotos/{diaSP_apelido}: dataUrl JPEG <=180000 caracteres, criação atômica com tripPosts.
+// Uma publicação por autor e dia de 18 a 22/11; só membros leem e reagem às fotos dos outros.
 // querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
 // Cada valor é um número inteiro0..3722304989 com oito totais em base16.
 // Cada dígito armazena o total de um emoji (ordem fixa no roster.js), máximo13.
@@ -309,18 +312,46 @@ service cloud.firestore {
     && getAfter(/databases/$(database)/documents/cases/$(id)).data.hasPhoto == true;
    allow delete: if isAdmin();
   }
+  function validTripPost(d) {
+   return only(d,['author','createdAt','reactions']) && d.author in ids() && d.createdAt is timestamp
+    && validReactions(d.reactions) && !(d.author in d.reactions);
+  }
+  function newTripPost(d,id) {
+   let day = string(int((request.time.toMillis() - 10800000) / 86400000));
+   return validTripPost(d) && day in ['20775','20776','20777','20778','20779']
+    && d.author == personId() && id == day + '_' + personId() && fresh(d) && d.reactions.size() == 0;
+  }
+  match /tripPosts/{id} {
+   allow get: if isKnownAccount() && isMember();
+   allow list: if isKnownAccount() && isMember() && request.query.limit <= 65;
+   allow create: if isKnownAccount() && isMember() && newTripPost(request.resource.data,id)
+    && validPhoto(getAfter(/databases/$(database)/documents/tripPhotos/$(id)).data);
+   allow update: if isKnownAccount() && isMember() && resource.data.author != personId()
+    && validTripPost(request.resource.data)
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+    && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly([personId()]);
+   allow delete: if false;
+  }
+  match /tripPhotos/{id} {
+   allow get: if isKnownAccount() && isMember() && exists(/databases/$(database)/documents/tripPosts/$(id));
+   allow create: if isKnownAccount() && isMember() && validPhoto(request.resource.data)
+    && !exists(/databases/$(database)/documents/tripPosts/$(id))
+    && newTripPost(getAfter(/databases/$(database)/documents/tripPosts/$(id)).data,id);
+   allow list,update,delete: if false;
+  }
   function validReaction(value) { return value in ['😂','😱','🤦','👏','❤️']; }
   function validReactionFor(votes,id) { return !(id in votes) || validReaction(votes[id]); }
-  function isValidCaseReactions(d) {
-   return only(d,['votes']) && d.votes is map && d.votes.keys().hasOnly(ids())
-    && validReactionFor(d.votes,'bruno') && validReactionFor(d.votes,'ob')
-    && validReactionFor(d.votes,'luan') && validReactionFor(d.votes,'igor')
-    && validReactionFor(d.votes,'pig') && validReactionFor(d.votes,'pelado')
-    && validReactionFor(d.votes,'gherardi')
-    && validReactionFor(d.votes,'nanu') && validReactionFor(d.votes,'sadano')
-    && validReactionFor(d.votes,'ibrahim') && validReactionFor(d.votes,'cadu')
-    && validReactionFor(d.votes,'diogo') && validReactionFor(d.votes,'felipe');
+  function validReactions(votes) {
+   return votes is map && votes.keys().hasOnly(ids())
+    && validReactionFor(votes,'bruno') && validReactionFor(votes,'ob')
+    && validReactionFor(votes,'luan') && validReactionFor(votes,'igor')
+    && validReactionFor(votes,'pig') && validReactionFor(votes,'pelado')
+    && validReactionFor(votes,'gherardi')
+    && validReactionFor(votes,'nanu') && validReactionFor(votes,'sadano')
+    && validReactionFor(votes,'ibrahim') && validReactionFor(votes,'cadu')
+    && validReactionFor(votes,'diogo') && validReactionFor(votes,'felipe');
   }
+  function isValidCaseReactions(d) { return only(d,['votes']) && validReactions(d.votes); }
   function publishedCase(id) { return get(/databases/$(database)/documents/cases/$(id)).data.status == 'ok'; }
   match /caseReactions/{id} {
    allow get: if isMember() && publishedCase(id);

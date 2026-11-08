@@ -177,6 +177,34 @@ const {context}=require('./firebase-context.cjs');
  const wrongTestKey=temporaryCase('2026-11-06T10:00:00-03:00','create','DENY');wrongTestKey.request.path=wrongTestKey.request.path.replace(testDay,'20763');cases.push(wrongTestKey);
  for(const admin of [true,false]){const t=photoTest('update',{address:'Ponto de encontro'},'pend',admin,admin?'ALLOW':'DENY');t.request.path=prefix+'/travelPlans/bruno';t.resource={data:{address:'Anterior'}};cases.push(t);}
  const oversized=photoTest('update',{address:'x'.repeat(301)},'pend',true,'DENY');oversized.request.path=prefix+'/travelPlans/bruno';oversized.resource={data:{address:'Anterior'}};cases.push(oversized);
+ const postPath=prefix+'/tripPosts/'+key+'_bruno',tripPhotoPath=prefix+'/tripPhotos/'+key+'_bruno';
+ const postData={author:'bruno',createdAt:new Date(testTime).toISOString(),reactions:{}};
+ function tripCase(method,target,actor,data,expectation='ALLOW'){
+  return {expectation,request:{auth:{uid,token:{email:actor+'@congresso.app'}},time:postData.createdAt,path:target,method,resource:{data}},resource:{data:target===postPath?postData:photo},functionMocks:[
+   mock('get',prefix+'/people/'+actor,{data:{uid}}),mock('getAfter',postPath,{data:postData}),
+   mock('getAfter',tripPhotoPath,{data:photo}),mock('exists',postPath,method==='get'||method==='update')
+  ]};
+ }
+ cases.push(tripCase('create',postPath,'bruno',postData),tripCase('create',tripPhotoPath,'bruno',photo),tripCase('get',tripPhotoPath,'ob',photo));
+ cases.push(tripCase('create',postPath,'ob',postData,'DENY'),tripCase('create',postPath+'-extra','bruno',postData,'DENY'));
+ for(const target of [postPath,tripPhotoPath]){
+  const orphan=tripCase('create',target,'bruno',target===postPath?postData:photo,'DENY');
+  orphan.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue!==target).result.value=null;cases.push(orphan);
+  const guest=tripCase('get',target,'bruno',{},'DENY');guest.request.auth=null;cases.push(guest);
+ }
+ for(const time of ['2026-11-17T23:59:59-03:00','2026-11-23T00:00:00-03:00']){
+  const t=tripCase('create',postPath,'bruno',{...postData,createdAt:new Date(time).toISOString()},'DENY');t.request.time=new Date(time).toISOString();t.request.path=prefix+'/tripPosts/'+dayKey(Date.parse(time))+'_bruno';cases.push(t);
+ }
+ const replay=tripCase('create',tripPhotoPath,'bruno',photo,'DENY');replay.functionMocks.find(m=>m.function==='exists').result.value=true;cases.push(replay);
+ cases.push(tripCase('update',postPath,'ob',{...postData,reactions:{ob:'😂'}}));
+ for(const reactions of [{igor:'👏'},{ob:'❤️',igor:'👏'}]){
+  const t=tripCase('update',postPath,'ob',{...postData,reactions});t.resource={data:{...postData,reactions:{ob:'😂',igor:'👏'}}};cases.push(t);
+ }
+ for(const reactions of [{igor:'😂'},{kirk:'😂'},{ob:true},{ob:'🎯'},{bruno:'😂'},['😂']])cases.push(tripCase('update',postPath,'ob',{...postData,reactions},'DENY'));
+ const eraseOther=tripCase('update',postPath,'ob',postData,'DENY');eraseOther.resource={data:{...postData,reactions:{igor:'👏'}}};cases.push(eraseOther);
+ cases.push(tripCase('update',postPath,'bruno',{...postData,reactions:{bruno:'😂'}},'DENY'));
+ cases.push(tripCase('update',postPath,'ob',{...postData,author:'pig',reactions:{ob:'😂'}},'DENY'));
+ cases.push(tripCase('update',tripPhotoPath,'bruno',photo,'DENY'));
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const result=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:source}]},testSuite:{testCases:cases}},{skipLog:{body:true}});

@@ -11,12 +11,12 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js?v=20261107c';
-import { dayKey, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261107c';
+import { dayKey, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261108a';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
 const db=initializeFirestore(app,{localCache:typeof indexedDB==='undefined'?memoryLocalCache():persistentLocalCache({tabManager:persistentMultipleTabManager(),cacheSizeBytes:40*1024*1024})});
-const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],payments:[],financeHistory:[],historyHasMore:false,historyLoading:false,shame:[],hasMural:false,casePhotos:{},photoErrors:{},chat:[],chatHasMore:false,chatLoadingOlder:false,muralHasMore:false,muralLoadingOlder:false,pixKeys:{},tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},attendanceReady:{},loaded:{},agenda:[],error:''});
+const emptyState=()=>({me:null,admin:false,ready:false,budget:0,points:[],exps:[],payments:[],financeHistory:[],historyHasMore:false,historyLoading:false,shame:[],hasMural:false,casePhotos:{},photoErrors:{},tripPosts:[],tripPhotos:{},tripPhotoErrors:{},tripPostedDay:null,chat:[],chatHasMore:false,chatLoadingOlder:false,muralHasMore:false,muralLoadingOlder:false,pixKeys:{},tasks:[],querido:{},qvoted:{},voterCount:0,attendance:{},attendanceReady:{},loaded:{},agenda:[],error:''});
 let state=emptyState(), notify=()=>{}, generation=0,currentDay=dayKey(),currentView='inicio',sessionReady=false,paused=false,quotaBlocked=false;
 let firstSnapshots=new Set(),required=new Set(),chatHead=[],chatOlder=[],chatCursor=null,muralHead=[],muralOlder=[],muralCursor=null,backgroundTimer;
 let historyHead=[],historyOlder=[],historyCursor=null;
@@ -45,14 +45,20 @@ const pool=subscriptionPool(spec=>{
  },error=>{if(active&&spec.version===generation)failed(error)});
  return ()=>{active=false;stop()};
 });
-const photos=photoLoader(async id=>{
- const ref=doc(db,'casePhotos',id);
+async function readPhoto(collectionName,id){
+ const ref=doc(db,collectionName,id);
  try{const cached=await getDocFromCache(ref);if(cached.exists())return cached.data().dataUrl;}catch{}
  return (await getDoc(ref)).data()?.dataUrl;
-},{valid:validReportPhoto,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['mural','tribunal'].includes(currentView)&&state.shame.some(x=>x.id===id&&x.hasPhoto&&(x.status==='ok'||state.admin)),
+}
+const photos=photoLoader(id=>readPhoto('casePhotos',id),{valid:validReportPhoto,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['mural','tribunal'].includes(currentView)&&state.shame.some(x=>x.id===id&&x.hasPhoto&&(x.status==='ok'||state.admin)),
  onValue(id,value){const next={...state.casePhotos};delete next[id];next[id]=value;state.casePhotos=Object.fromEntries(Object.entries(next).slice(-24));delete state.photoErrors[id];emit();},
  onError(id,error){state.photoErrors={...state.photoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}});
-function stopData(){pool.stop();photos.clear();mine=new Set();firstSnapshots=new Set();required=new Set();sessionReady=false;chatHead=[];chatOlder=[];chatCursor=null;muralHead=[];muralOlder=[];muralCursor=null;historyHead=[];historyOlder=[];historyCursor=null;}
+const tripPhotos=photoLoader(id=>readPhoto('tripPhotos',id),{
+ valid:validReportPhoto,max:65,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['inicio','fotos'].includes(currentView)&&state.tripPosts.some(post=>post.id===id),
+ onValue(id,value){state.tripPhotos={...state.tripPhotos,[id]:value};delete state.tripPhotoErrors[id];emit();},
+ onError(id,error){state.tripPhotoErrors={...state.tripPhotoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}
+});
+function stopData(){pool.stop();photos.clear();tripPhotos.clear();mine=new Set();firstSnapshots=new Set();required=new Set();sessionReady=false;chatHead=[];chatOlder=[];chatCursor=null;muralHead=[];muralOlder=[];muralCursor=null;historyHead=[];historyOlder=[];historyCursor=null;}
 function failed(e){if(e.code==='resource-exhausted'){quotaBlocked=true;pool.stop();}state.error=errorText(e);emit();}
 function rows(snapshot){return snapshot.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));}
 function publishChat(){state.chat=mergeRows(chatOlder,chatHead).map(m=>({...m,at:formatStamp(m.createdAt),mine:mine.has(m.id)}));}
@@ -70,6 +76,16 @@ function syncData(){
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(3)),snap=>{state.hasMural=!snap.empty;state.muralPreview=[...new Set(snap.docs.map(d=>d.data().who))].filter(id=>ALL.includes(id))},true);
  const car=departure(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
+ if(['inicio','fotos'].includes(currentView)){
+  const full=currentView==='fotos';
+  listen(full?'tripGallery':'tripFeed',query(collection(db,'tripPosts'),orderBy('createdAt','desc'),limit(full?65:2)),snap=>{
+   state.tripPosts=snap.docs.map(post=>({...post.data(),id:post.id}));
+  });
+ }
+ const photoDay=tripPhotoDay();
+ if(currentView==='inicio'&&photoDay)listen('tripOwn-'+photoDay,doc(db,'tripPosts',photoDay+'_'+state.me),snap=>{
+  state.tripPostedDay=snap.exists()?photoDay:null;
+ });
  if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){
   listen('reactions-'+item.id,doc(db,'caseReactions',item.id),snap=>{state.caseReactions={...state.caseReactions,[item.id]:snap.data()?.votes||{}}});
  }
@@ -122,6 +138,7 @@ function syncData(){
 export function setView(view){if(currentView===view)return;currentView=view;syncData();}
 export function refreshTime(){syncData();}
 export function loadCasePhoto(id,retry=false){if(retry)delete state.photoErrors[id];if(state.photoErrors[id]&&!retry)return Promise.resolve();return photos.load(id);}
+export function loadTripPhoto(id,retry=false){if(retry)delete state.tripPhotoErrors[id];if(state.tripPhotoErrors[id])return Promise.resolve();return tripPhotos.load(id);}
 export function retrySync(){pool.stop();quotaBlocked=false;state.error='';syncData();emit();}
 export function reportError(error){if(error.code==='resource-exhausted')failed(error);}
 export async function loadOlderChat(){
@@ -193,6 +210,40 @@ function admin(){member();if(!state.admin)throw Error('Esta ação é exclusiva 
 export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Agora';}
 const stamp=()=>new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const created=data=>({...data,at:stamp(),createdAt:serverTimestamp()});
+
+export async function addTripPhoto(photo){
+ member();
+ const day=tripPhotoDay(),actor=state.me,version=generation;
+ if(!day)throw Error('As publicações abrem de 18 a 22 de novembro.');
+ if(!validReportPhoto(photo))throw Error('Escolha uma foto válida.');
+ const id=day+'_'+actor,ref=doc(db,'tripPosts',id);
+ await runTransaction(db,async tx=>{
+  const previous=await tx.get(ref);
+  if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
+  if(previous.exists())throw Error('Você já publicou sua foto de hoje.');
+  tx.set(ref,{author:actor,createdAt:serverTimestamp(),reactions:{}});
+  tx.set(doc(db,'tripPhotos',id),{dataUrl:photo});
+ });
+ if(version===generation){state.tripPostedDay=day;emit();}
+}
+export async function setTripReaction(id,emoji){
+ member();
+ if(emoji!==null&&!REACTIONS.some(r=>r.emoji===emoji))throw Error('Escolha uma reação válida.');
+ if(state.tripReactionPending?.[id])return;
+ const actor=state.me,version=generation,ref=doc(db,'tripPosts',id);
+ state.tripReactionPending={...state.tripReactionPending,[id]:true};emit();
+ try{await runTransaction(db,async tx=>{
+   const snapshot=await tx.get(ref);
+   if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
+   if(!snapshot.exists())throw Error('Esta foto não está disponível.');
+   const {author,reactions}=snapshot.data();
+   if(author===actor)throw Error('Só os outros congressistas podem reagir à sua foto.');
+   if((reactions[actor]??null)===emoji)return;
+   const next={...reactions};
+   if(emoji===null)delete next[actor];else next[actor]=emoji;
+   tx.update(ref,{reactions:next});
+ });}finally{if(version===generation){delete state.tripReactionPending[id];emit();}}
+}
 export async function addPoints(data){admin();const ref=doc(collection(db,'points'));await runTransaction(db,async tx=>{const closed=await tx.get(doc(db,'scoreClosures','main'));if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,created(data));});return ref;}
 export async function saveOfficialLinks(data,expectedVersion){
  admin();const values=normalizeOfficialLinks(data);

@@ -39,6 +39,26 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
  assert.deepEqual(PEOPLE.filter(p=>p.admin).map(p=>p.id),['bruno','igor','pig']);
  for(const p of PEOPLE){assert(p.nick);assert(!('name'in p));assert(fs.existsSync(new URL(`../img/${p.id}.jpg`,import.meta.url)));}
 });
+test('Home termina com o feed de fotos e usa o seletor de reações do mural',()=>{
+ const {context,nodes}=ui();
+ vm.runInContext(`S={...S,ready:true,me:'bruno',loaded:{tripFeed:true,tripGallery:true},tripPosts:[
+  {id:'a',author:'ob',reactions:{bruno:'😂',igor:'😂'}},{id:'b',author:'bruno',reactions:{ob:'👏'}},{id:'c',author:'igor',reactions:{}}
+ ]};render()`,context);
+ const home=nodes['#root'].innerHTML;
+ assert(home.indexOf('id="trip-title"')>home.indexOf('<h3>Queridômetro</h3>'));
+ for(const section of ['Seu placar','Liderança','Suas contas'])assert(!home.includes(`<h3>${section}</h3>`));
+ assert.equal((home.match(/data-trip-photo=/g)||[]).length,2);
+ assert.match(home,/reaction-trigger selected" data-reaction-picker="a"/);
+ assert(!home.includes('data-reaction-picker="b"'));
+ assert(home.includes('Rindo: 2'));assert(home.includes('Palmas: 1'));assert(!home.includes('Amei: 0'));
+ const opened=vm.runInContext("reactionPicker='a';tripFeed()",context);
+ assert.equal((opened.match(/data-reaction-source="trip"/g)||[]).length,REACTIONS.length);
+ assert.match(opened,/data-emoji="😂"[^>]+aria-pressed="true"/);
+ assert(home.includes('id="addTripPhoto"'));
+ vm.runInContext("tab='fotos';render()",context);
+ assert.equal((nodes['#root'].innerHTML.match(/data-trip-photo=/g)||[]).length,3);
+ assert(!nodes['#root'].innerHTML.includes('id="addTripPhoto"'));
+});
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
