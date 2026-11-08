@@ -205,6 +205,9 @@ const {context}=require('./firebase-context.cjs');
  cases.push(tripCase('update',postPath,'bruno',{...postData,reactions:{bruno:'😂'}},'DENY'));
  cases.push(tripCase('update',postPath,'ob',{...postData,author:'pig',reactions:{ob:'😂'}},'DENY'));
  cases.push(tripCase('update',tripPhotoPath,'bruno',photo,'DENY'));
+ cases.push(tripCase('create',postPath,'bruno',{...postData,caption:'a'.repeat(140)}));
+ for(const caption of ['a'.repeat(141),123,null])cases.push(tripCase('create',postPath,'bruno',{...postData,caption},'DENY'));
+ cases.push(tripCase('update',postPath,'ob',{...postData,caption:'Troca indevida.',reactions:{ob:'👏'}},'DENY'));
  function privateTripCase(time,method,kind,actor,expectation){
   const timestamp=new Date(time).toISOString(),id=dayKey(Date.parse('2026-11-09T20:00:00-03:00'))+'_bruno';
   const testPost=prefix+'/tripTests/bruno/tripPosts/'+id,testPhoto=prefix+'/tripTests/bruno/tripPhotos/'+id;

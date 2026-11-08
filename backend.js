@@ -53,7 +53,10 @@ const photos=photoLoader(id=>readPhoto(doc(db,'casePhotos',id)),{valid:validRepo
  onValue(id,value){const next={...state.casePhotos};delete next[id];next[id]=value;state.casePhotos=Object.fromEntries(Object.entries(next).slice(-24));delete state.photoErrors[id];emit();},
  onError(id,error){state.photoErrors={...state.photoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}});
 const tripPath=(name,testing)=>testing?['tripTests','bruno',name]:[name];
-const tripPhotos=photoLoader(id=>readPhoto(doc(db,...tripPath('tripPhotos',state.tripTesting),id)),{
+const tripPhotos=photoLoader(async id=>{
+ const ref=doc(db,...tripPath('tripPhotos',state.tripTesting),id);
+ return state.tripTesting?(await getDocFromServer(ref)).data()?.dataUrl:readPhoto(ref);
+},{
  valid:validReportPhoto,max:65,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&!!state.tripTesting===tripPhotoTest(state.me)&&['inicio','fotos'].includes(currentView)&&state.tripPosts.some(post=>post.id===id),
  onValue(id,value){state.tripPhotos={...state.tripPhotos,[id]:value};delete state.tripPhotoErrors[id];emit();},
  onError(id,error){state.tripPhotoErrors={...state.tripPhotoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}
@@ -87,7 +90,17 @@ function syncData(){
   const full=currentView==='fotos';
   const key=(full?'tripGallery':'tripFeed')+(testing?'Test':'');
   listen(key,query(collection(db,...tripPostsPath),orderBy('createdAt','desc'),limit(full&&!testing?65:2)),snap=>{
-   state.tripPosts=snap.docs.map(post=>({...post.data(),id:post.id}));
+   const posts=snap.docs.map(post=>({...post.data(),id:post.id}));
+   // Uma foto de teste pode ser excluída e reenviada no mesmo dia, com o mesmo ID.
+   if(testing&&state.tripPosts.some(previous=>{
+    const current=posts.find(post=>post.id===previous.id);
+    if(!current)return true;
+    const before=previous.createdAt,after=current.createdAt;
+    return after!==before&&!(before&&after?.isEqual?.(before));
+   })){
+    tripPhotos.clear();state.tripPhotos={};state.tripPhotoErrors={};
+   }
+   state.tripPosts=posts;
   });
  }
  const photoDay=tripPhotoDay(state.me,at);
@@ -219,17 +232,19 @@ export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate
 const stamp=()=>new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const created=data=>({...data,at:stamp(),createdAt:serverTimestamp()});
 
-export async function addTripPhoto(photo){
+export async function addTripPhoto(photo,caption=''){
  member();
  const actor=state.me,version=generation,at=Date.now(),day=tripPhotoDay(actor,at),testing=tripPhotoTest(actor,at);
  if(!day)throw Error('As publicações abrem de 18 a 22 de novembro.');
  if(!validReportPhoto(photo))throw Error('Escolha uma foto válida.');
+ if(typeof caption!=='string'||caption.length>140)throw Error('Use até 140 caracteres na legenda.');
+ const text=caption.trim();
  const id=day+'_'+actor,ref=doc(db,...tripPath('tripPosts',testing),id);
  await runTransaction(db,async tx=>{
   const previous=await tx.get(ref);
   if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
   if(previous.exists())throw Error('Você já publicou sua foto de hoje.');
-  tx.set(ref,{author:actor,createdAt:serverTimestamp(),reactions:{}});
+  tx.set(ref,{author:actor,createdAt:serverTimestamp(),reactions:{},...(text?{caption:text}:{})});
   tx.set(doc(db,...tripPath('tripPhotos',testing),id),{dataUrl:photo});
  });
  if(version===generation&&testing===tripPhotoTest(actor)){state.tripPostedDay=day;emit();}

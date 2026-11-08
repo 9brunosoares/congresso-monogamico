@@ -90,6 +90,13 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   assert(!records.has('tripPosts/'+firstId));
   await api.setTripReaction(firstId,'👏');assert.equal(records.get(testRoot+'tripPosts/'+firstId).reactions.bruno,'👏');
   await api.setTripReaction(firstId,null);assert.deepEqual(records.get(testRoot+'tripPosts/'+firstId).reactions,{});
+  records.delete(testRoot+'tripPosts/'+firstId);records.delete(testRoot+'tripPhotos/'+firstId);emit();
+  assert(!state.tripPhotos[firstId]);assert.equal(state.tripPostedDay,null);
+  const replacement='data:image/jpeg;base64,BBBB';
+  await assert.rejects(api.addTripPhoto(replacement,'a'.repeat(141)),/140 caracteres/);
+  await api.addTripPhoto(replacement,'a'.repeat(140));
+  assert.equal(records.get(testRoot+'tripPosts/'+firstId).caption.length,140);
+  await api.loadTripPhoto(firstId);assert.equal(state.tripPhotos[firstId],replacement);
   await auth('igor');assert(!state.tripTesting);assert.deepEqual(state.tripPosts,[]);await assert.rejects(api.addTripPhoto(photo),/abrem/);
   time=Date.parse('2026-11-09T00:00:00-03:00');await auth('bruno');await api.addTripPhoto(photo);
   assert(records.has(testRoot+'tripPosts/20766_bruno'));

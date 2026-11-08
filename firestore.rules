@@ -30,7 +30,7 @@ rules_version = '2';
 // chatAuthors/{uid}/messages/{id}: owned:true, privado ao UID. Criação atômica com mensagem.
 // caseReactions/{caseId}: votes mapa de até14 IDs oficiais para um dos cinco emojis.
 // Só publicações condenadas; cada membro altera somente a própria entrada.
-// tripPosts/{diaSP_apelido}: author oficial, createdAt timestamp, reactions mapa apelido → emoji.
+// tripPosts/{diaSP_apelido}: author oficial, createdAt timestamp, reactions mapa apelido → emoji, caption opcional até140 caracteres.
 // tripPhotos/{diaSP_apelido}: dataUrl JPEG <=180000 caracteres, criação atômica com tripPosts.
 // Uma publicação por autor e dia de 18 a 22/11; só membros leem e reagem às fotos dos outros.
 // tripTests/bruno/{tripPosts|tripPhotos}/{diaSP_apelido}: mesmo esquema, só Bruno em 08–09/11.
@@ -314,7 +314,8 @@ service cloud.firestore {
    allow delete: if isAdmin();
   }
   function validTripPost(d,testing) {
-   return only(d,['author','createdAt','reactions']) && d.author in ids() && d.createdAt is timestamp
+   return d.keys().hasAll(['author','createdAt','reactions']) && d.keys().hasOnly(['author','createdAt','reactions','caption'])
+    && d.author in ids() && d.createdAt is timestamp && optionalText(d.get('caption',''),140)
     && validReactions(d.reactions) && (testing || !(d.author in d.reactions));
   }
   function tripDay() { return string(int((request.time.toMillis() - 10800000) / 86400000)); }

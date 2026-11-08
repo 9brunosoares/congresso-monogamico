@@ -8,7 +8,7 @@ import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripPhotoDay,tripPhotoTest,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261108b';
-import * as backend from './backend.js?v=20261108b';
+import * as backend from './backend.js?v=20261108c';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -162,6 +162,7 @@ function tripPost(post){
     <div class="trip-post-meta row">${av(author,'sm')}<div><b>${nick}</b><small>${esc(backend.formatStamp(post.createdAt))}</small></div></div>
     ${photo?`<img class="trip-image" src="${esc(photo)}" alt="Registro de ${nick}" decoding="async" loading="lazy">`:
     `<div class="trip-image trip-placeholder" ${S.tripPhotoErrors?.[id]?'':`data-trip-photo="${esc(id)}"`}>${S.tripPhotoErrors?.[id]?`<button class="link" data-trip-retry="${esc(id)}" type="button">Tentar de novo</button>`:''}</div>`}
+    ${post.caption?`<p class="trip-caption">${esc(post.caption)}</p>`:''}
     ${reactionBar(id,reactions,{source:'trip',canReact,busy:!!S.tripReactionPending?.[id]})}
   </article>`;
 }
@@ -535,9 +536,10 @@ function sheetTripPhoto(){
   <label class="f">Uma foto por dia<input id="tripFile" type="file" accept="image/*"></label>
   <img class="case-preview" id="tripPreview" alt="Prévia da publicação" hidden>
   <p class="muted trip-empty" role="status" id="tripStatus" hidden></p>
+  <label class="f">Legenda (opcional)<input id="tripCaption" type="text" maxlength="140" placeholder="Até 140 caracteres"></label>
   <button class="btn seal block" id="tripPublish" type="button" disabled>Publicar foto</button>
   <button class="btn ghost block" type="button" data-close>Cancelar</button></div>`,s=>{
-   const input=s.querySelector('#tripFile'),preview=s.querySelector('#tripPreview'),status=s.querySelector('#tripStatus'),button=s.querySelector('#tripPublish');
+   const input=s.querySelector('#tripFile'),preview=s.querySelector('#tripPreview'),status=s.querySelector('#tripStatus'),button=s.querySelector('#tripPublish'),caption=s.querySelector('#tripCaption');
    input.onchange=async()=>{
     const current=++job,file=input.files[0];photo='';preview.hidden=true;button.disabled=true;status.hidden=!file;
     if(!file)return;
@@ -546,9 +548,9 @@ function sheetTripPhoto(){
     catch(e){if(current===job){status.textContent=notice(e.message);input.value='';}}
    };
    button.onclick=()=>act(button,async()=>{
-    input.disabled=true;
-    try{await backend.addTripPhoto(photo);s.remove();toast('Foto publicada');}
-    finally{input.disabled=false;}
+    input.disabled=caption.disabled=true;
+    try{await backend.addTripPhoto(photo,caption.value);s.remove();toast('Foto publicada');}
+    finally{input.disabled=caption.disabled=false;}
    });
  });
 }
