@@ -14,9 +14,25 @@
             "z": { ".validate": "newData.isNumber() && newData.val() >= -15000 && newData.val() <= 8400" },
             "a": { ".validate": "newData.isNumber() && newData.val() >= -315 && newData.val() <= 315" },
             "m": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9" },
+            "cx": { ".validate": "newData.isNumber() && newData.val() >= -16000 && newData.val() <= 16000" },
+            "cy": { ".validate": "newData.isNumber() && newData.val() >= -500 && newData.val() <= 8000" },
+            "cz": { ".validate": "newData.isNumber() && newData.val() >= -20000 && newData.val() <= 14000" },
             "t": { ".validate": "newData.isNumber() && newData.val() >= now - 1000 && newData.val() <= now + 1000" },
             "$other": { ".validate": false }
           }
+        }
+      },
+      "falas": {
+        ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/)",
+        "$message": {
+          ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/) && $message.matches(/^[A-Za-z0-9_-]{20}$/) && ((!newData.exists() && (!data.exists() || auth.token.email === data.child('from').val() + '@congresso.app')) || (!data.exists() && auth.token.email === newData.child('from').val() + '@congresso.app'))",
+          ".validate": "newData.hasChildren(['from','session','to','text','t']) && newData.child('from').val() !== newData.child('to').val()",
+          "from": { ".validate": "newData.isString() && newData.val().matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)$/)" },
+          "session": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{20}$/) && root.child('mapa/xvi').child(newData.parent().child('from').val()).child(newData.val()).child('t').val() >= now - 55000" },
+          "to": { ".validate": "newData.isString() && newData.val().matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)$/) && root.child('mapa/xvi').child(newData.val()).exists()" },
+          "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100" },
+          "t": { ".validate": "newData.isNumber() && newData.val() >= now - 1000 && newData.val() <= now + 1000" },
+          "$other": { ".validate": false }
         }
       }
     }
