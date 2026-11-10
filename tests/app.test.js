@@ -64,6 +64,19 @@ test('Nosso feed tem botão de publicar no título e curtidas simples',()=>{
  assert.match(nodes['#root'].innerHTML,/data-trip-like="c"[^>]+0 curtidas/);
  assert(!nodes['#root'].innerHTML.includes('id="addTripPhoto"'));
 });
+test('Simule a viagem aparece e abre somente para Bruno',()=>{
+ const {context}=ui();
+ const opened=[];
+ context.openTravelMap=id=>{opened.push(id);return {close(){}};};
+ for(const id of [...ALL.filter(id=>id!=='bruno'),'bruno']){
+  context.profile=P[id];
+  vm.runInContext('S.me=profile.id;S.admin=!!profile.admin',context);
+  const home=vm.runInContext('viewInicio()',context);
+  assert.equal(home.includes('id="simulateTrip"'),id==='bruno');
+  vm.runInContext('simulateTrip()',context);
+ }
+ assert.deepEqual(opened,['bruno']);
+});
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');

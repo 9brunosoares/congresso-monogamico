@@ -12,6 +12,7 @@ import * as backend from './backend.js?v=20261110a';
 import {openTravelMap} from './mapa-viagem.js?v=20261110c';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
+const TRAVEL_MAP_OWNER = 'bruno';
 
 // Viagem: quarta 18 à noite até domingo 22/11/2026 no começo da tarde.
 const DAYS = [
@@ -192,11 +193,11 @@ function viewInicio(){
   ${cur?`<div class="card row" style="margin-top:12px"><span class="tag live">Agora</span><div class="grow"><b>${esc(cur.title)}</b><div class="muted" style="font-size:13px">até ${fmtTime(cur.end)} · ${esc(cur.place||"")}</div></div></div>`:""}
 
   <button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>
-  <button class="card official-card travel-card" id="simulateTrip" type="button" aria-haspopup="dialog">
+  ${S.me===TRAVEL_MAP_OWNER ? `<button class="card official-card travel-card" id="simulateTrip" type="button" aria-haspopup="dialog">
     <svg class="travel-rim" aria-hidden="true"><rect width="100%" height="100%" rx="17" pathLength="100"/></svg>
     <span class="travel-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8.5 4.75v8.5L12 21l-8.5-4.75v-8.5L12 3Zm-8.5 4.75L12 12.5l8.5-4.75M12 12.5V21"/></svg></span>
     <strong class="grow">Simule a viagem</strong><span class="travel-chevron" aria-hidden="true">›</span>
-  </button>
+  </button>` : ''}
 
   ${homeQueridometro()}
 
@@ -612,7 +613,7 @@ const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Querid
 let enterChat=false;
 let travelMap;
 function simulateTrip(){
- if(!S.me||travelMap)return;
+ if(S.me!==TRAVEL_MAP_OWNER||travelMap)return;
  travelMap=openTravelMap(S.me,()=>{travelMap=null;$('#simulateTrip')?.focus({preventScroll:true});});
 }
 function go(t){if(t==='fofoca'&&tab!=='fofoca')enterChat=true; if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); if(t==='fofoca')scrollChat();else scrollTo({top:0}); }
