@@ -1,0 +1,24 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "mapa": {
+      "xvi": {
+        ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/)",
+        "$avatar": {
+          "$session": {
+            ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password' && $avatar.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)$/) && auth.token.email === $avatar + '@congresso.app' && $session.matches(/^[A-Za-z0-9_-]{20}$/)",
+            ".validate": "newData.hasChildren(['x','y','z','a','m','t'])",
+            "x": { ".validate": "newData.isNumber() && newData.val() >= -11000 && newData.val() <= 11000" },
+            "y": { ".validate": "newData.isNumber() && newData.val() >= -500 && newData.val() <= 2000" },
+            "z": { ".validate": "newData.isNumber() && newData.val() >= -15000 && newData.val() <= 8400" },
+            "a": { ".validate": "newData.isNumber() && newData.val() >= -315 && newData.val() <= 315" },
+            "m": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9" },
+            "t": { ".validate": "newData.isNumber() && newData.val() >= now - 1000 && newData.val() <= now + 1000" },
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    }
+  }
+}

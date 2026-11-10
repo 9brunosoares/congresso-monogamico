@@ -91,6 +91,23 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.0
 .official-card strong{font-size:15px}.official-card small,.official-resource small{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:3px}
 .resource-icon{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none;color:var(--muted)}
 .official-card:focus-visible,.official-resource:focus-visible{outline:2px solid var(--seal);outline-offset:3px}
+.travel-card{isolation:isolate;position:relative;overflow:hidden;min-height:58px;margin-top:9px;border-color:#ae7f5366;background:linear-gradient(108deg,#2b2149,#241936 64%,#381f40);color:#fff3fa}
+.travel-card::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(104deg,transparent 34%,#ffe3aa24 49%,transparent 64%);transform:translateX(-100%);animation:travel-shimmer 7s ease-in-out infinite}
+.travel-spark{display:grid;place-items:center;width:30px;height:30px;flex:none;color:#ffe4a6;background:#ffe4a615;border-radius:11px;box-shadow:0 0 14px #f6bf6430}
+.travel-spark svg{width:22px;height:22px}
+.travel-chevron{color:#ffe4a6;font-size:21px;line-height:1}
+@keyframes travel-shimmer{0%,60%{transform:translateX(-100%)}84%,100%{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){.travel-card::after{animation:none;opacity:0}}
+.travel-map{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#1b1530;color:#fff;overflow:hidden}
+.travel-map[open]{display:grid;grid-template-rows:auto minmax(0,1fr)}
+.travel-map::backdrop{background:#1b1530}
+body:has(.travel-map[open]){overflow:hidden}
+.travel-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));box-sizing:content-box}
+.travel-back{min-height:44px;padding:0 8px;border:0;background:none;color:#fff;font:inherit;font-weight:700}
+.travel-status{font-size:13px;color:#d7cfe6}
+.travel-content{position:relative}
+.travel-frame,.travel-loading{position:absolute;inset:0;width:100%;height:100%;border:0}
+.travel-loading{display:grid;place-content:center;justify-items:center;gap:16px;background:#1b1530;color:#fff}
 .official-heading{align-items:center;margin-bottom:4px}.official-heading h3{margin:0}
 .official-resource{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:15px}
 .official-resource .grow{min-width:0;overflow-wrap:anywhere}.official-resource.unavailable{color:var(--muted)}
@@ -368,7 +385,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261110b"></script>
+<script type="module" src="install.js?v=20261110c"></script>
 
 </body>
 </html>

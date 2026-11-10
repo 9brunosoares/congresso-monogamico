@@ -9,5 +9,8 @@
     "providers": {
       "emailPassword": true
     }
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }

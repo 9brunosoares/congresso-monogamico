@@ -9,6 +9,7 @@ import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261110a';
 import * as backend from './backend.js?v=20261110a';
+import {openTravelMap} from './mapa-viagem.js?v=20261110c';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -191,6 +192,7 @@ function viewInicio(){
   ${cur?`<div class="card row" style="margin-top:12px"><span class="tag live">Agora</span><div class="grow"><b>${esc(cur.title)}</b><div class="muted" style="font-size:13px">até ${fmtTime(cur.end)} · ${esc(cur.place||"")}</div></div></div>`:""}
 
   <button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>
+  <button class="card official-card travel-card" id="simulateTrip" type="button" aria-haspopup="dialog"><span class="travel-spark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8zM18.5 13l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg></span><strong class="grow">Simule a viagem</strong><span class="travel-chevron" aria-hidden="true">›</span></button>
 
   ${homeQueridometro()}
 
@@ -604,6 +606,11 @@ const ICONS={
 const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Queridômetro",contas:"Contas",fofoca:"Fofoca"};
 
 let enterChat=false;
+let travelMap;
+function simulateTrip(){
+ if(!S.me||travelMap)return;
+ travelMap=openTravelMap(S.me,()=>{travelMap=null;$('#simulateTrip')?.focus({preventScroll:true});});
+}
 function go(t){if(t==='fofoca'&&tab!=='fofoca')enterChat=true; if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); if(t==='fofoca')scrollChat();else scrollTo({top:0}); }
 
 function chatSeenKey(){return 'xvi-chat-seen-'+S.me;}
@@ -679,6 +686,7 @@ document.addEventListener('click',e=>{
  }
  const tripDelete=e.target.closest('[data-trip-delete]');if(tripDelete){sheetDeleteTripPhoto(tripDelete.dataset.tripDelete);return;}
  if(e.target.closest('#addTripPhoto')){sheetTripPhoto();return;}
+ if(e.target.closest('#simulateTrip')){simulateTrip();return;}
  const edit=e.target.closest('[data-edit-activity]');if(edit){sheetActivity(AGENDA.find(a=>a.id===edit.dataset.editActivity));return;}
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}
@@ -715,7 +723,7 @@ setInterval(()=>{tick();const phase=votingPhaseAt(),chat=chatOpen();if(phase!==v
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me;S=data;if(previous!==S.me){loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ const previous=S.me;S=data;if(previous!==S.me){travelMap?.close();loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);
  if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}
