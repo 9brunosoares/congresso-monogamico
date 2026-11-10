@@ -464,7 +464,9 @@ function step(c,dx,dz,sp,dt){var l=Math.hypot(dx,dz);if(l<1e-3){c.moving=false;r
     if(poolSpan(lipX)){
       c.pos.x=lipX;c.pos.z=POOL_FOOT_Z;c.fallY=c.g.position.y;
       c.st=POOL_FALL;c.stT=0;c.swim=0;c.moving=false;}}
-  else if(z<=POOL_FOOT_Z&&c.pos.z>POOL_FOOT_Z&&poolSpan(c.pos.x))c.pos.z=POOL_FOOT_Z;
+  else if(z<POOL_LIP_Z&&c.pos.z>POOL_FOOT_Z&&poolSpan(c.pos.x)){
+    if(z>POOL_FOOT_Z&&!poolSpan(x))c.pos.x=x<PX0?PX0-.01:PX1+.01;
+    else c.pos.z=POOL_FOOT_Z;}
   var t=Math.atan2(dx,dz),d=t-c.g.rotation.y;while(d>Math.PI)d-=6.2832;while(d<-Math.PI)d+=6.2832;c.g.rotation.y+=d*Math.min(1,dt*10);}
 
 /* cachorra da chácara */
