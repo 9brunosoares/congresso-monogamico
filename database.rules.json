@@ -17,6 +17,7 @@
             "cx": { ".validate": "newData.isNumber() && newData.val() >= -16000 && newData.val() <= 16000" },
             "cy": { ".validate": "newData.isNumber() && newData.val() >= -500 && newData.val() <= 8000" },
             "cz": { ".validate": "newData.isNumber() && newData.val() >= -20000 && newData.val() <= 14000" },
+            "bump": { ".validate": "newData.isString() && newData.val() !== $avatar && newData.val().matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)$/) && (newData.parent().child('m').val() === 1 || newData.parent().child('m').val() === 3)" },
             "t": { ".validate": "newData.isNumber() && newData.val() >= now - 1000 && newData.val() <= now + 1000" },
             "$other": { ".validate": false }
           }

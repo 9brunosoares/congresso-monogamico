@@ -9,6 +9,7 @@ const ROOM = 'mapa/xvi';
 const SPEECH = 'mapa/falas';
 const SPEECH_MS = 5000;
 const SEND_MS = 250;
+const BUMP_MS = 1000;
 const HEARTBEAT_MS = 20000;
 const STALE_MS = 55000;
 
@@ -21,6 +22,7 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
   const subscriptions = [];
   let open = true;
   let connected = false;
+  let connectedAt = Infinity;
   let session;
   let epoch = 0;
   let offset = 0;
@@ -38,7 +40,8 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
       if (visiblePeers.get(id) !== pose) {
         if (pose) visiblePeers.set(id, pose);
         else visiblePeers.delete(id);
-        onPeer(id, pose ?? null);
+        const fresh = pose?.bump === avatar && pose.t >= connectedAt && pose.t >= Date.now() + offset - BUMP_MS;
+        onPeer(id, pose ? { ...pose, bump: fresh ? avatar : null } : null);
       }
     }
   }
@@ -47,18 +50,22 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
     if (!session || !latest || session.pending) return;
     const now = performance.now();
     if (now - session.sent < SEND_MS) return;
-    const key = Object.values(latest).join(',');
-    if (session.key === key && now - session.sent < HEARTBEAT_MS) return;
     const current = session;
+    const bump = current.bump && now - current.bump.at < BUMP_MS ? current.bump : null;
+    current.bump = null;
+    const pose = bump ? { ...bump.pose, bump: bump.to } : latest;
+    const key = Object.values(pose).join(',');
+    if (session.key === key && now - session.sent < HEARTBEAT_MS) return;
     current.pending = true;
     current.sent = now;
     current.key = key;
-    set(current.ref, { ...latest, t: serverTimestamp() }).then(() => {
+    set(current.ref, { ...pose, t: serverTimestamp() }).then(() => {
       if (session !== current) {
         // A buffered write from a previous connection can be replayed on reconnect.
         void remove(current.ref).catch(() => {});
       } else if (!connected) {
         connected = true;
+        connectedAt = Date.now() + offset;
         onStatus(true);
         refreshPeers();
       }
@@ -136,6 +143,9 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
       latest = { x: pose.x, y: pose.y, z: pose.z, a: pose.a, m: pose.m };
       if ([pose.cx, pose.cy, pose.cz].every(Number.isInteger)) {
         Object.assign(latest, { cx: pose.cx, cy: pose.cy, cz: pose.cz });
+      }
+      if (session && connected && visiblePeers.has(pose.bump) && (pose.m === 1 || pose.m === 3)) {
+        session.bump = { pose: latest, to: pose.bump, at: performance.now() };
       }
       flush();
     },

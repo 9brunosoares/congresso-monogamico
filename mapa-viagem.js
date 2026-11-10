@@ -47,7 +47,7 @@ export function openTravelMap(avatar, onClose) {
   async function joinRoom() {
     status.textContent = 'Conectando…';
     try {
-      const { joinTravelRoom } = await import('./mapa-sala.js?v=20261110f');
+      const { joinTravelRoom } = await import('./mapa-sala.js?v=20261110h');
       if (!active) return;
       room = joinTravelRoom(avatar, {
         onPeer: (id, pose) => send('peer', { id, pose }),
@@ -91,7 +91,7 @@ export function openTravelMap(avatar, onClose) {
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
   window.addEventListener('message', receive);
   window.addEventListener('pagehide', close);
-  frame.src = './mapa/index.html?v=20261110g';
+  frame.src = './mapa/index.html?v=20261110h';
   document.body.append(dialog);
   dialog.showModal();
   return { close };

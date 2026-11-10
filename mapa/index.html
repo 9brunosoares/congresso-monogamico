@@ -491,8 +491,46 @@ function place(c,dt){var remote=c.remote,swimming=remote?remote.m===2||remote.m=
   c.AL.a.rotation.x=aL;c.AR.a.rotation.x=aR;c.AL.a.rotation.z=-spread;c.AR.a.rotation.z=spread;c.AL.k.rotation.x=-eL;c.AR.k.rotation.x=-eR;
   c.b.rotation.x=lean;c.b.rotation.y=sn*.08*A;c.hd.rotation.y=(1-A)*Math.sin(tt*.6+c.seed)*.3-sn*.08*A;c.hd.rotation.x=-lean*.6+idle*.02;c.hd.position.y=1.98+idle*.008;
   c.g.position.set(c.pos.x,remote?c.remoteY:y+bob,c.pos.z);c.blob.visible=!wet&&!inBoat&&c.st!==POOL_FALL;}
-function step(c,dx,dz,sp,dt){var l=Math.hypot(dx,dz);if(l<1e-3){c.moving=false;return;}c.moving=true;if(c.swim>.5)sp*=.55;
+var contactPeer=null,contactTime=0,nextPushAt=0,nextReceiveAt=0,pendingPush=null,shove=null;
+var AVATAR_CONTACT=.94;
+
+function canPush(peer){
+  return peer!==me&&peer.remote&&peer.remote.m<4&&Math.abs(peer.remoteY-me.g.position.y)<1.6;
+}
+function stopAtAvatar(c,x,z,dx,dz,dt,pressing){
+  var closest=null,bestDistance=AVATAR_CONTACT;
+  for(var peer of chars){
+    if(!canPush(peer))continue;
+    var oldDistance=Math.hypot(x-peer.pos.x,z-peer.pos.z);
+    var distance=Math.hypot(c.pos.x-peer.pos.x,c.pos.z-peer.pos.z);
+    if(distance<bestDistance&&distance<oldDistance-.001){closest=peer;bestDistance=distance;}
+  }
+  if(!closest){contactPeer=null;contactTime=0;return;}
+  var awayX=c.pos.x-closest.pos.x,awayZ=c.pos.z-closest.pos.z;
+  var oldX=x-closest.pos.x,oldZ=z-closest.pos.z,oldRadius=Math.hypot(oldX,oldZ);
+  if(bestDistance<.001||awayX*oldX+awayZ*oldZ<=0){awayX=oldX;awayZ=oldZ;bestDistance=oldRadius;}
+  var radius=Math.min(AVATAR_CONTACT,oldRadius);
+  c.pos.x=closest.pos.x+awayX*radius/bestDistance;
+  c.pos.z=closest.pos.z+awayZ*radius/bestDistance;
+  collide(c.pos,.45);
+  if(!pressing||-(dx*oldX+dz*oldZ)/oldRadius<.65){contactPeer=null;contactTime=0;return;}
+  contactTime=closest===contactPeer?contactTime+dt:dt;contactPeer=closest;
+  if(contactTime>=.32&&tt>=nextPushAt){
+    pendingPush=closest.p.id;contactTime=0;nextPushAt=tt+.8;
+  }
+}
+function receivePush(peer,pose){
+  if(pose.bump!==me?.p.id||!Number.isFinite(pose.t)||peer.lastPush===pose.t)return;
+  peer.lastPush=pose.t;
+  if(!roomOnline||boat||me.st||me.sliding||shove||tt<nextReceiveAt||!canPush(peer))return;
+  var x=me.pos.x-peer.remote.x,z=me.pos.z-peer.remote.z,d=Math.hypot(x,z);
+  if(d<.05||d>1.55)return;
+  shove={x:x/d,z:z/d,left:.36};
+  nextReceiveAt=tt+.65;
+}
+function step(c,dx,dz,sp,dt,pressing=false){var l=Math.hypot(dx,dz);if(l<1e-3){c.moving=false;return;}c.moving=true;if(c.swim>.5)sp*=.55;
   var x=c.pos.x,z=c.pos.z;c.pos.x+=dx/l*sp*dt;c.pos.z+=dz/l*sp*dt;collide(c.pos,.45);
+  if(roomOnline)stopAtAvatar(c,x,z,dx/l,dz/l,dt,pressing);
   if(z>=POOL_LIP_Z&&c.pos.z<POOL_LIP_Z){
     var lipX=x+(c.pos.x-x)*(POOL_LIP_Z-z)/(c.pos.z-z);
     if(poolSpan(lipX)){
@@ -563,7 +601,7 @@ function dock(){boat=false;kayak.position.set(KX,H(KX,KZ)+.22,KZ);kayak.rotation
 var talkButton=document.getElementById('talk'),speechOverlay=document.getElementById('speech-overlay');
 var speechForm=document.getElementById('speech-form'),speechText=document.getElementById('speech-text');
 var speechSend=document.getElementById('speech-send'),speechLabel=document.getElementById('speech-label');
-var speechTarget=null,speechTap=null,nearbyPeer=null,speechOnline=false,replying=false,requestNumber=0;
+var speechTarget=null,speechTap=null,nearbyPeer=null,roomOnline=false,replying=false,requestNumber=0;
 var balloons=new Map(),speechRay=new T.Raycaster(),speechPointer=new T.Vector2(),viewpoint=new T.Vector3();
 var bubbleFont='600 30px Figtree, system-ui, sans-serif';
 
@@ -572,7 +610,7 @@ function canTalk(c){
 }
 function updateTalk(){
   var next=null,distance=Infinity;
-  if(me&&speechOnline&&!speechTarget){
+  if(me&&roomOnline&&!speechTarget){
     for(var c of chars){
       if(c===me||!canTalk(c))continue;
       var d=Math.hypot(c.pos.x-me.pos.x,c.pos.z-me.pos.z);
@@ -584,7 +622,7 @@ function updateTalk(){
   if(next)talkButton.textContent='Conversar com '+next.p.nick;
 }
 function openSpeech(c,reply){
-  if(!speechOnline||!c?.remote||(!reply&&!canTalk(c)))return;
+  if(!roomOnline||!c?.remote||(!reply&&!canTalk(c)))return;
   requestNumber++;speechTarget=c;replying=reply;keys={};joy.x=joy.y=0;
   speechLabel.textContent='Conversar com '+c.p.nick;
   speechText.value='';speechSend.disabled=false;speechOverlay.hidden=false;
@@ -599,7 +637,7 @@ document.getElementById('speech-cancel').addEventListener('click',closeSpeech);
 speechForm.addEventListener('submit',function(event){
   event.preventDefault();
   if(speechSend.disabled||!speechTarget)return;
-  if(!speechOnline||!speechTarget.remote||(!replying&&!canTalk(speechTarget))){
+  if(!roomOnline||!speechTarget.remote||(!replying&&!canTalk(speechTarget))){
     closeSpeech();toast('O congressista está fora de alcance.');return;
   }
   var text=speechText.value.trim();if(!text)return;
@@ -659,7 +697,7 @@ function drawBalloons(){
   }
 }
 function replyAt(event){
-  if(!speechOnline||!balloons.size)return;
+  if(!roomOnline||!balloons.size)return;
   var rect=cv.getBoundingClientRect();
   speechPointer.set((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2);
   speechRay.setFromCamera(speechPointer,camera);
@@ -674,11 +712,12 @@ function replyAt(event){
 var sentAt=-Infinity,sentMotion=-1;
 function sendPose(c){
   var motion=boat?(c.moving?9:8):c.st===POOL_FALL?6:c.st===2?5:c.st===1?4:c.sliding?7:c.swim>.5?(c.moving?3:2):c.moving?1:0;
-  var now=performance.now();if(now-sentAt<250&&sentMotion===motion)return;
+  var now=performance.now();if(now-sentAt<250&&sentMotion===motion&&!pendingPush)return;
   sentAt=now;sentMotion=motion;
   var a=c.g.rotation.y,y=motion===2?-1.2*c.s:c.g.position.y;
+  var bump=pendingPush;pendingPush=null;
   post('pose',{pose:{x:Math.round(c.pos.x*100),y:Math.round(y*100),z:Math.round(c.pos.z*100),a:Math.round(Math.atan2(Math.sin(a),Math.cos(a))*100),m:motion,
-    cx:Math.round(camera.position.x*100),cy:Math.round(camera.position.y*100),cz:Math.round(camera.position.z*100)}});
+    cx:Math.round(camera.position.x*100),cy:Math.round(camera.position.y*100),cz:Math.round(camera.position.z*100),bump:bump}});
 }
 function setPeer(c,pose){
   if(!pose){c.remote=null;c.cameraView=null;if(c.remoteKayak)c.remoteKayak.visible=false;return;}
@@ -714,12 +753,14 @@ addEventListener('message',function(event){
     yaw=0;me.g.rotation.y=Math.PI;camPos.set(33,H(33,36.6)+5.6,45);
     toast('Bem-vindo, '+me.p.nick+'.',2600);
   }else if(data.type==='peer'){
-    var peer=charById.get(data.id);if(peer&&peer!==me)setPeer(peer,data.pose);
+    var peer=charById.get(data.id);
+    if(peer&&peer!==me){setPeer(peer,data.pose);if(data.pose)receivePush(peer,data.pose);}
   }else if(data.type==='speech'){
     addBalloon(data.id,data.message);
   }else if(data.type==='online'){
-    speechOnline=data.online===true;
-    if(!speechOnline){
+    roomOnline=data.online===true;
+    if(!roomOnline){
+      shove=null;pendingPush=null;contactPeer=null;contactTime=0;
       for(var id of balloons.keys())removeBalloon(id);
       if(speechTarget)closeSpeech();
     }
@@ -737,12 +778,17 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
 
   if(me){var ix=joy.x,iy=-joy.y;if(keys.a||keys.arrowleft)ix-=1;if(keys.d||keys.arrowright)ix+=1;if(keys.w||keys.arrowup)iy+=1;if(keys.s||keys.arrowdown)iy-=1;
     var fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);var mag=Math.min(1,Math.hypot(ix,iy));
-    if(me.st){me.moving=false;}
+    if(me.st){me.moving=false;shove=null;}
     else if(boat){if(mag>.12){var bx=fx*iy+rx*ix,bz=fz*iy+rz*ix,bl=Math.hypot(bx,bz)||1;me.pos.x=Math.max(-110,Math.min(110,me.pos.x+bx/bl*6*mag*dt));me.pos.z=Math.max(-150,Math.min(-72,me.pos.z+bz/bl*6*mag*dt));
         if(me.pos.z>-72.2&&bz>0){KX=Math.max(-84,Math.min(84,me.pos.x));dock();me.pos.set(KX+1.8,0,-66.4);boatArm=false;toast('Caiaque na areia.',1800);}
         var tr=Math.atan2(bx,bz),dr=tr-me.g.rotation.y;while(dr>Math.PI)dr-=6.2832;while(dr<-Math.PI)dr+=6.2832;me.g.rotation.y+=dr*Math.min(1,dt*4);me.moving=true;}else me.moving=false;
       if(boat){var kr=me.g.rotation.y;kayak.position.set(me.pos.x+Math.sin(kr)*.8,-2.3+Math.sin(tt*1.6)*.03,me.pos.z+Math.cos(kr)*.8);kayak.rotation.set(0,kr-Math.PI/2,0);}}
-    else if(mag>.12)step(me,fx*iy+rx*ix,fz*iy+rz*ix,7.2*mag,dt);else me.moving=false;
+    else if(shove){
+      var duration=Math.min(dt,shove.left);
+      step(me,shove.x,shove.z,1.6+12.5*shove.left,duration);
+      shove.left-=duration;if(shove.left<=0)shove=null;
+    }else if(mag>.12)step(me,fx*iy+rx*ix,fz*iy+rz*ix,7.2*mag,dt,mag>.55);
+    else{me.moving=false;contactPeer=null;contactTime=0;}
     if(!boat){var kd=Math.hypot(me.pos.x-KX,me.pos.z-KZ);if(!boatArm&&kd>3.2)boatArm=true;
       if(boatArm&&kd<1.5&&!me.st){boat=true;me.pos.set(KX,0,-74.5);me.g.rotation.y=Math.PI;yaw=0;toast('Reme para onde quiser. As capivaras têm preferência.',3000);}}}
   hintL.hidden=!(touch&&me&&!joy.on);hintR.hidden=!(touch&&me&&!look.on);
