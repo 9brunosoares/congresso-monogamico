@@ -614,10 +614,11 @@ function removeBalloon(id){
 function addBalloon(id,message){
   if(!message){removeBalloon(id);return;}
   var from=charById.get(message.from),to=charById.get(message.to);
-  if(!from||!to||balloons.has(id)||message.remaining<=0)return;
+  var text=message.text.trim();
+  if(!text||!from||!to||balloons.has(id)||message.remaining<=0)return;
   mctx.font=bubbleFont;
   var lines=[],line='';
-  for(var char of message.text){
+  for(var char of text){
     if(line&&mctx.measureText(line+char).width>430){
       var space=line.lastIndexOf(' ');
       if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);}
