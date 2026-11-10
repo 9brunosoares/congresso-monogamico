@@ -242,7 +242,6 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 .trip-empty{margin:0;font-size:14px}
 .trip-post{padding:0}
 .trip-image{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--surface-2)}
-.trip-image:last-child{border-radius:0 0 17px 17px}
 .trip-placeholder{display:grid;place-items:center}
 .trip-post-meta{padding:10px 12px;line-height:1.25}
 .trip-post-meta b,.trip-post-meta small{display:block}
@@ -250,10 +249,15 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 .trip-post-meta small{font-size:11px;color:var(--muted)}
 .trip-post-meta .trip-delete{color:var(--muted);font-size:13px;min-height:44px;padding:0 4px}
 .trip-caption{margin:0;padding:10px 12px;font-size:15px;overflow-wrap:anywhere}
-.trip-post .case-reaction-bar{margin:4px 12px}
-.trip-add{position:fixed;z-index:21;right:max(calc((100vw - 520px)/2 + 16px),16px,env(safe-area-inset-right,0px));bottom:calc(68px + env(safe-area-inset-bottom,0px));width:46px;height:46px;display:grid;place-items:center;border:1px solid var(--muted);border-radius:50%;background:var(--surface-2);color:var(--ink);box-shadow:0 4px 14px #0004}
+.trip-likes{display:flex;justify-content:flex-end;padding:0 12px}
+.trip-like{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;min-height:44px;padding:0 6px;border:0;background:none;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.trip-like svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+.trip-like[aria-pressed="true"]{color:var(--seal)}
+.trip-like[aria-pressed="true"] svg{fill:currentColor}
+.trip-like:disabled{opacity:.55;cursor:wait}
+.trip-feed-head{align-items:center;gap:10px}
+.trip-add{flex:none;width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--muted);border-radius:50%;background:var(--surface-2);color:var(--ink)}
 .trip-add svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.home-view{padding-bottom:calc(126px + env(safe-area-inset-bottom,0px))}
 .qtitle{font-size:22px;font-weight:800;margin-top:4px}
 .qrow{padding:12px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
 .qrow:first-child{border-top:0}
@@ -364,7 +368,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261110a"></script>
+<script type="module" src="install.js?v=20261110b"></script>
 
 </body>
 </html>

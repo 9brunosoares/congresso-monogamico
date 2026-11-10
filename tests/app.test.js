@@ -39,10 +39,10 @@ test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=
  assert.deepEqual(PEOPLE.filter(p=>p.admin).map(p=>p.id),['bruno','igor','pig']);
  for(const p of PEOPLE){assert(p.nick);assert(!('name'in p));assert(fs.existsSync(new URL(`../img/${p.id}.jpg`,import.meta.url)));}
 });
-test('Home termina com o feed de fotos e usa o seletor de reações do mural',()=>{
- const {context,nodes}=ui();
+test('Nosso feed tem botão de publicar no título e curtidas simples',()=>{
+ const {context,nodes,events}=ui();
  vm.runInContext(`S={...S,ready:true,me:'bruno',loaded:{tripFeed:true,tripGallery:true},tripPosts:[
-  {id:'a',author:'ob',createdAt:'stamp',caption:'Chegamos! <3',reactions:{bruno:'😂',igor:'😂'}},{id:'b',author:'bruno',createdAt:'stamp',reactions:{ob:'👏'}},{id:'c',author:'igor',reactions:{}}
+  {id:'a',author:'ob',createdAt:'stamp',caption:'Chegamos! <3',reactions:{bruno:'❤️',igor:'😂'}},{id:'b',author:'bruno',createdAt:'stamp',reactions:{ob:'❤️'}},{id:'c',author:'igor',reactions:{}}
  ]};render()`,context);
  const home=nodes['#root'].innerHTML;
  assert(home.indexOf('id="trip-title"')>home.indexOf('<h3>Queridômetro</h3>'));
@@ -50,15 +50,18 @@ test('Home termina com o feed de fotos e usa o seletor de reações do mural',()
  assert.equal((home.match(/data-trip-photo=/g)||[]).length,2);
  assert.match(home,/<p class="trip-caption">Chegamos! &lt;3<\/p>/);
  assert.match(home,/data-trip-delete="b"/);assert(!home.includes('data-trip-delete="a"'));
- assert.match(home,/reaction-trigger selected" data-reaction-picker="a"/);
- assert(!home.includes('data-reaction-picker="b"'));
- assert(home.includes('Rindo: 2'));assert(home.includes('Palmas: 1'));assert(!home.includes('Amei: 0'));
- const opened=vm.runInContext("reactionPicker='a';tripFeed()",context);
- assert.equal((opened.match(/data-reaction-source="trip"/g)||[]).length,REACTIONS.length);
- assert.match(opened,/data-emoji="😂"[^>]+aria-pressed="true"/);
- assert(home.includes('id="addTripPhoto"'));
+ assert.match(home,/data-trip-like="a"[^>]+aria-label="Curtir foto, 1 curtida"[^>]+aria-pressed="true"/);
+ assert(!home.includes('data-trip-like="b"'));assert(!home.includes('data-reaction-picker='));
+ assert.match(home,/<h3 id="trip-title">Nosso feed<\/h3>[^\n]+id="addTripPhoto"/);
+ const calls=[];context.backend.setTripReaction=(...args)=>{calls.push(args);return Promise.resolve();};
+ for(const pressed of ['false','true']){
+  const button={dataset:{tripLike:'a'},getAttribute:()=>pressed};
+  for(const click of events.click)click({target:{closest:s=>s==='[data-trip-like]'?button:null}});
+ }
+ assert.deepEqual(calls,[['a','❤️'],['a',null]]);
  vm.runInContext("tab='fotos';render()",context);
  assert.equal((nodes['#root'].innerHTML.match(/data-trip-photo=/g)||[]).length,3);
+ assert.match(nodes['#root'].innerHTML,/data-trip-like="c"[^>]+0 curtidas/);
  assert(!nodes['#root'].innerHTML.includes('id="addTripPhoto"'));
 });
 function ui(){

@@ -154,23 +154,26 @@ function homeQueridometro(){
 }
 function tripPost(post){
   const {id,author,reactions={}}=post,photo=S.tripPhotos?.[id],nick=esc(first(author));
-  const canReact=author!==S.me;
+  const likes=Object.values(reactions).filter(value=>value==='❤️').length;
+  const liked=reactions[S.me]==='❤️',label=`${likes} ${likes===1?'curtida':'curtidas'}`;
+  const heart=`<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS.querido}</svg><span>${likes}</span>`;
   return `<article class="card trip-post">
     <div class="trip-post-meta row">${av(author,'sm')}<div class="grow"><b>${nick}</b><small>${esc(backend.formatStamp(post.createdAt))}</small></div>${author===S.me&&post.createdAt?`<button class="link trip-delete" data-trip-delete="${esc(id)}" type="button" aria-haspopup="dialog" aria-label="Apagar sua foto">Apagar</button>`:''}</div>
     ${photo?`<img class="trip-image" src="${esc(photo)}" alt="Registro de ${nick}" decoding="async" loading="lazy">`:
     `<div class="trip-image trip-placeholder" ${S.tripPhotoErrors?.[id]?'':`data-trip-photo="${esc(id)}"`}>${S.tripPhotoErrors?.[id]?`<button class="link" data-trip-retry="${esc(id)}" type="button">Tentar de novo</button>`:''}</div>`}
     ${post.caption?`<p class="trip-caption">${esc(post.caption)}</p>`:''}
-    ${reactionBar(id,reactions,{source:'trip',canReact,busy:!!S.tripReactionPending?.[id]})}
+    <div class="trip-likes">${author===S.me?`<span class="trip-like" role="img" aria-label="${label}">${heart}</span>`:
+    `<button class="trip-like" data-trip-like="${esc(id)}" type="button" aria-label="Curtir foto, ${label}" aria-pressed="${liked}" ${S.tripReactionPending?.[id]?'disabled':''}>${heart}</button>`}</div>
   </article>`;
 }
 function tripFeed(full=false){
   const key=full?'tripGallery':'tripFeed';
-  const posts=S.tripPosts||[],ready=S.loaded?.[key],title='Fotos da viagem';
+  const posts=S.tripPosts||[],ready=S.loaded?.[key],title='Nosso feed';
   const content=!ready?'<p class="muted trip-empty" role="status">Carregando fotos…</p>':posts.length?
     `<div class="stack">${(full?posts:posts.slice(0,2)).map(tripPost).join('')}</div>`:
     '<p class="muted trip-empty">A primeira foto ainda não chegou.</p>';
   return full?`<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">${title}</h2>${content}`:
-    `<section aria-labelledby="trip-title"><div class="sec-h"><h3 id="trip-title">${title}</h3>${ready&&posts.length?'<button class="link" type="button" data-go="fotos">Ver todas</button>':''}</div>${content}</section>`;
+    `<section aria-labelledby="trip-title"><div class="sec-h trip-feed-head"><h3 id="trip-title">${title}</h3><div class="row">${ready&&posts.length?'<button class="link" type="button" data-go="fotos">Ver todas</button>':''}<button class="trip-add" id="addTripPhoto" type="button" aria-haspopup="dialog" aria-label="Publicar foto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div></div>${content}</section>`;
 }
 function viewInicio(){
   const {cur,nxt} = nextItem();
@@ -288,18 +291,15 @@ function viewFinanceHistory(){
 }
 
 function caseReactions(id){
- return reactionBar(id,S.caseReactions?.[id]||{},{loading:!S.loaded?.['reactions-'+id],busy:!!S.reactionPending?.[id]});
-}
-function reactionBar(id,votes,{source='case',canReact=true,loading=false,busy=false}={}){
- if(!canReact&&!Object.keys(votes).length)return '';
+ const votes=S.caseReactions?.[id]||{},loading=!S.loaded?.['reactions-'+id],busy=!!S.reactionPending?.[id];
  const options=REACTIONS.map(({emoji,label})=>{
   const count=Object.values(votes).filter(value=>value===emoji).length,selected=votes[S.me]===emoji;
   return {emoji,label,count,selected};
  });
  return `<div class="case-reaction-bar" ${busy?'aria-busy="true"':''}>
  <div class="reaction-totals" aria-label="Reações recebidas">${options.filter(r=>r.count>0).map(r=>`<span class="reaction-total${r.selected?' mine':''}" aria-label="${r.label}: ${r.count}"><span aria-hidden="true">${r.emoji}</span><span aria-hidden="true">${r.count}</span></span>`).join('')}</div>
- ${canReact?`<button class="reaction-trigger${votes[S.me]?' selected':''}" data-reaction-picker="${esc(id)}" type="button" aria-label="${votes[S.me]?'Alterar reação':'Reagir'}" aria-expanded="${reactionPicker===id}" aria-controls="reaction-picker-${esc(id)}" ${loading||busy?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="12" r="8"/><path d="M8 14a4 4 0 0 0 6 0M8 10h.01M14 10h.01M20 3v6M17 6h6"/></svg></button>`:''}
- ${canReact&&reactionPicker===id?`<div class="reaction-picker" id="reaction-picker-${esc(id)}" role="group" aria-label="Escolha uma reação">${options.map(r=>`<button class="reaction-option${r.selected?' selected':''}" data-react="${esc(id)}" data-reaction-source="${source}" data-emoji="${r.emoji}" type="button" aria-pressed="${r.selected}" aria-label="${r.label}${r.selected?'. Sua reação. Toque para retirar.':'.'}" ${loading||busy?'disabled':''}>${r.emoji}</button>`).join('')}</div>`:''}</div>`;
+ <button class="reaction-trigger${votes[S.me]?' selected':''}" data-reaction-picker="${esc(id)}" type="button" aria-label="${votes[S.me]?'Alterar reação':'Reagir'}" aria-expanded="${reactionPicker===id}" aria-controls="reaction-picker-${esc(id)}" ${loading||busy?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="12" r="8"/><path d="M8 14a4 4 0 0 0 6 0M8 10h.01M14 10h.01M20 3v6M17 6h6"/></svg></button>
+ ${reactionPicker===id?`<div class="reaction-picker" id="reaction-picker-${esc(id)}" role="group" aria-label="Escolha uma reação">${options.map(r=>`<button class="reaction-option${r.selected?' selected':''}" data-react="${esc(id)}" data-emoji="${r.emoji}" type="button" aria-pressed="${r.selected}" aria-label="${r.label}${r.selected?'. Sua reação. Toque para retirar.':'.'}" ${loading||busy?'disabled':''}>${r.emoji}</button>`).join('')}</div>`:''}</div>`;
 }
 function caseCard(item,pending=false){
  const photo=S.casePhotos?.[item.id];
@@ -614,9 +614,8 @@ function render(){
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
   const body = ({inicio:viewInicio,fotos:()=>tripFeed(true),programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
-  $("#root").innerHTML = `<div class="app auth-view ${tab==='fofoca'?'chat-view':tab==='inicio'?'home-view':''}">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
+  $("#root").innerHTML = `<div class="app auth-view ${tab==='fofoca'?'chat-view':''}">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
-    ${tab==='inicio'?'<button class="trip-add" id="addTripPhoto" type="button" aria-haspopup="dialog" aria-label="Publicar foto da viagem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>':''}
     <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
   tick();watchPhotos();refreshRecipientPix();
@@ -663,18 +662,21 @@ document.addEventListener('click',e=>{
  const reaction=e.target.closest('[data-react]');
  if(reaction){
   if(!reaction.disabled){
-   const {react:id,emoji,reactionSource}=reaction.dataset;
-   const trip=reactionSource==='trip';
-   const votes=trip?S.tripPosts?.find(post=>post.id===id)?.reactions:S.caseReactions?.[id];
-   const setReaction=trip?backend.setTripReaction:backend.setCaseReaction;
+   const {react:id,emoji}=reaction.dataset;
+   const votes=S.caseReactions?.[id];
    showReactionPicker(null);
-   setReaction(id,votes?.[S.me]===emoji?null:emoji).catch(error=>{backend.reportError(error);toast(backend.errorText(error));});
+   backend.setCaseReaction(id,votes?.[S.me]===emoji?null:emoji).catch(error=>{backend.reportError(error);toast(backend.errorText(error));});
   }
   return;
  }
  if(reactionPicker&&!e.target.closest('.case-reaction-bar'))showReactionPicker(null);
  const pr=e.target.closest('[data-photo-retry]');if(pr){backend.loadCasePhoto(pr.dataset.photoRetry,true);return;}
  const tripRetry=e.target.closest('[data-trip-retry]');if(tripRetry){backend.loadTripPhoto(tripRetry.dataset.tripRetry,true);return;}
+ const like=e.target.closest('[data-trip-like]');
+ if(like){
+  if(!like.disabled)backend.setTripReaction(like.dataset.tripLike,like.getAttribute('aria-pressed')==='true'?null:'❤️').catch(error=>{backend.reportError(error);toast(backend.errorText(error));});
+  return;
+ }
  const tripDelete=e.target.closest('[data-trip-delete]');if(tripDelete){sheetDeleteTripPhoto(tripDelete.dataset.tripDelete);return;}
  if(e.target.closest('#addTripPhoto')){sheetTripPhoto();return;}
  const edit=e.target.closest('[data-edit-activity]');if(edit){sheetActivity(AGENDA.find(a=>a.id===edit.dataset.editActivity));return;}
