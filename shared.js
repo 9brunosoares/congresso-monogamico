@@ -4,13 +4,9 @@ export function validatePin(pin){if(!/^[0-9]{6}$/.test(pin))throw Error('Use um 
 export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)/(24*60*60*1000)));}
 const tripPhotoStart=Date.parse('2026-11-18T00:00:00-03:00');
 const tripPhotoEnd=Date.parse('2026-11-23T00:00:00-03:00');
-const tripPhotoTestStart=Date.parse('2026-11-08T00:00:00-03:00');
-const tripPhotoTestEnd=Date.parse('2026-11-10T00:00:00-03:00');
-export function tripPhotoTest(person,at=Date.now()){
- return person==='bruno'&&at>=tripPhotoTestStart&&at<tripPhotoTestEnd;
-}
-export function tripPhotoDay(person,at=Date.now()){
- return tripPhotoTest(person,at)||(at>=tripPhotoStart&&at<tripPhotoEnd)?dayKey(at):null;
+export function chatOpen(at=Date.now()){return at>=tripPhotoStart;}
+export function tripPhotoDay(at=Date.now()){
+ return at>=tripPhotoStart&&at<tripPhotoEnd?dayKey(at):null;
 }
 // Cada dígito hexadecimal guarda o total de um dos oito emojis, na ordem de EMOJIS.
 // No máximo 13 recebidos por alvo: não há transporte entre dígitos (base 16).
@@ -29,21 +25,18 @@ export function applyBallot(previous,ballot,voter,at=Date.now()){
  return {counts,voters:(previous?.voters||0)+1};
 }
 
-// Quatro manhãs oficiais, no horário de São Paulo; demonstração não altera prazos.
+// Quatro manhãs no horário de São Paulo.
 export const VOTE_DAYS=[19,20,21,22].map(d=>{
  const start=Date.parse(`2026-11-${d}T00:00:00-03:00`);
  return {key:dayKey(start),day:d,start,deadline:start+12*3600000};
 });
-export const TEST_VOTE={key:'20764',day:7,start:1793934000000,deadline:1794063600000};
-export function votingKey(at=Date.now()){return at>=TEST_VOTE.start&&at<VOTE_DAYS[0].start?TEST_VOTE.key:dayKey(at);}
-export function votingOpen(at=Date.now()){return (at>=TEST_VOTE.start&&at<TEST_VOTE.deadline)||VOTE_DAYS.some(d=>at>=d.start+6*3600000&&at<d.deadline);}
+export const votingKey=dayKey;
+export function votingOpen(at=Date.now()){return VOTE_DAYS.some(d=>at>=d.start+6*3600000&&at<d.deadline);}
 export function resultDay(at=Date.now()){
- if(at>=TEST_VOTE.deadline&&at<VOTE_DAYS[0].start)return TEST_VOTE;
  const today=VOTE_DAYS.find(d=>d.key===dayKey(at));
  return today?(at>=today.deadline?today:null):at>=VOTE_DAYS.at(-1).deadline?VOTE_DAYS.at(-1):null;
 }
 export function alreadyVotedMessage(at=Date.now()){
- if(votingKey(at)===TEST_VOTE.key)return 'Você já participou desta votação de teste.';
  return dayKey(at)===VOTE_DAYS.at(-1).key||at>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'Você já votou hoje. Amanhã abre de novo.';
 }
 export function scoringPoints(points=[],attendance={},ready,closure,at=Date.now()){

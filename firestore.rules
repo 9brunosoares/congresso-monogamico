@@ -33,7 +33,6 @@ rules_version = '2';
 // tripPosts/{diaSP_apelido}: author oficial, createdAt timestamp, reactions mapa apelido → emoji, caption opcional até140 caracteres.
 // tripPhotos/{diaSP_apelido}: dataUrl JPEG <=180000 caracteres e createdAt; exclusão/criação junto com tripPosts.
 // Uma publicação por autor e dia de 18 a 22/11; só membros leem e reagem às fotos dos outros.
-// tripTests/bruno/{tripPosts|tripPhotos}/{diaSP_apelido}: mesmo esquema, só Bruno em 08–09/11.
 // querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
 // Cada valor é um número inteiro0..3722304989 com oito totais em base16.
 // Cada dígito armazena o total de um emoji (ordem fixa no roster.js), máximo13.
@@ -313,21 +312,20 @@ service cloud.firestore {
     && getAfter(/databases/$(database)/documents/cases/$(id)).data.hasPhoto == true;
    allow delete: if isAdmin();
   }
-  function validTripPost(d,testing) {
+  function validTripPost(d) {
    return d.keys().hasAll(['author','createdAt','reactions']) && d.keys().hasOnly(['author','createdAt','reactions','caption'])
     && d.author in ids() && d.createdAt is timestamp && optionalText(d.get('caption',''),140)
-    && validReactions(d.reactions) && (testing || !(d.author in d.reactions));
+    && validReactions(d.reactions) && !(d.author in d.reactions);
   }
   function tripDay() { return string(int((request.time.toMillis() - 10800000) / 86400000)); }
   function tripMember() { return isKnownAccount() && isMember(); }
-  function tripTester() { return tripMember() && personId() == 'bruno' && tripDay() in ['20765','20766']; }
-  function newTripPost(d,id,testing) {
+  function newTripPost(d,id) {
    let day = tripDay();
-   return validTripPost(d,testing) && (testing ? day in ['20765','20766'] : day in ['20775','20776','20777','20778','20779'])
+   return validTripPost(d) && day in ['20775','20776','20777','20778','20779']
     && d.author == personId() && id == day + '_' + personId() && fresh(d) && d.reactions.size() == 0;
   }
-  function tripReactionUpdate(testing) {
-   return (testing || resource.data.author != personId()) && validTripPost(request.resource.data,testing)
+  function tripReactionUpdate() {
+   return resource.data.author != personId() && validTripPost(request.resource.data)
     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
     && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly([personId()]);
   }
@@ -344,36 +342,18 @@ service cloud.firestore {
   match /tripPosts/{id} {
    allow get: if tripMember();
    allow list: if tripMember() && request.query.limit <= 65;
-   allow create: if tripMember() && newTripPost(request.resource.data,id,false)
+   allow create: if tripMember() && newTripPost(request.resource.data,id)
     && validTripPhoto(getAfter(/databases/$(database)/documents/tripPhotos/$(id)).data);
-   allow update: if tripMember() && tripReactionUpdate(false);
+   allow update: if tripMember() && tripReactionUpdate();
    allow delete: if tripMember() && removeTripPost(/databases/$(database)/documents/tripPhotos/$(id));
   }
   match /tripPhotos/{id} {
    allow get: if tripMember() && exists(/databases/$(database)/documents/tripPosts/$(id));
    allow create: if tripMember() && validTripPhoto(request.resource.data)
     && !exists(/databases/$(database)/documents/tripPosts/$(id))
-    && newTripPost(getAfter(/databases/$(database)/documents/tripPosts/$(id)).data,id,false);
+    && newTripPost(getAfter(/databases/$(database)/documents/tripPosts/$(id)).data,id);
    allow delete: if tripMember() && removeTripImage(/databases/$(database)/documents/tripPosts/$(id));
    allow list,update: if false;
-  }
-  match /tripTests/bruno {
-   match /tripPosts/{id} {
-    allow get: if tripTester();
-    allow list: if tripTester() && request.query.limit <= 2;
-    allow create: if tripTester() && newTripPost(request.resource.data,id,true)
-     && validTripPhoto(getAfter(/databases/$(database)/documents/tripTests/bruno/tripPhotos/$(id)).data);
-    allow update: if tripTester() && tripReactionUpdate(true);
-    allow delete: if tripTester() && removeTripPost(/databases/$(database)/documents/tripTests/bruno/tripPhotos/$(id));
-   }
-   match /tripPhotos/{id} {
-    allow get: if tripTester() && exists(/databases/$(database)/documents/tripTests/bruno/tripPosts/$(id));
-    allow create: if tripTester() && validTripPhoto(request.resource.data)
-     && !exists(/databases/$(database)/documents/tripTests/bruno/tripPosts/$(id))
-     && newTripPost(getAfter(/databases/$(database)/documents/tripTests/bruno/tripPosts/$(id)).data,id,true);
-    allow delete: if tripTester() && removeTripImage(/databases/$(database)/documents/tripTests/bruno/tripPosts/$(id));
-    allow list,update: if false;
-   }
   }
   function validReaction(value) { return value in ['😂','😱','🤦','👏','❤️']; }
   function validReactionFor(votes,id) { return !(id in votes) || validReaction(votes[id]); }
@@ -426,13 +406,14 @@ service cloud.firestore {
     && text(d.text,280) && d.createdAt is timestamp && d.struck is bool
     && (!('threadKey' in d) || validThreadKey(d.threadKey));
   }
+  function canUseChat() { return request.time >= timestamp.date(2026,11,18) + duration.value(3,'h') && isMember(); }
   match /chat/{id} {
-   allow read: if isMember();
-   allow create: if isMember() && isValidChat(request.resource.data) && fresh(request.resource.data)
+   allow read: if canUseChat();
+   allow create: if canUseChat() && isValidChat(request.resource.data) && fresh(request.resource.data)
     && request.resource.data.struck == false
     && request.resource.data.threadKey == getAfter(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)).data.threadKey
     && getAfter(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)/messages/$(id)).data == {'owned':true};
-   allow update: if isMember() && isValidChat(request.resource.data)
+   allow update: if canUseChat() && isValidChat(request.resource.data)
     && exists(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)/messages/$(id))
     && resource.data.get('struck',false) == false && request.resource.data.struck == true
     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['struck']);
@@ -440,33 +421,33 @@ service cloud.firestore {
   }
   // Comprovante privado de autoria, sem UID/apelido nas mensagens do grupo.
   match /chatAuthors/{uid} {
-   allow get: if isMember() && isOwner(uid);
-   allow create: if isMember() && isOwner(uid) && only(request.resource.data,['threadKey']) && validThreadKey(request.resource.data.threadKey)
+   allow get: if canUseChat() && isOwner(uid);
+   allow create: if canUseChat() && isOwner(uid) && only(request.resource.data,['threadKey']) && validThreadKey(request.resource.data.threadKey)
     && !exists(/databases/$(database)/documents/chatThreads/$(request.resource.data.threadKey))
     && getAfter(/databases/$(database)/documents/chatThreads/$(request.resource.data.threadKey)).data.uid == uid;
    allow list,update,delete: if false;
   }
   match /chatThreads/{key} {
-   allow get: if isMember() && resource.data.uid == request.auth.uid;
-   allow create: if isMember() && validThreadKey(key) && only(request.resource.data,['uid']) && request.resource.data.uid == request.auth.uid
+   allow get: if canUseChat() && resource.data.uid == request.auth.uid;
+   allow create: if canUseChat() && validThreadKey(key) && only(request.resource.data,['uid']) && request.resource.data.uid == request.auth.uid
     && getAfter(/databases/$(database)/documents/chatAuthors/$(request.auth.uid)).data.threadKey == key;
    allow list,update,delete: if false;
   }
   match /chatAuthors/{uid}/messages/{id} {
-   allow read: if isMember() && isOwner(uid);
-   allow create: if isMember() && isOwner(uid) && request.resource.data == {'owned':true}
+   allow read: if canUseChat() && isOwner(uid);
+   allow create: if canUseChat() && isOwner(uid) && request.resource.data == {'owned':true}
     && !exists(/databases/$(database)/documents/chat/$(id))
     && getAfter(/databases/$(database)/documents/chat/$(id)).data.createdAt == request.time;
    allow update,delete: if false;
   }
-  function testWindow() { return request.time.toMillis() >= 1793934000000 && request.time.toMillis() < 1794063600000; }
-  function isToday(day) { return testWindow() ? day == '20764' : day == string(int((request.time.toMillis() - 10800000) / 86400000)); }
+  function votingDay(day) { return day in ['20776','20777','20778','20779']; }
+  function isToday(day) { return day == tripDay(); }
   function resultsReleased(day) {
-   return (day == '20764' && request.time.toMillis() >= 1794063600000) || day in ['20776','20777','20778','20779'] && request.time.toMillis() >= int(day) * 86400000 + 54000000;
+   return votingDay(day) && request.time.toMillis() >= int(day) * 86400000 + 54000000;
   }
   function votingOpen() {
    let local=request.time.toMillis()-10800000;
-   return testWindow() || local >= 1795046400000 && local < 1795392000000 && local % 86400000 >= 21600000 && local % 86400000 < 43200000;
+   return local >= 1795046400000 && local < 1795392000000 && local % 86400000 >= 21600000 && local % 86400000 < 43200000;
   }
   // A subtração só aceita números; delta enumerado garante um único incremento.
   // A partir de zero, com 14 votantes e sem voto próprio, cada dígito tem máximo13.
@@ -510,7 +491,7 @@ service cloud.firestore {
    allow create, update: if isMember() && newVoter(day)
     && isValidVoteDay(request.resource.data,request.method == 'create' ? emptyDay() : resource.data,day);
    match /voters/{uid} {
-    allow get: if isMember() && isOwner(uid);
+    allow get: if isMember() && votingDay(day) && isOwner(uid);
     allow list, update, delete: if false;
     // O avanço do pai, obrigatório aqui, valida o membro, o dia e todos os contadores.
     allow create: if isOwner(uid) && votingOpen() && isToday(day) && request.resource.data == {'voted':true}

@@ -7,8 +7,8 @@ import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
-import {dayKey,tripPhotoDay,tripPhotoTest,votingOpen,missedVotePoints,VOTE_DAYS,TEST_VOTE,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261108b';
-import * as backend from './backend.js?v=20261108d';
+import {dayKey,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261110a';
+import * as backend from './backend.js?v=20261110a';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 
@@ -41,10 +41,8 @@ let S = {me:null,admin:false,ready:false,budget:0,points:[],exps:[],shame:[],cha
 let reactionPicker=null;
 const chatColors=createChatColors();
 
-/* Relógio de demonstração: começa na sexta, 20/11, 15:40 */
-const T0 = Date.now(), DEMO0 = new Date(2026,10,20,15,40).getTime();
-let demo = false;
-const now = () => demo ? DEMO0 + (Date.now()-T0) : Date.now();
+const now = () => Date.now();
+const clockZone={timeZone:'America/Sao_Paulo'};
 
 /* ===================== AJUDANTES ===================== */
 const $ = s => document.querySelector(s);
@@ -120,9 +118,8 @@ function header(){
     <div class="brand"><div class="roman">XVI CONGRESSO</div><h1>Monogâmico</h1></div>
     <button class="me" id="meBtn" type="button">${av(S.me,"sm")}${S.adminPending?'<i class="notice-dot" aria-label="Pendência de ADM"></i>':''}<span>${esc(first(S.me))}</span>${isAdm()?'<span class="adm">ADM</span>':""}</button>
   </div>
-  <div class="demo">
+  <div class="clock">
     <span>Agora: <b class="num" id="clock"></b></span>
-    ${isAdm()?`<button class="chip" id="clockBtn" type="button">${demo?"Encerrar demonstração":"Demonstração"}</button>`:""}
   </div>`;
 }
 
@@ -146,18 +143,18 @@ function homeQueridometro(){
   if(revealed)return `<div class="sec-h"><h3>Queridômetro</h3></div>
     <button class="card q-reveal" data-go="querido" type="button">
       <span class="q-reveal-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS.querido}</svg></span>
-      <span class="grow"><span class="eyebrow">${revealed.key===TEST_VOTE.key?'Rodada de teste · ':''}${revealed.day}/11</span><strong>Os votos foram revelados!</strong><small>Ver resultado</small></span>
+      <span class="grow"><span class="eyebrow">${revealed.day}/11</span><strong>Os votos foram revelados!</strong><small>Ver resultado</small></span>
       <span class="q-reveal-arrow" aria-hidden="true">›</span>
     </button>`;
   const d=votingKey();
   const blocked=VOTE_DAYS.find(v=>v.key===d)?.day===19&&!votePeople(ALL,19).includes(S.me);
   const done=(S.qvoted[d]||[]).includes(S.me);
   return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${blocked||done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
-    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?((S.scoreClosing||d===TEST_VOTE.key)?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`;
+    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?(S.scoreClosing?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`;
 }
 function tripPost(post){
   const {id,author,reactions={}}=post,photo=S.tripPhotos?.[id],nick=esc(first(author));
-  const canReact=author!==S.me||S.tripTesting===true;
+  const canReact=author!==S.me;
   return `<article class="card trip-post">
     <div class="trip-post-meta row">${av(author,'sm')}<div class="grow"><b>${nick}</b><small>${esc(backend.formatStamp(post.createdAt))}</small></div>${author===S.me&&post.createdAt?`<button class="link trip-delete" data-trip-delete="${esc(id)}" type="button" aria-haspopup="dialog" aria-label="Apagar sua foto">Apagar</button>`:''}</div>
     ${photo?`<img class="trip-image" src="${esc(photo)}" alt="Registro de ${nick}" decoding="async" loading="lazy">`:
@@ -167,8 +164,8 @@ function tripPost(post){
   </article>`;
 }
 function tripFeed(full=false){
-  const key=(full?'tripGallery':'tripFeed')+(S.tripTesting?'Test':'');
-  const posts=S.tripPosts||[],ready=S.loaded?.[key],title=S.tripTesting?'Fotos da viagem · teste':'Fotos da viagem';
+  const key=full?'tripGallery':'tripFeed';
+  const posts=S.tripPosts||[],ready=S.loaded?.[key],title='Fotos da viagem';
   const content=!ready?'<p class="muted trip-empty" role="status">Carregando fotos…</p>':posts.length?
     `<div class="stack">${(full?posts:posts.slice(0,2)).map(tripPost).join('')}</div>`:
     '<p class="muted trip-empty">A primeira foto ainda não chegou.</p>';
@@ -342,7 +339,7 @@ function viewQuerido(){
   const form = voted || !eligible.includes(S.me) || !votingOpen() ? "" : `
     <div class="card"><div class="eyebrow">Votação de ${new Date().toLocaleDateString("pt-BR")}</div>
       <h2 class="qtitle">Dê um emoji para cada congressista</h2>
-      <p class="muted" style="margin:6px 0 0;font-size:14px">Vote até meio-dia (São Paulo). ${S.scoreClosing||votingKey()===TEST_VOTE.key?'':'Não preencher custa 5 pontos. '}As escolhas são anônimas.</p>
+      <p class="muted" style="margin:6px 0 0;font-size:14px">Vote até meio-dia (São Paulo). ${S.scoreClosing?'':'Não preencher custa 5 pontos. '}As escolhas são anônimas.</p>
     </div>
     <div class="card" style="margin-top:12px;padding-block:4px">${others.map(id=>`<div class="qrow">
       <div class="row">${av(id,"sm")}<b class="grow">${esc(P[id].nick)}</b>${qDraft[id]?`<span class="qpick">${qDraft[id]}</span>`:""}</div>
@@ -350,16 +347,17 @@ function viewQuerido(){
     </div>`).join("")}</div>
     <button class="btn seal block" style="margin-top:14px" id="qSend" type="button">Enviar votos (${Object.keys(qDraft).filter(k=>others.includes(k)).length} de ${others.length})</button>`;
   const results = !revealed?'':!S.loaded?.['votes-'+d]?'<p role="status" class="muted">Carregando resultado…</p>':`
-    <div class="sec-h"><h3>${revealed.key===TEST_VOTE.key?'Resultado do teste':'Resultado'} de ${revealed.day}/11</h3><span class="muted" style="font-size:13px">${S.voterCount} ${S.voterCount===1?'votante':'votantes'}</span></div>
+    <div class="sec-h"><h3>Resultado de ${revealed.day}/11</h3><span class="muted" style="font-size:13px">${S.voterCount} ${S.voterCount===1?'votante':'votantes'}</span></div>
     ${highlights?`<div class="card qhls">${highlights}</div>`:""}
     <div class="card" style="margin-top:12px;padding-block:4px">${votePeople(ALL,revealed.day).slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
       return `<div class="qres ${id===S.me?"me-row":""}">${av(id)}<div style="min-width:0"><div class="nm">${esc(P[id].nick)}</div><div class="qchips">${chips||'<span class="muted" style="font-size:13px">sem votos ainda</span>'}</div></div><span class="muted num" style="font-size:13px">${total(id)}</span></div>`}).join("")}</div>`;
   if(revealed)return results+(revealed.day===VOTE_DAYS.at(-1).day?'<p class="muted">Esta foi a última votação do congresso.</p>':'');
-  return (d===TEST_VOTE.key?'<p class="muted">Votação de teste · até 7/11, meio-dia.</p>':'')+(!votingOpen()&&!voted?'<div class="card"><h2>Votação fechada</h2><p>De 19 a 22/11, pela manhã até meio-dia (São Paulo).</p></div>':voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos foram enviados.'}</div></div>`:form) + (VOTE_DAYS.some(v=>v.key===d)?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'');
+  return (!votingOpen()&&!voted?'<div class="card"><h2>Votação fechada</h2><p>De 19 a 22/11, pela manhã até meio-dia (São Paulo).</p></div>':voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos foram enviados.'}</div></div>`:form) + (VOTE_DAYS.some(v=>v.key===d)?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'');
 }
 
 function viewFofoca(){
+  if(!chatOpen())return '<h2 class="page-title">Chat anônimo</h2><div class="card">O chat abre em 18 de novembro.</div>';
   return `<h2 class="page-title">Chat anônimo</h2>
   ${S.loaded&&!S.loaded.chat?'<p role="status" class="muted">Carregando mensagens…</p>':''}
   ${S.chatHasMore?`<button class="btn ghost block" id="olderChat" type="button" ${S.chatLoadingOlder?'disabled':''}>${S.chatLoadingOlder?'Carregando…':'Ver mensagens anteriores'}</button>`:''}
@@ -526,13 +524,13 @@ function sheetReport(){
 }
 
 function sheetTripPhoto(){
- const day=tripPhotoDay(S.me);
+ const day=tripPhotoDay();
  if(!day||S.tripPostedDay===day){
   const message=day?'Você já publicou sua foto de hoje.':Date.now()<Date.parse('2026-11-18T00:00:00-03:00')?'As publicações abrem em 18 de novembro.':'As publicações da viagem foram encerradas.';
   return sheet(`<h3>Foto da viagem</h3><p class="muted">${message}</p><button class="btn ghost block" type="button" data-close>Fechar</button>`);
  }
  let photo='',job=0;
- sheet(`<h3>${tripPhotoTest(S.me)?'Publicar foto de teste':'Publicar foto'}</h3><div class="stack">
+ sheet(`<h3>Publicar foto</h3><div class="stack">
   <label class="f">Uma foto por dia<input id="tripFile" type="file" accept="image/*"></label>
   <img class="case-preview" id="tripPreview" alt="Prévia da publicação" hidden>
   <p class="muted trip-empty" role="status" id="tripStatus" hidden></p>
@@ -558,10 +556,9 @@ function sheetTripPhoto(){
 function sheetDeleteTripPhoto(id){
  const post=S.tripPosts?.find(item=>item.id===id);
  if(!post?.createdAt||post.author!==S.me)return;
- const testing=!!S.tripTesting;
  sheet('<h3>Apagar esta foto?</h3><div class="stack"><button class="btn seal block" id="tripDeleteOk" type="button">Apagar foto</button><button class="btn ghost block" data-close type="button">Voltar</button></div>',s=>{
   const button=s.querySelector('#tripDeleteOk');
-  button.onclick=()=>act(button,async()=>{await backend.deleteTripPhoto(id,post.createdAt,testing);s.remove();toast('Foto apagada.');});
+  button.onclick=()=>act(button,async()=>{await backend.deleteTripPhoto(id,post.createdAt);s.remove();toast('Foto apagada.');});
  });
 }
 
@@ -610,7 +607,7 @@ let enterChat=false;
 function go(t){if(t==='fofoca'&&tab!=='fofoca')enterChat=true; if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); if(t==='fofoca')scrollChat();else scrollTo({top:0}); }
 
 function chatSeenKey(){return 'xvi-chat-seen-'+S.me;}
-function unreadChat(){try{return !!S.latestChat&&S.latestChat!==localStorage.getItem(chatSeenKey());}catch{return false;}}
+function unreadChat(){try{return chatOpen()&&!!S.latestChat&&S.latestChat!==localStorage.getItem(chatSeenKey());}catch{return false;}}
 function scrollChat(){requestAnimationFrame(()=>{if(tab!=='fofoca')return;scrollTo(0,document.documentElement.scrollHeight);try{if(S.latestChat)localStorage.setItem(chatSeenKey(),S.latestChat);document.querySelector('[data-go="fofoca"] .notice-dot')?.remove();}catch{}});}
 function render(){
   backend.setView?.(tab);
@@ -694,12 +691,11 @@ document.addEventListener('click',e=>{
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
  ({fullAgenda:()=>{agendaAdminMode=!agendaAdminMode;render();},officialLinks:sheetOfficialLinks,closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
- qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');}),
- clockBtn:()=>{if(!isAdm())return;demo=!demo;render();toast(demo?'Relógio de demonstração: sexta 15:40':'Demonstração encerrada');}})[id]?.();
+ qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');})})[id]?.();
 });
 
 function tick(){
-  const c=$("#clock"); if(c){ const t=now(); c.textContent=`${dayOf(t)?dayOf(t).wd+" "+new Date(t).getDate()+"/11":new Date(t).toLocaleDateString("pt-BR")} ${new Date(t).toLocaleTimeString("pt-BR")}`; }
+  const c=$("#clock"); if(c){ const t=new Date(now()); c.textContent=`${t.toLocaleDateString("pt-BR",clockZone)} ${t.toLocaleTimeString("pt-BR",clockZone)}`; }
   const box=$("#count"); const {nxt}=nextItem();
   if(box&&nxt){ let s=Math.max(0,Math.floor((nxt.start-now())/1000)); const dd=Math.floor(s/86400); s%=86400; const h=Math.floor(s/3600); s%=3600; const m=Math.floor(s/60); s%=60;
     const parts = dd?[[dd,"dias"],[h,"h"],[m,"min"]]:[[h,"h"],[m,"min"],[s,"seg"]];
@@ -712,12 +708,12 @@ document.addEventListener('submit',e=>{
  act(e.target.querySelector('button'),async()=>{await backend.sendChat(text);if($('#chatIn')?.value.trim()===text)$('#chatIn').value='';$('#chatIn')?.focus();});
 });
 function votingPhaseAt(at=Date.now()){return resultDay(at)?.key??votingOpen(at);}
-let votingPhase=votingPhaseAt();
-setInterval(()=>{tick();const phase=votingPhaseAt();if(phase!==votingPhase){votingPhase=phase;backend.refreshTime?.();render();}},1000);
+let votingPhase=votingPhaseAt(),chatAvailable=chatOpen();
+setInterval(()=>{tick();const phase=votingPhaseAt(),chat=chatOpen();if(phase!==votingPhase||chat!==chatAvailable){votingPhase=phase;chatAvailable=chat;backend.refreshTime?.();render();}},1000);
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me;S=data;if(previous!==S.me){loginPerson=null;enterChat=tab==='fofoca';}if(!S.admin)demo=false;if(previous!==S.me){qDraft={};chatColors.reset();}
+ const previous=S.me;S=data;if(previous!==S.me){loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);
  if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}

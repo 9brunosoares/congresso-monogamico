@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {ALL,PEOPLE,P,EMOJIS} from '../roster.js';
-import {dayKey,validatePin,applyBallot,decodeTally,VOTE_DAYS,TEST_VOTE,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
+import {dayKey,chatOpen,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
 
 test('PIN aceita exatamente seis algarismos',()=>{
  for(const pin of ['000000','123456','098765'])assert.doesNotThrow(()=>validatePin(pin));
@@ -60,14 +60,11 @@ test('Home termina com o feed de fotos e usa o seletor de reações do mural',()
  vm.runInContext("tab='fotos';render()",context);
  assert.equal((nodes['#root'].innerHTML.match(/data-trip-photo=/g)||[]).length,3);
  assert(!nodes['#root'].innerHTML.includes('id="addTripPhoto"'));
- vm.runInContext("tab='inicio';S.tripTesting=true;S.loaded.tripFeedTest=true;render()",context);
- assert.match(nodes['#root'].innerHTML,/Fotos da viagem · teste/);
- assert.match(nodes['#root'].innerHTML,/data-reaction-picker="b"/);
 });
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={},events={},timers=new Map();let timerId=0;const context={departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,VOTE_DAYS,TEST_VOTE,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,chatOpen,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
@@ -114,6 +111,10 @@ test('tarefas não pedem aprovação; somente ADM vê excluir antes de fechar o 
 test('chat: só o autor vê apagar; mensagem riscada continua legível e ADM não recebe poder extra',()=>{
  const {context,html:styles}=ui();
  vm.runInContext("S={...S,me:'bruno',admin:true,chat:[{id:'own',text:'Minha mensagem',mine:true},{id:'other',text:'Mensagem de outro',mine:false},{id:'struck',text:'Ainda dá para ler',mine:true,struck:true}]}",context);
+ context.chatOpen=()=>false;
+ const closed=vm.runInContext('viewFofoca()',context);
+ assert(closed.includes('O chat abre em 18 de novembro.'));assert(!closed.includes('chatForm'));assert(!closed.includes('Minha mensagem'));
+ context.chatOpen=()=>true;
  const html=vm.runInContext('viewFofoca()',context);
  assert(html.includes('data-del="own"'));assert(!html.includes('data-del="other"'));assert(!html.includes('data-del="struck"'));
  assert(html.includes('class="chat-text struck">Ainda dá para ler</div>'));
@@ -123,6 +124,7 @@ test('chat: só o autor vê apagar; mensagem riscada continua legível e ADM nã
 
 test('chat agrupa falas por cor sem imprimir chave/identidade; mensagens antigas são neutras',()=>{
  const {context}=ui();
+ context.chatOpen=()=>true;
  vm.runInContext("S.chat=[{text:'Primeira',threadKey:'a'.repeat(32)},{text:'Segunda',threadKey:'b'.repeat(32)},{text:'Terceira',threadKey:'a'.repeat(32)},{text:'Antiga'}]",context);
  const html=vm.runInContext('viewFofoca()',context),colors=[...html.matchAll(/style="--chat-light:([^;]+);--chat-dark:([^"]+)"/g)];
  assert.equal(colors.length,3);assert.equal(colors[0][0],colors[2][0]);assert.notEqual(colors[0][0],colors[1][0]);
@@ -254,8 +256,10 @@ test('pagamento acompanha Pix do recebedor e não mantém chave de outra pessoa'
  nodes['#pmTo'].value='igor';vm.runInContext('refreshRecipientPix()',context);assert(nodes['#paymentRecipientPix'].hidden);assert(!nodes['#paymentRecipientPix'].innerHTML.includes('ob@example.com'));
 });
 
-test('votação de teste atravessa meia-noite, fecha07/11 às12h e não gera multa',()=>{
- const a=Date.parse('2026-11-06T22:00:00-03:00'),b=Date.parse('2026-11-07T11:59:59-03:00');assert(votingOpen(a));assert(votingOpen(b));assert.equal(votingKey(a),votingKey(b));assert.equal(resultDay(a),null);assert(!votingOpen(TEST_VOTE.deadline));assert.equal(resultDay(TEST_VOTE.deadline).key,TEST_VOTE.key);assert.equal(missedVotePoints({},TEST_VOTE.deadline).length,0);
+test('chat abre à meia-noite de 18/11 e votação só nos dias oficiais',()=>{
+ const start=Date.parse('2026-11-18T00:00:00-03:00'),before=start-1;
+ assert(!chatOpen(before));assert(chatOpen(start));assert(!votingOpen(start));
+ assert.equal(resultDay(start),null);assert.equal(missedVotePoints({},start).length,0);
 });
 test('editor da agenda só é oferecido a ADM, inclusive na agenda completa',()=>{
  const {context}=ui();vm.runInContext("S={...S,me:'bruno',admin:true};AGENDA.push({id:'x',d:18,t:'21:00',title:'Teste',start:1795046400000,end:1795050000000});agendaAdminMode=true;day=18",context);assert(vm.runInContext('viewPrograma()',context).includes('data-edit-activity="x"'));vm.runInContext('S.admin=false',context);assert(!vm.runInContext('viewPrograma()',context).includes('data-edit-activity'));

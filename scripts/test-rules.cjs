@@ -161,6 +161,19 @@ const {context}=require('./firebase-context.cjs');
  const forgedMessage=chatCase(chatPath,'create','DENY');forgedMessage.request.resource.data.threadKey='b'.repeat(32);cases.push(forgedMessage);
  const recolor=chatCase(chatPath,'update','DENY');recolor.request.resource.data.threadKey='b'.repeat(32);cases.push(recolor);
  const previous=chatCase(chatPath,'update');previous.resource={data:{...previous.resource.data}};delete previous.resource.data.threadKey;delete previous.request.resource.data.threadKey;cases.push(previous);
+ const beforeChat='2026-11-18T02:59:59.999Z',openChat='2026-11-18T03:00:00.000Z';
+ for(const path of [chatPath,ownerPath,authorPath,threadPath]){
+  for(const method of ['get','create',...(path===chatPath?['list','update']:[])]){
+   for(const [time,expectation] of [[beforeChat,'DENY'],[openChat,'ALLOW']]){
+    const t=[authorPath,threadPath].includes(path)?threadCase(path,method,expectation):chatCase(path,method,expectation);
+    t.request.time=time;
+    if(path===chatPath&&method==='create')t.request.resource.data.createdAt=time;
+    const messageAfter=t.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue===chatPath);
+    if(messageAfter)messageAfter.result.value={data:{...chatData,createdAt:time}};
+    cases.push(t);
+   }
+  }
+ }
 
  const earlyTime=Date.parse('2026-11-19T10:00:00-03:00'),earlyKey=dayKey(earlyTime),earlyIds=ALL.filter(id=>!['bruno','ibrahim','felipe','gherardi','luan'].includes(id));
  const early=applyBallot(undefined,Object.fromEntries(earlyIds.filter(id=>id!=='igor').map(id=>[id,EMOJIS[0]])),'igor',earlyTime);
@@ -173,8 +186,7 @@ const {context}=require('./firebase-context.cjs');
  function temporaryCase(time,method='create',expectation='ALLOW'){
   const t=make('bruno',first);t.expectation=expectation;t.request.time=new Date(time).toISOString();t.request.method=method;t.request.path=t.request.path.replace('/'+key,'/'+testDay);for(const m of t.functionMocks)m.args[0].exactValue=m.args[0].exactValue.replace('/'+key,'/'+testDay);return t;
  }
- cases.push(temporaryCase('2026-11-06T10:00:00-03:00'),temporaryCase('2026-11-07T11:59:59-03:00'),temporaryCase('2026-11-07T12:00:00-03:00','create','DENY'),temporaryCase('2026-11-05T23:59:59-03:00','create','DENY'),temporaryCase('2026-11-06T10:00:00-03:00','get','DENY'),temporaryCase('2026-11-07T12:00:00-03:00','get','ALLOW'));
- const wrongTestKey=temporaryCase('2026-11-06T10:00:00-03:00','create','DENY');wrongTestKey.request.path=wrongTestKey.request.path.replace(testDay,'20763');cases.push(wrongTestKey);
+ cases.push(temporaryCase('2026-11-06T10:00:00-03:00','create','DENY'),temporaryCase('2026-11-07T12:00:00-03:00','get','DENY'));
  for(const admin of [true,false]){const t=photoTest('update',{address:'Ponto de encontro'},'pend',admin,admin?'ALLOW':'DENY');t.request.path=prefix+'/travelPlans/bruno';t.resource={data:{address:'Anterior'}};cases.push(t);}
  const oversized=photoTest('update',{address:'x'.repeat(301)},'pend',true,'DENY');oversized.request.path=prefix+'/travelPlans/bruno';oversized.resource={data:{address:'Anterior'}};cases.push(oversized);
  const postPath=prefix+'/tripPosts/'+key+'_bruno',tripPhotoPath=prefix+'/tripPhotos/'+key+'_bruno';
@@ -216,27 +228,7 @@ const {context}=require('./firebase-context.cjs');
    t.functionMocks.push(mock('get',postPath,{data:postData}),mock('existsAfter',pair,pairExists));cases.push(t);
   }
  }
- function privateTripCase(time,method,kind,actor,expectation){
-  const timestamp=new Date(time).toISOString(),id=dayKey(Date.parse('2026-11-09T20:00:00-03:00'))+'_bruno';
-  const testPost=prefix+'/tripTests/bruno/tripPosts/'+id,testPhoto=prefix+'/tripTests/bruno/tripPhotos/'+id;
-  const data={...postData,createdAt:timestamp},target=kind==='photo'?testPhoto:testPost;
-  const next=kind==='photo'?photo:method==='update'?{...data,reactions:{bruno:'👏'}}:data;
-  return {expectation,request:{auth:{uid,token:{email:actor+'@congresso.app'}},time:timestamp,path:target,method,resource:{data:next}},resource:{data:kind==='photo'?photo:data},functionMocks:[
-   mock('get',prefix+'/people/'+actor,{data:{uid}}),mock('getAfter',testPost,{data}),mock('getAfter',testPhoto,{data:photo}),mock('exists',testPost,method!=='create')
-  ]};
- }
- const duringTest='2026-11-09T23:59:59-03:00',afterTest='2026-11-10T00:00:00-03:00';
- for(const kind of ['post','photo']){
-  for(const method of ['create','get']){
-   cases.push(privateTripCase(duringTest,method,kind,'bruno','ALLOW'),privateTripCase(duringTest,method,kind,'igor','DENY'),privateTripCase(afterTest,method,kind,'bruno','DENY'));
-  }
- }
- cases.push(privateTripCase(duringTest,'update','post','bruno','ALLOW'),privateTripCase(duringTest,'update','post','igor','DENY'),privateTripCase(afterTest,'update','post','bruno','DENY'));
- for(const [kind,pair] of [['post','tripPhotos'],['photo','tripPosts']]){
-  const t=privateTripCase(duringTest,'delete',kind,'bruno','ALLOW');
-  const root=prefix+'/tripTests/bruno/',id='20766_bruno';
-  t.functionMocks.push(mock('get',root+'tripPosts/'+id,{data:postData}),mock('existsAfter',root+pair+'/'+id,false));cases.push(t);
- }
+ for(const kind of ['tripPosts','tripPhotos'])cases.push(tripCase('get',prefix+'/tripTests/bruno/'+kind+'/20766_bruno','bruno',{},'DENY'));
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const report={issues:[],testResults:[]};

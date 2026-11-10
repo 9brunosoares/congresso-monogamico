@@ -11,7 +11,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js?v=20261107c';
-import { dayKey, tripPhotoDay, tripPhotoTest, applyBallot, validatePin, decodeTally, VOTE_DAYS, TEST_VOTE, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261108b';
+import { dayKey, tripPhotoDay, chatOpen, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261110a';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -52,10 +52,9 @@ async function readPhoto(ref){
 const photos=photoLoader(id=>readPhoto(doc(db,'casePhotos',id)),{valid:validReportPhoto,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['mural','tribunal'].includes(currentView)&&state.shame.some(x=>x.id===id&&x.hasPhoto&&(x.status==='ok'||state.admin)),
  onValue(id,value){const next={...state.casePhotos};delete next[id];next[id]=value;state.casePhotos=Object.fromEntries(Object.entries(next).slice(-24));delete state.photoErrors[id];emit();},
  onError(id,error){state.photoErrors={...state.photoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}});
-const tripPath=(name,testing)=>testing?['tripTests','bruno',name]:[name];
 function sameTripUpload(a,b){return a!=null&&b!=null&&(a===b||a.isEqual?.(b)===true);}
 const tripPhotos=photoLoader(async id=>{
- const ref=doc(db,...tripPath('tripPhotos',state.tripTesting),id);
+ const ref=doc(db,'tripPhotos',id);
  const stamp=state.tripPosts.find(post=>post.id===id)?.createdAt;
  try{
   const cached=(await getDocFromCache(ref)).data();
@@ -65,7 +64,7 @@ const tripPhotos=photoLoader(async id=>{
  if(current?.createdAt&&!sameTripUpload(stamp,current.createdAt))throw Error('A foto foi substituída.');
  return current?.dataUrl;
 },{
- valid:validReportPhoto,max:65,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&!!state.tripTesting===tripPhotoTest(state.me)&&['inicio','fotos'].includes(currentView)&&state.tripPosts.some(post=>post.id===id),
+ valid:validReportPhoto,max:65,allowed:id=>sessionReady&&!paused&&!quotaBlocked&&['inicio','fotos'].includes(currentView)&&state.tripPosts.some(post=>post.id===id),
  onValue(id,value){state.tripPhotos={...state.tripPhotos,[id]:value};delete state.tripPhotoErrors[id];emit();},
  onError(id,error){state.tripPhotoErrors={...state.tripPhotoErrors,[id]:errorText(error)};if(error.code==='resource-exhausted')failed(error);else emit();}
 });
@@ -87,17 +86,11 @@ function syncData(){
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(3)),snap=>{state.hasMural=!snap.empty;state.muralPreview=[...new Set(snap.docs.map(d=>d.data().who))].filter(id=>ALL.includes(id))},true);
  const car=departure(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
- const at=Date.now(),testing=tripPhotoTest(state.me,at);
- if(!!state.tripTesting!==testing){
-  tripPhotos.clear();
-  Object.assign(state,{tripTesting:testing,tripPosts:[],tripPhotos:{},tripPhotoErrors:{},tripPostedDay:null,tripReactionPending:{}});
-  for(const key of ['tripFeed','tripGallery','tripFeedTest','tripGalleryTest'])delete state.loaded[key];
- }
- const tripPostsPath=tripPath('tripPosts',testing);
+ const at=Date.now(),chatAvailable=chatOpen(at);
  if(['inicio','fotos'].includes(currentView)){
   const full=currentView==='fotos';
-  const key=(full?'tripGallery':'tripFeed')+(testing?'Test':'');
-  listen(key,query(collection(db,...tripPostsPath),orderBy('createdAt','desc'),limit(full&&!testing?65:2)),snap=>{
+  const key=full?'tripGallery':'tripFeed';
+  listen(key,query(collection(db,'tripPosts'),orderBy('createdAt','desc'),limit(full?65:2)),snap=>{
    const posts=snap.docs.map(post=>({...post.data(),id:post.id}));
    // Um reenvio no mesmo dia reutiliza o ID e tem um novo horário de publicação.
    if(state.tripPosts.some(previous=>{
@@ -110,17 +103,17 @@ function syncData(){
    }
    state.tripPosts=posts;
   });
-  const photoDay=tripPhotoDay(state.me,at);
-  if(photoDay)listen('tripOwn-'+photoDay,doc(db,...tripPostsPath,photoDay+'_'+state.me),snap=>{
+  const photoDay=tripPhotoDay(at);
+  if(photoDay)listen('tripOwn-'+photoDay,doc(db,'tripPosts',photoDay+'_'+state.me),snap=>{
    state.tripPostedDay=snap.exists()?photoDay:null;
   });
  }
  if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){
   listen('reactions-'+item.id,doc(db,'caseReactions',item.id),snap=>{state.caseReactions={...state.caseReactions,[item.id]:snap.data()?.votes||{}}});
  }
- listen('latestChat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(1)),snap=>{state.latestChat=snap.docs[0]?.id||null});
+ if(chatAvailable)listen('latestChat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(1)),snap=>{state.latestChat=snap.docs[0]?.id||null});
  if(state.admin)listen('adminPending',query(collection(db,'cases'),where('status','==','pend'),limit(1)),snap=>{state.adminPending=!snap.empty});
- const key=votingKey(),votingDay=[...VOTE_DAYS,TEST_VOTE].find(d=>d.key===key);
+ const key=votingKey(),votingDay=VOTE_DAYS.find(d=>d.key===key);
  if(key!==currentDay){currentDay=key;state.qvoted={};state.querido={};state.voterCount=0;}
  if(votingDay){
   listen('voted-'+key,doc(db,'querido',key,'voters',auth.currentUser.uid),snap=>{state.qvoted={[key]:snap.exists()?[state.me]:[]}},true);
@@ -133,10 +126,10 @@ function syncData(){
  for(const day of VOTE_DAYS.filter(d=>(state.scoreClosing?.closedAt?.toMillis?.()??Date.now())>=d.deadline))listen('participation-'+day.key,collection(db,'participation',day.key,'people'),snap=>{
   state.attendance={...state.attendance,[day.key]:Object.fromEntries(snap.docs.map(d=>[d.id,true]))};state.attendanceReady={...state.attendanceReady,[day.key]:true};
  },true);
- if(lazy.chat)listen('chatMine',collection(db,'chatAuthors',auth.currentUser.uid,'messages'),snapshot=>{
+ if(chatAvailable&&lazy.chat)listen('chatMine',collection(db,'chatAuthors',auth.currentUser.uid,'messages'),snapshot=>{
   mine=new Set(snapshot.docs.map(d=>d.id));publishChat();
  });
- if(lazy.chat)listen('chat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(PAGE_SIZE)),snapshot=>{
+ if(chatAvailable&&lazy.chat)listen('chat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(PAGE_SIZE)),snapshot=>{
   if(chatOlder.length)chatOlder=mergeRows(chatOlder,chatHead);
   chatHead=rows(snapshot);
   if(!chatOlder.length){chatCursor=snapshot.docs.at(-1)||null;state.chatHasMore=snapshot.size===PAGE_SIZE;}
@@ -171,7 +164,7 @@ export function loadTripPhoto(id,retry=false){if(retry)delete state.tripPhotoErr
 export function retrySync(){pool.stop();quotaBlocked=false;state.error='';syncData();emit();}
 export function reportError(error){if(error.code==='resource-exhausted')failed(error);}
 export async function loadOlderChat(){
- member();if(currentView!=='fofoca'||!chatCursor||!state.chatHasMore||state.chatLoadingOlder)return;
+ requireChat();if(currentView!=='fofoca'||!chatCursor||!state.chatHasMore||state.chatLoadingOlder)return;
  state.chatLoadingOlder=true;emit();const version=generation;
  try{
   const snapshot=await getDocs(query(collection(db,'chat'),orderBy('createdAt','desc'),startAfter(chatCursor),limit(PAGE_SIZE)));
@@ -235,6 +228,7 @@ export async function login(id,pin,create=false){
 }
 export const logout=()=>signOut(auth);
 function member(){if(quotaBlocked)throw Object.assign(Error(errorText({code:'resource-exhausted'})),{code:'resource-exhausted'});if(!state.me||!state.ready||!navigator.onLine)throw Error('Conecte-se à internet antes de enviar.');}
+function requireChat(){member();if(!chatOpen())throw Error('O chat abre em 18 de novembro.');}
 function admin(){member();if(!state.admin)throw Error('Esta ação é exclusiva dos ADMs.');}
 export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Agora';}
 const stamp=()=>new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
@@ -242,26 +236,25 @@ const created=data=>({...data,at:stamp(),createdAt:serverTimestamp()});
 
 export async function addTripPhoto(photo,caption=''){
  member();
- const actor=state.me,version=generation,at=Date.now(),day=tripPhotoDay(actor,at),testing=tripPhotoTest(actor,at);
+ const actor=state.me,version=generation,day=tripPhotoDay();
  if(!day)throw Error('As publicações abrem de 18 a 22 de novembro.');
  if(!validReportPhoto(photo))throw Error('Escolha uma foto válida.');
  if(typeof caption!=='string'||caption.length>140)throw Error('Use até 140 caracteres na legenda.');
  const text=caption.trim();
- const id=day+'_'+actor,ref=doc(db,...tripPath('tripPosts',testing),id);
+ const id=day+'_'+actor,ref=doc(db,'tripPosts',id);
  await runTransaction(db,async tx=>{
   const previous=await tx.get(ref);
   if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
   if(previous.exists())throw Error('Você já publicou sua foto de hoje.');
   tx.set(ref,{author:actor,createdAt:serverTimestamp(),reactions:{},...(text?{caption:text}:{})});
-  tx.set(doc(db,...tripPath('tripPhotos',testing),id),{dataUrl:photo,createdAt:serverTimestamp()});
+  tx.set(doc(db,'tripPhotos',id),{dataUrl:photo,createdAt:serverTimestamp()});
  });
- if(version===generation&&testing===tripPhotoTest(actor)){state.tripPostedDay=day;emit();}
+ if(version===generation&&day===tripPhotoDay()){state.tripPostedDay=day;emit();}
 }
-export async function deleteTripPhoto(id,createdAt,testing=!!state.tripTesting){
+export async function deleteTripPhoto(id,createdAt){
  member();
  const actor=state.me,version=generation;
- if(testing!==tripPhotoTest(actor))throw Error('A janela de teste mudou. Reabra o feed.');
- const post=doc(db,...tripPath('tripPosts',testing),id),image=doc(db,...tripPath('tripPhotos',testing),id);
+ const post=doc(db,'tripPosts',id),image=doc(db,'tripPhotos',id);
  await runTransaction(db,async tx=>{
   const current=await tx.get(post);
   if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
@@ -276,9 +269,7 @@ export async function setTripReaction(id,emoji){
  member();
  if(emoji!==null&&!REACTIONS.some(r=>r.emoji===emoji))throw Error('Escolha uma reação válida.');
  if(state.tripReactionPending?.[id])return;
- const actor=state.me,version=generation,testing=!!state.tripTesting;
- if(testing!==tripPhotoTest(actor))throw Error('A janela de teste terminou.');
- const ref=doc(db,...tripPath('tripPosts',testing),id);
+ const actor=state.me,version=generation,ref=doc(db,'tripPosts',id);
  const createdAt=state.tripPosts.find(post=>post.id===id)?.createdAt;
  state.tripReactionPending={...state.tripReactionPending,[id]:true};emit();
  try{await runTransaction(db,async tx=>{
@@ -287,12 +278,12 @@ export async function setTripReaction(id,emoji){
    if(!snapshot.exists())throw Error('Esta foto não está disponível.');
    const data=snapshot.data(),{author,reactions}=data;
    if(!sameTripUpload(createdAt,data.createdAt))throw Error('A foto foi substituída.');
-   if(!testing&&author===actor)throw Error('Só os outros congressistas podem reagir à sua foto.');
+   if(author===actor)throw Error('Só os outros congressistas podem reagir à sua foto.');
    if((reactions[actor]??null)===emoji)return;
    const next={...reactions};
    if(emoji===null)delete next[actor];else next[actor]=emoji;
    tx.update(ref,{reactions:next});
- });}finally{if(version===generation&&!!state.tripTesting===testing){delete state.tripReactionPending[id];emit();}}
+ });}finally{if(version===generation){delete state.tripReactionPending[id];emit();}}
 }
 export async function addPoints(data){admin();const ref=doc(collection(db,'points'));await runTransaction(db,async tx=>{const closed=await tx.get(doc(db,'scoreClosures','main'));if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,created(data));});return ref;}
 export async function saveOfficialLinks(data,expectedVersion){
@@ -425,7 +416,7 @@ export async function setCaseReaction(id,emoji){
  });}finally{if(version===generation){state.reactionPending={...state.reactionPending,[id]:false};emit();}}
 }
 export async function sendChat(text){
- member();const ref=doc(collection(db,'chat')),uid=auth.currentUser.uid,version=generation;
+ requireChat();const ref=doc(collection(db,'chat')),uid=auth.currentUser.uid,version=generation;
  const profile=doc(db,'chatAuthors',uid),candidate=crypto.randomUUID().replaceAll('-','');
  await runTransaction(db,async tx=>{
   const author=await tx.get(profile);
@@ -440,7 +431,7 @@ export async function sendChat(text){
  });return ref;
 }
 export async function deleteChat(id){
- member();const uid=auth.currentUser.uid,version=generation;
+ requireChat();const uid=auth.currentUser.uid,version=generation;
  await runTransaction(db,async tx=>{
   const ref=doc(db,'chat',id);
   const [owner,message]=await Promise.all([tx.get(doc(db,'chatAuthors',uid,'messages',id)),tx.get(ref)]);
