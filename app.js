@@ -192,7 +192,11 @@ function viewInicio(){
   ${cur?`<div class="card row" style="margin-top:12px"><span class="tag live">Agora</span><div class="grow"><b>${esc(cur.title)}</b><div class="muted" style="font-size:13px">até ${fmtTime(cur.end)} · ${esc(cur.place||"")}</div></div></div>`:""}
 
   <button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>
-  <button class="card official-card travel-card" id="simulateTrip" type="button" aria-haspopup="dialog"><span class="travel-spark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8zM18.5 13l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg></span><strong class="grow">Simule a viagem</strong><span class="travel-chevron" aria-hidden="true">›</span></button>
+  <button class="card official-card travel-card" id="simulateTrip" type="button" aria-haspopup="dialog">
+    <svg class="travel-rim" aria-hidden="true"><rect width="100%" height="100%" rx="17" pathLength="100"/></svg>
+    <span class="travel-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8.5 4.75v8.5L12 21l-8.5-4.75v-8.5L12 3Zm-8.5 4.75L12 12.5l8.5-4.75M12 12.5V21"/></svg></span>
+    <strong class="grow">Simule a viagem</strong><span class="travel-chevron" aria-hidden="true">›</span>
+  </button>
 
   ${homeQueridometro()}
 
