@@ -277,7 +277,15 @@ function viewContas(){
   return seg+`<div class="row" style="margin-top:12px;gap:16px;flex-wrap:wrap"><button class="link" id="myPix" type="button" ${S.loaded?.pix?'':'disabled'}>Minha chave Pix</button><button class="link" data-go="historico" type="button">Histórico</button>${S.closing?'<button class="link" data-go="fechamento" type="button">Acerto final</button>':isAdm()&&settlementsOpen()?'<button class="btn sm" id="closeAccounts" type="button">Encerrar contas</button>':''}</div>`+body;
 }
 function viewPayments(back=true){
- return `${back?'<button class="link" data-go="contas" type="button">← Contas</button>':''}<div class="sec-h"><h3>Pagamentos</h3>${S.closing?'':'<button class="btn sm" id="newPayment" type="button">Registrar pagamento</button>'}</div><div class="card" style="padding-block:4px">${(S.payments||[]).filter(p=>p.status!=='cancelled').slice().reverse().map(p=>`<div class="exp"><div class="grow"><button class="link" type="button" data-payment="${esc(p.id)}">${esc(first(p.from))} → ${esc(first(p.to))}</button><div class="muted" style="font-size:13px">${esc(p.paidOn.split('-').reverse().join('/'))}${p.note?' · '+esc(p.note):''}</div></div><b class="money">${brl(p.amountCents/100)}</b></div>`).join('')||'<div class="empty">Nenhum pagamento registrado.</div>'}</div>`;
+ const rows=(S.payments||[]).filter(p=>p.status!=='cancelled').reverse().map(p=>`
+   <div class="exp payment-row">
+     <button class="link" type="button" data-payment="${esc(p.id)}">${esc(first(p.from))} → ${esc(first(p.to))}</button>
+     <b class="money">${brl(p.amountCents/100)}</b>
+     <div class="s">${esc(p.paidOn.split('-').reverse().join('/'))}${p.note?' · '+esc(p.note):''}</div>
+   </div>`).join('');
+ return `${back?'<button class="link" data-go="contas" type="button">← Contas</button>':''}
+ <div class="sec-h"><h3>Pagamentos</h3>${S.closing?'':'<button class="btn sm" id="newPayment" type="button">Registrar pagamento</button>'}</div>
+ <div class="card" style="padding-block:4px">${rows||'<div class="empty">Nenhum pagamento registrado.</div>'}</div>`;
 }
 function viewClosing(){
  const c=S.closing;if(!c)return '<button class="link" data-go="contas" type="button">← Contas</button>';
