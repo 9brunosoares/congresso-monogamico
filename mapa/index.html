@@ -879,7 +879,13 @@ var placeEl=document.getElementById('place'),toastEl=document.getElementById('to
 function toast(t,ms){toastEl.textContent=t;toastEl.classList.add('on');toastT=(ms||2600)/1000;}
 function setPlace(n,d){if(n===curPlace)return;curPlace=n;placeEl.innerHTML='';var b=document.createElement('b');b.textContent=n;var s=document.createElement('span');s.textContent=d;placeEl.appendChild(b);placeEl.appendChild(s);}
 var sunset=false;
-function setSun(v){sunset=v;flame.visible=v;
+/* céu estrelado do pôr do sol: cúpula de pontos que acompanha a câmera e some perto do horizonte */
+var stars=(function(){var n=2600,pos=[],col=[],c=new T.Color(),i=0,sd=7;function r(){sd=(sd*1664525+1013904223)>>>0;return sd/4294967296;}
+  while(i<n){var u=r(),el=.1+Math.asin(u)*.94,az=r()*6.2832,b=(.45+.55*r()*r())*Math.min(1,(el-.1)/.45);if(r()<.06)b=Math.min(1,b*1.8);
+    pos.push(Math.cos(el)*Math.sin(az)*700,Math.sin(el)*700,Math.cos(el)*Math.cos(az)*700);c.setHSL(r()<.2?.09:.62,.35,.72+.28*r()).multiplyScalar(b);col.push(c.r,c.g,c.b);i++;}
+  var g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));
+  var m=new T.Points(g,new T.PointsMaterial({size:2.4,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:.95,blending:T.CustomBlending,blendSrc:T.SrcAlphaFactor,blendDst:T.OneFactor,blendSrcAlpha:T.ZeroFactor,blendDstAlpha:T.OneFactor,fog:false,depthWrite:false}));m.visible=false;m.frustumCulled=false;m.renderOrder=-1;scene.add(m);return m;})();
+function setSun(v){sunset=v;flame.visible=v;stars.visible=v;
   if(v){document.body.style.background='linear-gradient(180deg,#2b2350 0%,#7a3f6e 34%,#e8743b 58%,#ffd08a 72%,#e9a070 100%)';scene.fog.color.setHex(0xe9a070);scene.fog.near=80;hemi.color.setHex(0xffb98a);hemi.groundColor.setHex(0x3a3550);hemi.intensity=.6;sunL.color.setHex(0xff9450);sunL.intensity=.55;sunL.position.set(-70,26,-200);hillM.color.setHex(0x3a3a4a);}
   else{document.body.style.background='linear-gradient(180deg,#5aaee8 0%,#9fd3f3 55%,#d9eefb 78%,#cfe6f5 100%)';scene.fog.color.setHex(0xcfe6f5);scene.fog.near=110;hemi.color.setHex(0xffffff);hemi.groundColor.setHex(0x5d7a45);hemi.intensity=.66;sunL.color.setHex(0xfff2d8);sunL.intensity=.5;sunL.position.set(-60,90,40);hillM.color.setHex(0x3f6b3c);}
   waterM.color.setHex(v?0xd58a62:0x4f9db8);poolM.emissive.setHex(v?0x1f7f96:0x000000);poolM.emissiveIntensity=v?.55:1;
@@ -1190,7 +1196,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
   var a=me?yaw:tt*.08,pp=me?pitch:.5,dd=me?dist:38;
   var cx=f.x+Math.sin(a)*Math.cos(pp)*dd,cz=f.z+Math.cos(a)*Math.cos(pp)*dd,cy=fy+1.8+Math.sin(pp)*dd;
   for(var q=0;q<8&&cx>-4.6&&cx<2.6&&cz>16.4&&cz<23.6&&cy<H(-1,20)+8.5;q++){dd*=.8;cx=f.x+Math.sin(a)*Math.cos(pp)*dd;cz=f.z+Math.cos(a)*Math.cos(pp)*dd;cy=fy+1.8+Math.sin(pp)*dd;}cy=Math.max(cy,H(cx,cz)+1.2,cz<-67?-1.6:-99);
-  camPos.lerp(v.set(cx,cy,cz),Math.min(1,dt*(me?9:2)));camera.position.copy(camPos);tgt.set(f.x,fy+1.9,f.z);camera.lookAt(tgt);
+  camPos.lerp(v.set(cx,cy,cz),Math.min(1,dt*(me?9:2)));camera.position.copy(camPos);tgt.set(f.x,fy+1.9,f.z);camera.lookAt(tgt);stars.position.copy(camPos);
   if(me){
     sendPose(me);updateTalk();drawBalloons();
     switchButton.hidden=!nearSkySwitch()||!!speechTarget;
