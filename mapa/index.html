@@ -236,11 +236,13 @@ function collide(p,r){var i,b,c;
 
 /* ---------- casa principal (com o plenário dentro) ---------- */
 var WALL=0xd0603a,TILE=0xa8492c,WOOD=0x4a2f20,BRICK=0xc27a58;
-var clipH=new T.Plane(new T.Vector3(0,-1,0),4.3),clipR=new T.Plane(new T.Vector3(0,-1,0),4.3);
+var clipH=new T.Plane(new T.Vector3(0,-1,0),4.3),clipR=new T.Plane(new T.Vector3(0,-1,0),4.3),clipW=new T.Plane(new T.Vector3(0,-1,0),4.3);
 var WALLH=lam(WALL,{clippingPlanes:[clipH]}),WHITEH=lam(0xf4f1ea,{clippingPlanes:[clipH]}),decoH=new T.Group(),decoR=new T.Group(),roofR=new T.Group();scene.add(decoH,decoR,roofR);
+/* parede da projeção: só baixa na vista planta */
+var WALLW=lam(WALL,{clippingPlanes:[clipW]}),WHITEW=lam(0xf4f1ea,{clippingPlanes:[clipW]}),decoW=new T.Group();scene.add(decoW);
 var HX0=-21,HX1=1,HZ0=-17,HZ1=-7,WH=3.4;
 function wall(x0,x1,z0,z1){box(Math.abs(x1-x0)||.4,WH,Math.abs(z1-z0)||.4,WALLH,(x0+x1)/2,WH/2,(z0+z1)/2);solid(x0-.2*(x0===x1),x1+.2*(x0===x1),z0-.2*(z0===z1),z1+.2*(z0===z1));}
-wall(HX0,-6.3,HZ1,HZ1);wall(-4.5,HX1,HZ1,HZ1);box(1.8,.7,.4,WALLH,-5.4,WH-.35,HZ1);wall(HX0,HX0,HZ0,HZ1);wall(HX1,HX1,HZ0,-15.3);wall(HX1,HX1,-12.3,-10.1);wall(HX1,HX1,-8.4,HZ1);wall(HX0,HX1,HZ0,HZ0);
+wall(HX0,-6.3,HZ1,HZ1);wall(-4.5,HX1,HZ1,HZ1);box(1.8,.7,.4,WALLH,-5.4,WH-.35,HZ1);box(.4,WH,HZ1-HZ0,WALLW,HX0,WH/2,(HZ0+HZ1)/2);solid(HX0-.2,HX0+.2,HZ0,HZ1);wall(HX1,HX1,HZ0,-15.3);wall(HX1,HX1,-12.3,-10.1);wall(HX1,HX1,-8.4,HZ1);wall(HX0,HX1,HZ0,HZ0);
 box(.4,.7,3,WALLH,HX1,WH-.35,-13.8);box(.4,.7,1.7,WALLH,HX1,WH-.35,-9.25);
 box(26,.1,18,BRICK,-8,.05,-13);                       /* piso da casa e varanda */
 box(21.6,.04,9.6,0x6e5a4e,-10,.12,-12);                 /* piso interno */
@@ -275,7 +277,7 @@ for(var y of [-.94,.94]){var screw=cyl(.045,.045,.035,0x82796d,0,y,.15,skySwitch
   box(2.6,.1,.9,0x8f6f4d,-16,.85,-18.5);box(.12,.85,.8,WOOD,-17.1,.42,-18.5);box(.12,.85,.8,WOOD,-14.9,.42,-18.5);box(2.6,.1,.4,0x8f6f4d,-16,.5,-19.5);box(.1,.5,.36,WOOD,-17,.25,-19.5);box(.1,.5,.36,WOOD,-15,.25,-19.5);
   box(1.6,.9,.6,0xd9d4c8,-12.6,.45,-6.5);box(1.1,.08,.4,0x8d98a3,-12.6,.9,-6.5);box(.06,.3,.06,0x9aa3ad,-12.6,1.08,-6.73);box(.06,.06,.22,0x9aa3ad,-12.6,1.22,-6.63);})();
 /* paredes internas brancas e casa vizinha ao fundo */
-box(14.5,WH,.06,WHITEH,-13.55,WH/2,HZ1-.2);box(5.3,WH,.06,WHITEH,-1.85,WH/2,HZ1-.2);box(.06,WH,9.6,WHITEH,HX0+.2,WH/2,-12);box(.06,WH,1.5,WHITEH,HX1-.2,WH/2,-16.05);box(.06,WH,2.2,WHITEH,HX1-.2,WH/2,-11.2);box(.06,WH,1.2,WHITEH,HX1-.2,WH/2,-7.8);box(21.6,WH,.06,WHITEH,-10,WH/2,HZ0+.2);
+box(14.5,WH,.06,WHITEH,-13.55,WH/2,HZ1-.2);box(5.3,WH,.06,WHITEH,-1.85,WH/2,HZ1-.2);box(.06,WH,9.6,WHITEW,HX0+.2,WH/2,-12);box(.06,WH,1.5,WHITEH,HX1-.2,WH/2,-16.05);box(.06,WH,2.2,WHITEH,HX1-.2,WH/2,-11.2);box(.06,WH,1.2,WHITEH,HX1-.2,WH/2,-7.8);box(21.6,WH,.06,WHITEH,-10,WH/2,HZ0+.2);
 /* ridícula (edícula) */
 (function(){var WR=lam(WALL,{clippingPlanes:[clipR]}),WI=lam(0xf4f1ea,{clippingPlanes:[clipR]});
   box(10,.1,6.5,0x6e5a4e,52,.05,-16);
@@ -291,12 +293,12 @@ box(14.5,WH,.06,WHITEH,-13.55,WH/2,HZ1-.2);box(5.3,WH,.06,WHITEH,-1.85,WH/2,HZ1-
     g.fillStyle='#1b1530';g.textAlign='center';g.font='800 56px "Bricolage Grotesque", Figtree, sans-serif';g.fillText('XVI Congresso',w/2,120);g.fillText('Monogâmico',w/2,182);
     g.font='600 26px Figtree, sans-serif';g.fillStyle='#686280';g.fillText('Sessão de abertura · 18 a 22/11',w/2,236);
     g.fillStyle='#c4122f';g.beginPath();g.arc(w/2,300,26,0,7);g.fill();g.fillStyle='#fff';g.font='800 20px Figtree, sans-serif';g.fillText('XVI',w/2,307);},512,340);
-  var s=new T.Mesh(new T.PlaneGeometry(5.2,3.0),new T.MeshBasicMaterial({map:t}));s.position.set(HX0+.24,1.85,-12);s.rotation.y=Math.PI/2;decoH.add(s);
+  var s=new T.Mesh(new T.PlaneGeometry(5.2,3.0),new T.MeshBasicMaterial({map:t}));s.position.set(HX0+.24,1.85,-12);s.rotation.y=Math.PI/2;decoW.add(s);
   var p=textTex(function(g,w,h){g.fillStyle='#22202a';g.fillRect(0,0,w,h);g.fillStyle='#e9e4d6';g.textAlign='center';g.font='800 44px "Bricolage Grotesque", sans-serif';g.fillText('XVI',w/2,70);
     g.font='700 17px Figtree, sans-serif';g.fillText('CONGRESSO',w/2,104);g.fillText('MONOGÂMICO',w/2,126);g.fillStyle='#c4122f';g.fillRect(40,150,w-80,6);g.fillStyle='#e9e4d6';g.font='600 14px Figtree';g.fillText('18–22 · 11 · 2026',w/2,190);},180,240);
   var pm=new T.Mesh(new T.PlaneGeometry(1.5,2),new T.MeshBasicMaterial({map:p}));pm.position.set(-17,1.8,HZ1-.22);pm.rotation.y=Math.PI;decoH.add(pm);
   for(var r=0;r<2;r++)for(var i=0;i<4;i++){var x=-13.5+r*2.4,z=-15+i*1.9;box(.9,.12,.9,0x7a5c3e,x,.6,z);box(.12,.9,.9,0x7a5c3e,x+.42,1.05,z);box(.1,.6,.1,WOOD,x-.35,.3,z-.35);box(.1,.6,.1,WOOD,x-.35,.3,z+.35);}
-  box(4.2,.8,1.4,0xb3202f,-12.5,.5,-8.1);box(4.2,1.3,.4,0x9a1b28,-12.5,.75,-7.55);cyl(.25,.3,.5,0x333333,-10,.36,-12);})();
+  box(3.8,.8,1.4,0xb3202f,-2.5,.5,-8.1);box(3.8,1.3,.4,0x9a1b28,-2.5,.75,-7.55);cyl(.25,.3,.5,0x333333,-10,.36,-12);})();
 
 /* ---------- pátio, piscina e deck ---------- */
 box(32,.1,10,BRICK,-9,.05,-26.5);box(32,.1,11,BRICK,-9,.05,-36.5);
@@ -315,6 +317,7 @@ rail(-25.5,-16.6,-42.1);rail(-1.4,7,-42.1);
 
 /* ---------- quiosque, carros, casinha ---------- */
 var QX=-3,QZ=-1.5;
+var hammockSwing=null,hammockD=0,hammockV=0,hammockSide=0,HAM_X=3.88,HAM_L=1.1,HAM_Z0=-.75,HAM_Z1=2.75;
 box(.3,.9,11,WALL,-10.65,.45,-1.5);solid(-10.8,-10.5,-7,4.15);
 for(var span of [[-10.65,QX-1.4],[QX+1.4,4.65]]){
   box(span[1]-span[0],.9,.3,WALL,(span[0]+span[1])/2,.45,4.15);solid(span[0],span[1],4,4.3);
@@ -356,13 +359,14 @@ box(5,.14,1.4,0x8f6f4d,QX+2,.95,QZ+1.5);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+.3);box
   }
   cloth.setAttribute('color',new T.Float32BufferAttribute(colors,3));
   cloth.computeVertexNormals();
-  hammock.add(new T.Mesh(cloth,lam(0xffffff,{side:T.DoubleSide,vertexColors:true})));
+  const swing=new T.Group(),hang=new T.Group();swing.position.y=hookY;hang.position.y=-hookY;swing.add(hang);hammock.add(swing);hammockSwing=swing;
+  hang.add(new T.Mesh(cloth,lam(0xffffff,{side:T.DoubleSide,vertexColors:true})));
   for(const [x,end] of [[left,0],[right,1]]){
     const anchor=new T.Vector3(x,hookY,0);
     ball(.066,0x713234,x,hookY,0,hammock);
     for(const v of [-1,-.5,0,.5,1]){
       const strand=new T.LineCurve3(anchor,fabricPoint(end,v));
-      hammock.add(new T.Mesh(new T.TubeGeometry(strand,1,.012,4,false),M(0xd6a397)));
+      hang.add(new T.Mesh(new T.TubeGeometry(strand,1,.012,4,false),M(0xd6a397)));
     }
   }
 
@@ -670,7 +674,7 @@ var charById=new Map(chars.map(function(c){c.g.visible=false;return [c.p.id,c];}
 var restSpots=[
   ['lie',55.6,-14,.65,-Math.PI/2],['lie',55.6,-18,.65,-Math.PI/2],
   ['lie',-23,-37.8,.49,Math.PI],['lie',-20.5,-37.8,.49,Math.PI],['lie',-23,-33.3,.49,Math.PI],
-  ['lie',-12.5,-8.22,.9,Math.PI/2],
+  ['lie',-2.5,-8.22,.9,Math.PI/2],
   ['swim',-13,-34],['swim',-8.7,-33],['swim',-5,-36],
   ['swim',-12,-39],['swim',-7.6,-39],
   ['sit',20,-34.6,.5,Math.PI],['sit',23,-34.6,.5,Math.PI]
@@ -1162,12 +1166,22 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
     sharkC[0]=a[0];sharkC[1]=a[1];shark.position.set(a[0],calm?0:Math.abs(Math.sin(st*3.4))*.16,a[1]);
     shark.rotation.y=Math.atan2(b[0]-a[0],b[1]-a[1])+(calm?0:Math.sin(st*2.1)*.55+(Math.sin(st*.19)>.93?st*5:0));shark.rotation.z=calm?0:Math.sin(st*6.5)*.1;
     if(me&&!boat&&me.st===0&&me.swim<.5){var dx=me.pos.x-a[0],dz=me.pos.z-a[1],d=Math.hypot(dx,dz),R=sharkC[2]+.45;if(d<R&&d>1e-4){me.pos.x=a[0]+dx/d*R;me.pos.z=a[1]+dz/d*R;}}})();
+  /* rede do Comedouro: obstáculo que gira até 90° para o lado empurrado, trava e volta balançando */
+  (function(){var held=false,k,c,R=.45;
+    for(k=0;k<chars.length;k++){c=chars[k];if(c!==me&&!c.remote)continue;if(c===me&&(boat||me.st!==0))continue;
+      var px=c.pos.x,pz=c.pos.z;if(pz<HAM_Z0-.3||pz>HAM_Z1+.3||Math.abs(px-HAM_X)>HAM_L+R+.4){if(c===me)hammockSide=0;continue;}
+      var side=c===me?(hammockSide||(hammockSide=px<HAM_X+hammockD?-1:1)):(px<HAM_X+hammockD?-1:1),need=px-side*R-HAM_X;
+      if(side<0&&need>hammockD){held=true;if(need>HAM_L){need=HAM_L;if(c===me)me.pos.x=HAM_X+HAM_L-R;}hammockD=need;}
+      else if(side>0&&need<hammockD){held=true;if(need<-HAM_L){need=-HAM_L;if(c===me)me.pos.x=HAM_X-HAM_L+R;}hammockD=need;}}
+    var ang=Math.asin(Math.max(-1,Math.min(1,hammockD/HAM_L)));
+    if(held)hammockV=0;else{hammockV+=(-11*Math.sin(ang)-1.5*hammockV)*dt;ang+=hammockV*dt;ang=Math.max(-1.5708,Math.min(1.5708,ang));hammockD=HAM_L*Math.sin(ang);}
+    hammockSwing.rotation.x=ang;})();
   showerW.material.opacity=.38+Math.sin(tt*23)*.1;showerW.rotation.y=tt*5;
   for(i=0;i<capys.length;i++){var cp=capys[i];cp.g.position.y=cp.y+(cp.wet?Math.sin(tt*1.3+cp.ph)*.05:0);if(!cp.wet)cp.g.rotation.x=Math.sin(tt*.9+cp.ph)*.03;}
   flame.scale.set(1+Math.sin(tt*11)*.12,1+Math.sin(tt*7)*.2,1+Math.cos(tt*9)*.12);
   pool.position.y=.16+Math.sin(tt*1.5)*.015;
   if(!reduceMotion.matches){
-    var lockAcceleration=-9.81/.94*Math.sin(gateLockAngle)-.65*gateLockVelocity;
+    var lockAcceleration=-9.81/.94*Math.sin(gateLockAngle)-.65*gateLockVelocity+.42*Math.sin(tt*.8)+.2*Math.sin(tt*1.9+1.1)+.15*Math.sin(tt*3.1+.4);
     gateLockVelocity+=lockAcceleration*dt;gateLockAngle+=gateLockVelocity*dt;
   }
   gateLock.rotation.z=reduceMotion.matches?0:gateLockAngle;
@@ -1186,7 +1200,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
   var nearH=me&&under([HX0,HX1,HZ0,HZ1],me.pos),nearR=me&&under([47,57,-19.25,-12.75],me.pos);
   var nearQ=me&&under([-10.5,4.6,-7,4],me.pos),underHouseRoof=me&&under([-22,5.5,-22.5,-3.5],me.pos);
   clipH.constant+=((vmode===2||(vmode===1&&nearH)?1:4.3)-clipH.constant)*Math.min(1,dt*8);clipR.constant+=((vmode===2||(vmode===1&&nearR)?1:4.3)-clipR.constant)*Math.min(1,dt*8);
-  decoH.visible=clipH.constant>3.3;decoR.visible=clipR.constant>3.3;
+  decoH.visible=clipH.constant>3.3;decoR.visible=clipR.constant>3.3;clipW.constant+=((vmode===2?1:4.3)-clipW.constant)*Math.min(1,dt*8);decoW.visible=clipW.constant>3.3;
   roofHouse.visible=vmode===0||(vmode===1&&!underHouseRoof);
   roofQ.visible=vmode===0||(vmode===1&&!nearQ);
   roofR.visible=vmode===0||(vmode===1&&!nearR);
