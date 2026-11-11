@@ -51,11 +51,9 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
     const now = performance.now();
     if (now - session.sent < SEND_MS) return;
     const current = session;
-    const bump = current.bump && now - current.bump.at < BUMP_MS ? current.bump : null;
-    current.bump = null;
-    const pose = bump ? { ...bump.pose, bump: bump.to } : latest;
+    const pose = latest;
     const key = Object.values(pose).join(',');
-    if (session.key === key && now - session.sent < HEARTBEAT_MS) return;
+    if (!pose.bump && current.key === key && now - current.sent < HEARTBEAT_MS) return;
     current.pending = true;
     current.sent = now;
     current.key = key;
@@ -76,6 +74,7 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
 
   function leave() {
     epoch++;
+    if (latest?.bump) delete latest.bump;
     session = null;
     connected = false;
     while (subscriptions.length) subscriptions.pop()();
@@ -109,6 +108,7 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
       onValue(ref(db, '.info/connected'), async snapshot => {
         const attempt = ++epoch;
         if (!snapshot.val()) {
+          if (latest?.bump) delete latest.bump;
           session = null;
           connected = false;
           refreshPeers();
@@ -145,7 +145,7 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
         Object.assign(latest, { cx: pose.cx, cy: pose.cy, cz: pose.cz });
       }
       if (session && connected && visiblePeers.has(pose.bump) && (pose.m === 1 || pose.m === 3)) {
-        session.bump = { pose: latest, to: pose.bump, at: performance.now() };
+        latest.bump = pose.bump;
       }
       flush();
     },
