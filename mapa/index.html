@@ -366,13 +366,17 @@ function board(tex,w,h,x,y,z,ry){var m=new T.Mesh(new T.PlaneGeometry(w,h),new T
     diamond.position.set(side*.45,side*.085+.48,side*.08+.05);
     diamond.scale.set(1.14,.89,.86);diamond.rotation.y=side*.26;crest.add(diamond);
   });
-  gateLock=new T.Group();gateLock.position.set(0,.02,.18);crest.add(gateLock);
-  var shackle=new T.Mesh(new T.TorusGeometry(.23,.052,8,20,Math.PI),S(0xffd77b));
-  shackle.position.y=-.08;gateLock.add(shackle);
-  box(.56,.39,.25,0xc4122f,0,-.24,0,gateLock);
-  [-.13,.13].forEach(function(z){
-    ball(.055,0x291a35,0,-.23,z,gateLock,1,1,.15);
-    box(.04,.095,.012,0x291a35,0,-.29,z,gateLock);
+  gateLock=new T.Group();gateLock.position.set(0,-.26,.38);crest.add(gateLock);
+  // The shackle bends back through the rings and returns in front of the arch.
+  var shacklePath=new T.CatmullRomCurve3([
+    [-.3,-.54,0],[-.3,-.2,0],[-.285,-.02,-.12],[-.22,.12,-.34],
+    [0,.18,-.52],[.22,.12,-.34],[.285,-.02,-.12],[.3,-.2,0],[.3,-.54,0]
+  ].map(function(p){return new T.Vector3(p[0],p[1],p[2]);}));
+  gateLock.add(new T.Mesh(new T.TubeGeometry(shacklePath,32,.056,10,false),S(0xffd77b)));
+  box(.74,.55,.29,0xc4122f,0,-.775,0,gateLock);
+  [-.15,.15].forEach(function(z){
+    ball(.073,0x291a35,0,-.733,z,gateLock,1,1,.13);
+    box(.058,.12,.012,0x291a35,0,-.807,z,gateLock);
   });
   var gl=box(3.4,1.2,.1,0x7a5c3e,37.9,H(33,34)+.75,32.4);gl.rotation.y=1.1;
   var sx=40,sz=36,sy=H(sx,sz);box(.2,3.7,.2,WOOD,sx,sy+1.85,sz);

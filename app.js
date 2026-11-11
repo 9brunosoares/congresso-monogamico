@@ -9,7 +9,7 @@ import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261110a';
 import * as backend from './backend.js?v=20261110a';
-import {openTravelMap} from './mapa-viagem.js?v=20261110k';
+import {openTravelMap} from './mapa-viagem.js?v=20261110l';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 const TRAVEL_MAP_OWNER = 'bruno';

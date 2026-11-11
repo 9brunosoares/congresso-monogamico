@@ -92,7 +92,7 @@ export function openTravelMap(avatar, onClose) {
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
   window.addEventListener('message', receive);
   window.addEventListener('pagehide', close);
-  frame.src = './mapa/index.html?v=20261110k';
+  frame.src = './mapa/index.html?v=20261110l';
   document.body.append(dialog);
   dialog.showModal();
   return { close };
