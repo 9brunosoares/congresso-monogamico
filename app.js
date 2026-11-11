@@ -10,7 +10,7 @@ import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripStarted,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261111i';
 import * as backend from './backend.js?v=20261111i';
 import {openTravelMap} from './mapa-viagem.js?v=20261111k';
-import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111a';
+import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111m';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 let discoveryStorage;
@@ -654,7 +654,7 @@ function sheetDiscoveryPreview(){
  if(S.me!==DISCOVERY_OWNER)return;
  const state=discovery.read(S.me);
  const check=(label,done)=>`<div class="row"><span class="grow">${label}</span><span>${done?'✓':'—'}</span></div>`;
- sheet(`<h3>Prévia da chácara</h3><p class="muted">Só você participa desta prévia. O progresso fica salvo neste aparelho.</p><div class="stack discovery-checks">${check('Visitou a Agenda',state.agenda)}${check('Visitou Contas',state.accounts)}${check('Abriu o app novamente',state.visits>=2)}${check('Desbloqueou o portão',state.unlockedAt)}${check('Entrou na chácara',state.enteredAt)}</div><div class="stack"><button class="btn ghost block" data-preview="return" type="button">Simular nova abertura</button><button class="link" data-preview="reset" type="button">Recomeçar descoberta</button><button class="btn ghost block" data-close type="button">Fechar</button></div>`,s=>{
+ sheet(`<h3>Prévia da chácara</h3><p class="muted">O progresso da descoberta fica salvo neste aparelho.</p><div class="stack discovery-checks">${check('Visitou a Agenda',state.agenda)}${check('Visitou Contas',state.accounts)}${check('Abriu o app novamente',state.visits>=2)}${check('Desbloqueou o portão',state.unlockedAt)}${check('Entrou na chácara',state.enteredAt)}</div><div class="stack"><button class="btn ghost block" data-preview="return" type="button">Simular nova abertura</button><button class="link" data-preview="reset" type="button">Recomeçar descoberta</button><button class="btn ghost block" data-close type="button">Fechar</button></div>`,s=>{
   s.onclick=e=>{const action=e.target.closest('[data-preview]')?.dataset.preview;if(!action)return;
    if(action==='reset'){discovery.reset(S.me);portalAppearedAt=0;}else discovery.record(S.me,'open');
    s.remove();go('inicio');if(action==='reset')toast('Descoberta reiniciada. Visite Agenda e Contas e reabra o app.',5000);

@@ -17,13 +17,15 @@ test('descoberta exige as duas abas e um segundo acesso; persiste após recarreg
  d=createDiscovery(disk);assert(!d.portal('bruno',before));assert(d.access('bruno',DISCOVERY_END+1));
 });
 
-test('duas aberturas sem explorar ambas as abas não liberam o mapa; outros perfis permanecem excluídos',()=>{
+test('todos os perfis logados podem descobrir, com Agenda e Contas obrigatórias',()=>{
  const d=createDiscovery(storage());
  for(const id of ALL){
   d.record(id,'open',before);d.record(id,'open',before);d.record(id,'programa',before);
   assert(!d.portal(id,before));d.record(id,'contas',before);
-  assert.equal(d.portal(id,before),id==='bruno');assert.equal(d.access(id,before),id==='bruno');
+  assert(d.portal(id,before));assert(d.access(id,before));
  }
+ for(const event of ['open','open','programa','contas'])d.record(null,event,before);
+ assert(!d.portal(null,before));assert(!d.access(null,before));
 });
 
 test('18/11 encerra novos portões, mas quem já entrou mantém acesso no perfil',()=>{

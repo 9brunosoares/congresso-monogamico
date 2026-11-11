@@ -1,13 +1,13 @@
-// Piloto privado. A liberação para os demais exige uma nova publicação.
+// Os controles de prévia continuam no perfil do organizador.
 export const DISCOVERY_OWNER = 'bruno';
-export const DISCOVERY_RELEASED = false;
+export const DISCOVERY_RELEASED = true;
 export const DISCOVERY_END = Date.parse('2026-11-18T00:00:00-03:00');
 
 export function discoveryAllowed(id) {
   return !!id && (id === DISCOVERY_OWNER || DISCOVERY_RELEASED);
 }
 
-// Na prévia, só estes marcos ficam no aparelho; não há rastreamento de navegação.
+// O progresso da descoberta fica no aparelho, por perfil.
 export function createDiscovery(storage) {
   const memory = new Map();
   const key = id => 'xvi-discovery-v1-' + id;

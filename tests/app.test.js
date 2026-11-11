@@ -65,21 +65,24 @@ test('Nosso feed tem botão de publicar no título e curtidas simples',()=>{
  assert.match(nodes['#root'].innerHTML,/data-trip-like="c"[^>]+0 curtidas/);
  assert(!nodes['#root'].innerHTML.includes('id="addTripPhoto"'));
 });
-test('portão e mapa ficam restritos a Bruno após a descoberta',()=>{
+test('portão e mapa estão disponíveis para cada perfil após sua descoberta',()=>{
  const previous=Date.now;Date.now=()=>Date.parse('2026-11-11T10:00:00-03:00');
  try{
- const {context}=ui();
+ const {context,nodes}=ui();
+ nodes['#meBtn']={focus(){}};
  const opened=[];
- vm.runInContext("discovery.record('bruno','open',1);discovery.record('bruno','programa',1);discovery.record('bruno','contas',1);discovery.record('bruno','open',2)",context);
- context.openTravelMap=id=>{opened.push(id);return {close(){}};};
- for(const id of [...ALL.filter(id=>id!=='bruno'),'bruno']){
+ context.openTravelMap=(id,onClose)=>{opened.push(id);return {close:onClose};};
+ for(const id of ALL){
   context.profile=P[id];
   vm.runInContext('S.me=profile.id;S.admin=!!profile.admin',context);
+  assert(!vm.runInContext('viewInicio()',context).includes('id="simulateTrip"'));
+  vm.runInContext("for(const event of ['open','programa','contas','open'])discovery.record(S.me,event)",context);
   const home=vm.runInContext('viewInicio()',context);
-  assert.equal(home.includes('id="simulateTrip"'),id==='bruno');
-  vm.runInContext('simulateTrip()',context);
+  assert(home.includes('id="simulateTrip"'));
+  vm.runInContext('simulateTrip();travelMap.close()',context);
  }
- assert.deepEqual(opened,['bruno']);
+ vm.runInContext('S.me=null;simulateTrip()',context);
+ assert.deepEqual(opened,ALL);
  }finally{Date.now=previous;}
 });
 
