@@ -17,9 +17,21 @@ test('descoberta exige as duas abas e um segundo acesso; persiste após recarreg
  d=createDiscovery(disk);assert(!d.portal('bruno',before));assert(d.access('bruno',DISCOVERY_END+1));
 });
 
-test('todos os perfis logados podem descobrir, com Agenda e Contas obrigatórias',()=>{
+test('os quatro perfis antecipados desbloqueiam o portão na primeira abertura',()=>{
+ const disk=storage(),d=createDiscovery(disk);
+ for(const id of ['pig','igor','ibrahim','nanu']){
+  d.record(id,'open',before);
+  assert(d.portal(id,before));assert(d.access(id,before));
+  assert(!d.portal(id,DISCOVERY_END));
+  d.record(id,'enter',before);
+  const reopened=createDiscovery(disk);
+  assert(!reopened.portal(id,before));assert(reopened.access(id,DISCOVERY_END));
+ }
+});
+
+test('os demais perfis logados podem descobrir com Agenda e Contas',()=>{
  const d=createDiscovery(storage());
- for(const id of ALL){
+ for(const id of ALL.filter(id=>!['pig','igor','ibrahim','nanu'].includes(id))){
   d.record(id,'open',before);d.record(id,'open',before);d.record(id,'programa',before);
   assert(!d.portal(id,before));d.record(id,'contas',before);
   assert(d.portal(id,before));assert(d.access(id,before));

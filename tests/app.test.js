@@ -65,7 +65,7 @@ test('Nosso feed tem botão de publicar no título e curtidas simples',()=>{
  assert.match(nodes['#root'].innerHTML,/data-trip-like="c"[^>]+0 curtidas/);
  assert(!nodes['#root'].innerHTML.includes('id="addTripPhoto"'));
 });
-test('portão e mapa estão disponíveis para cada perfil após sua descoberta',()=>{
+test('portão e mapa aparecem na home após a liberação de cada perfil',()=>{
  const previous=Date.now;Date.now=()=>Date.parse('2026-11-11T10:00:00-03:00');
  try{
  const {context,nodes}=ui();
@@ -75,8 +75,10 @@ test('portão e mapa estão disponíveis para cada perfil após sua descoberta',
  for(const id of ALL){
   context.profile=P[id];
   vm.runInContext('S.me=profile.id;S.admin=!!profile.admin',context);
-  assert(!vm.runInContext('viewInicio()',context).includes('id="simulateTrip"'));
-  vm.runInContext("for(const event of ['open','programa','contas','open'])discovery.record(S.me,event)",context);
+  vm.runInContext('S.ready=true;render()',context);
+  const earlyAccess=['pig','igor','ibrahim','nanu'].includes(id);
+  assert.equal(nodes['#root'].innerHTML.includes('id="simulateTrip"'),earlyAccess);
+  if(!earlyAccess)vm.runInContext("for(const event of ['programa','contas','open'])discovery.record(S.me,event)",context);
   const home=vm.runInContext('viewInicio()',context);
   assert(home.includes('id="simulateTrip"'));
   vm.runInContext('simulateTrip();travelMap.close()',context);

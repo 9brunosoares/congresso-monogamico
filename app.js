@@ -10,7 +10,7 @@ import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripStarted,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261111i';
 import * as backend from './backend.js?v=20261111i';
 import {openTravelMap} from './mapa-viagem.js?v=20261111n';
-import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111m';
+import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 let discoveryStorage;

@@ -2,6 +2,7 @@
 export const DISCOVERY_OWNER = 'bruno';
 export const DISCOVERY_RELEASED = true;
 export const DISCOVERY_END = Date.parse('2026-11-18T00:00:00-03:00');
+const EARLY_ACCESS = new Set(['pig', 'igor', 'ibrahim', 'nanu']);
 
 export function discoveryAllowed(id) {
   return !!id && (id === DISCOVERY_OWNER || DISCOVERY_RELEASED);
@@ -31,7 +32,8 @@ export function createDiscovery(storage) {
     if (event === 'open') state.visits = Math.min(2, (Number(state.visits) || 0) + 1);
     if (event === 'programa') state.agenda = true;
     if (event === 'contas') state.accounts = true;
-    if (!state.unlockedAt && at < DISCOVERY_END && state.visits >= 2 && state.agenda && state.accounts) state.unlockedAt = at;
+    const explored = state.visits >= 2 && state.agenda && state.accounts;
+    if (!state.unlockedAt && at < DISCOVERY_END && (EARLY_ACCESS.has(id) || explored)) state.unlockedAt = at;
     if (event === 'enter' && state.unlockedAt && !state.enteredAt) state.enteredAt = at;
     return JSON.stringify(state) === JSON.stringify(previous) ? previous : save(id, state);
   }
