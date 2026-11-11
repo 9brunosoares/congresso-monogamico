@@ -13,7 +13,7 @@
             "y": { ".validate": "newData.isNumber() && newData.val() >= -500 && newData.val() <= 2000" },
             "z": { ".validate": "newData.isNumber() && newData.val() >= -15000 && newData.val() <= 8400" },
             "a": { ".validate": "newData.isNumber() && newData.val() >= -315 && newData.val() <= 315" },
-            "m": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9" },
+            "m": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
             "cx": { ".validate": "newData.isNumber() && newData.val() >= -16000 && newData.val() <= 16000" },
             "cy": { ".validate": "newData.isNumber() && newData.val() >= -500 && newData.val() <= 8000" },
             "cz": { ".validate": "newData.isNumber() && newData.val() >= -20000 && newData.val() <= 14000" },

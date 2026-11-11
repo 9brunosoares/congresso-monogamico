@@ -352,9 +352,19 @@ function board(tex,w,h,x,y,z,ry){var m=new T.Mesh(new T.PlaneGeometry(w,h),new T
   }
   scene.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(curve),32,.18,8,false),M(WOOD)));
   var crest=new T.Group();crest.position.set(33,gateY+5.45,34);scene.add(crest);
+  var diamondGeometry=new T.OctahedronGeometry(.23,0),diamondColors=[];
+  [0xd8faff,0x8edaf5,0xffffff,0xb4ecff,0x69bddf,0xe7fbff,0x9ce2ff,0xc9f3ff].forEach(function(hex){
+    var color=new T.Color(hex);
+    for(var i=0;i<3;i++)diamondColors.push(color.r,color.g,color.b);
+  });
+  diamondGeometry.setAttribute('color',new T.Float32BufferAttribute(diamondColors,3));
+  var diamondMaterial=new T.MeshBasicMaterial({vertexColors:true});
   [-1,1].forEach(function(side){
     var ring=new T.Mesh(new T.TorusGeometry(.48,.085,10,30),S(0xe0b33c));
     ring.position.set(side*.28,side*.085,side*.08);ring.rotation.y=side*.5;crest.add(ring);
+    var diamond=new T.Mesh(diamondGeometry,diamondMaterial);
+    diamond.position.set(side*.45,side*.085+.48,side*.08+.05);
+    diamond.scale.set(1.14,.89,.86);diamond.rotation.y=side*.26;crest.add(diamond);
   });
   gateLock=new T.Group();gateLock.position.set(0,.02,.18);crest.add(gateLock);
   var shackle=new T.Mesh(new T.TorusGeometry(.23,.052,8,20,Math.PI),S(0xffd77b));
@@ -486,11 +496,13 @@ function restAvatar(c,dt){
     c.blob.visible=false;
   }
 }
-var POOL_FALL=3,STUN_SECONDS=2.8;
+var POOL_FALL=3,POOL_RECOVER=4,STUN_SECONDS=2.8;
+var POOL_LAND_HOLD=.34,POOL_GET_UP=.64,POOL_RECOVER_SECONDS=POOL_LAND_HOLD+POOL_GET_UP;
+var POOL_RECOVER_MOTION=10;
 function poolSpan(x){return x>=PX0&&x<=PX1;}
 function inPool(p){return poolSpan(p.x)&&p.z>=POOL_LIP_Z&&p.z<PZ1-.2;}
 function stun(c,message){c.st=2;c.stT=STUN_SECONDS;if(c===me&&message)toast(message,2600);}
-function place(c,dt){var remote=c.remote,swimming=remote?remote.m===2||remote.m===3:inPool(c.pos);c.swim+=((swimming?1:0)-c.swim)*Math.min(1,dt*6);var inBoat=remote?remote.m>=8:boat&&c===me,s=c.s,wet=c.swim>.5;
+function place(c,dt){var remote=c.remote,swimming=remote?remote.m===2||remote.m===3:inPool(c.pos);c.swim+=((swimming?1:0)-c.swim)*Math.min(1,dt*6);var inBoat=remote?remote.m===8||remote.m===9:boat&&c===me,s=c.s,wet=c.swim>.5;
   c.nameTag.position.y=2.52*s+.42;
   var y=(swimming?0:H(c.pos.x,c.pos.z))-c.swim*1.2*s;c.ph+=dt*(c.moving?(wet?6:9.5):2);c.amp+=((c.moving?1:0)-c.amp)*Math.min(1,dt*9);
   var A=c.amp,sn=Math.sin(c.ph),cs=Math.cos(c.ph),idle=Math.sin(tt*1.7+c.seed);
@@ -499,7 +511,16 @@ function place(c,dt){var remote=c.remote,swimming=remote?remote.m===2||remote.m=
   if(inBoat){y=-2.4-.58*s;hL=hR=-1.5;kL=kR=.25;var pd=A*Math.sin(c.ph*.7);aL=-1.05+pd*.5;aR=-1.05-pd*.5;eL=eR=.5;lean=.08;bob=0;}
   if(c.sliding){hL=hR=-1.45;kL=kR=.15;aL=aR=-2.8;eL=eR=.1;lean=-.2;y-=.45*s;bob=0;}
   if(c.st===1){c.roll.rotation.x+=dt*11;hL=hR=-1.9;kL=kR=2;aL=aR=-1.2;eL=eR=1.4;lean=.5;bob=0;}
-  else{if(c.st===POOL_FALL){y=c.fallY;hL=hR=-.18;kL=kR=.35;aL=aR=-.85;spread=.75;lean=0;bob=0;}
+  else{if(c.st===POOL_FALL||c.st===POOL_RECOVER){
+      var rising=c.st===POOL_RECOVER?ease01((POOL_RECOVER_SECONDS-c.stT-POOL_LAND_HOLD)/POOL_GET_UP):0;
+      var tilt=c.st===POOL_FALL?ease01(c.stT/.4):1-rising;
+      rz=tilt*Math.PI/2;
+      if(c.st===POOL_FALL)y=c.fallY;
+      var brace=Math.sin(rising*Math.PI);
+      hL=hR=-.55*brace;kL=kR=1.05*brace;
+      aL=-.55*tilt;aR=-.86*tilt;spread=.1+.42*tilt;lean=.24*brace;
+      bob=s*(Math.max(1.15*Math.cos(rz)+.2*Math.sin(rz),.6*Math.sin(rz))-1.15);
+      c.nameTag.position.y-=.9*tilt;}
     if(c.st===2){var crouch=ease01((c.stT-STUN_SECONDS+.35)/.35);
       rz=Math.sin(tt*8)*.14;aL=aR=-.2;spread=.5;hL=hR=-.6*crouch;kL=kR=1.2*crouch;lean=.24*crouch;bob=-.25*s*crouch;
       c.stars.rotation.y=tt*6;c.stars.position.y=2.5*s+bob;}
@@ -508,7 +529,9 @@ function place(c,dt){var remote=c.remote,swimming=remote?remote.m===2||remote.m=
   c.LL.a.rotation.x=hL;c.LR.a.rotation.x=hR;c.LL.k.rotation.x=kL;c.LR.k.rotation.x=kR;
   c.AL.a.rotation.x=aL;c.AR.a.rotation.x=aR;c.AL.a.rotation.z=-spread;c.AR.a.rotation.z=spread;c.AL.k.rotation.x=-eL;c.AR.k.rotation.x=-eR;
   c.b.rotation.x=lean;c.b.rotation.y=sn*.08*A;c.hd.rotation.y=(1-A)*Math.sin(tt*.6+c.seed)*.3-sn*.08*A;c.hd.rotation.x=-lean*.6+idle*.02;c.hd.position.y=1.98+idle*.008;
-  c.g.position.set(c.pos.x,remote?c.remoteY:y+bob,c.pos.z);c.blob.visible=!wet&&!inBoat&&c.st!==POOL_FALL;}
+  var vertical=remote?c.remoteY:y;
+  if(!remote||c.st===POOL_FALL||c.st===POOL_RECOVER)vertical+=bob;
+  c.g.position.set(c.pos.x,vertical,c.pos.z);c.blob.visible=!wet&&!inBoat&&c.st!==POOL_FALL&&c.st!==POOL_RECOVER;}
 var contactPeer=null,contactTime=0,pressure=null;
 var AVATAR_CONTACT=.94;
 
@@ -759,14 +782,16 @@ function replyAt(event){
   if(bubble.to===me)openSpeech(bubble.from,true);
 }
 
-/* Pose wire format: centimetres, angle in hundredths of a radian, and motion 0–9. */
+/* Pose wire format: centimetres, angle in hundredths of a radian, and motion 0–10. */
 var sentAt=-Infinity,sentMotion=-1,sentContact=null;
 function sendPose(c){
-  var motion=boat?(c.moving?9:8):c.st===POOL_FALL?6:c.st===2?5:c.st===1?4:c.sliding?7:c.swim>.5?(c.moving?3:2):c.moving?1:0;
+  var motion=boat?(c.moving?9:8):c.st===POOL_FALL?6:c.st===POOL_RECOVER?POOL_RECOVER_MOTION:c.st===2?5:c.st===1?4:c.sliding?7:c.swim>.5?(c.moving?3:2):c.moving?1:0;
   var bump=contactTime>=.25&&(motion===1||motion===3)?contactPeer?.p.id:null;
   var now=performance.now();if(now-sentAt<250&&sentMotion===motion&&sentContact===bump)return;
   sentAt=now;sentMotion=motion;sentContact=bump;
   var a=c.g.rotation.y,y=motion===2?-1.2*c.s:c.g.position.y;
+  if(c.st===POOL_FALL)y=c.fallY;
+  if(c.st===POOL_RECOVER)y=H(c.pos.x,c.pos.z);
   post('pose',{pose:{x:Math.round(c.pos.x*100),y:Math.round(y*100),z:Math.round(c.pos.z*100),a:Math.round(Math.atan2(Math.sin(a),Math.cos(a))*100),m:motion,
     cx:Math.round(camera.position.x*100),cy:Math.round(camera.position.y*100),cz:Math.round(camera.position.z*100),bump:bump}});
 }
@@ -775,7 +800,12 @@ function setPeer(c,pose){
   if(![pose.x,pose.y,pose.z,pose.a,pose.m].every(Number.isFinite))return;
   var x=pose.x/100,y=pose.y/100,z=pose.z/100,a=pose.a/100;
   if(!c.remote||Math.hypot(x-c.pos.x,z-c.pos.z)>10){c.pos.set(x,0,z);c.remoteY=y;c.g.rotation.y=a;c.swim=0;c.amp=0;}
-  if(pose.m===5&&c.remote?.m!==5)c.stT=STUN_SECONDS;
+  var previous=c.remote?.m;
+  if(pose.m!==previous){
+    if(pose.m===5)c.stT=STUN_SECONDS-(previous===POOL_RECOVER_MOTION?.35:0);
+    if(pose.m===6)c.stT=0;
+    if(pose.m===POOL_RECOVER_MOTION)c.stT=POOL_RECOVER_SECONDS;
+  }
   var remoteCamera=[pose.cx,pose.cy,pose.cz].every(Number.isFinite)?new T.Vector3(pose.cx/100,pose.cy/100,pose.cz/100):null;
   if(remoteCamera&&!c.cameraView)c.cameraView=remoteCamera.clone();
   c.remote={x:x,y:y,z:z,a:a,m:pose.m,camera:remoteCamera};
@@ -785,10 +815,12 @@ function drawPeer(c,dt){
   if(target.camera)c.cameraView.lerp(target.camera,alpha);
   c.pos.x+=(target.x-c.pos.x)*alpha;c.pos.z+=(target.z-c.pos.z)*alpha;c.remoteY+=(target.y-c.remoteY)*alpha;
   var d=target.a-c.g.rotation.y;c.g.rotation.y+=Math.atan2(Math.sin(d),Math.cos(d))*alpha;
-  c.st=m===4?1:m===5?2:m===6?POOL_FALL:0;c.sliding=m===7;c.moving=m===1||m===3||m===9;
-  if(c.st===2)c.stT=Math.max(0,c.stT-dt);
-  if(m>=8&&!c.remoteKayak){c.remoteKayak=kayak.clone();scene.add(c.remoteKayak);}
-  if(c.remoteKayak){c.remoteKayak.visible=m>=8;if(m>=8){
+  c.st=m===4?1:m===5?2:m===6?POOL_FALL:m===POOL_RECOVER_MOTION?POOL_RECOVER:0;c.sliding=m===7;c.moving=m===1||m===3||m===9;
+  if(c.st===POOL_FALL)c.stT+=dt;
+  if(c.st===2||c.st===POOL_RECOVER)c.stT=Math.max(0,c.stT-dt);
+  var rowing=m===8||m===9;
+  if(rowing&&!c.remoteKayak){c.remoteKayak=kayak.clone();scene.add(c.remoteKayak);}
+  if(c.remoteKayak){c.remoteKayak.visible=rowing;if(rowing){
     var heading=c.g.rotation.y;
     c.remoteKayak.position.set(c.pos.x+Math.sin(heading)*.8,-2.3,c.pos.z+Math.cos(heading)*.8);
     c.remoteKayak.rotation.set(0,heading-Math.PI/2,0);}}
@@ -860,7 +892,10 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
     if(c.st===1){c.pos.z-=9*dt;c.moving=false;if(c.pos.z<=LAKE_FENCE_Z+1.2){c.pos.z=LAKE_FENCE_Z+1.2;stun(c,'Desceu rolando. A cerca agradece a visita.');}}
     else if(c.st===POOL_FALL){
       c.fallY-=11*(c.stT+dt/2)*dt;c.stT+=dt;
-      if(c.fallY<=H(c.pos.x,c.pos.z))stun(c);}
+      if(c.fallY<=H(c.pos.x,c.pos.z)){c.st=POOL_RECOVER;c.stT=POOL_RECOVER_SECONDS;}}
+    else if(c.st===POOL_RECOVER){
+      c.stT-=dt;c.moving=false;
+      if(c.stT<=0){stun(c);c.stT-=.35;}}
     else if(c.st===2){c.stT-=dt;c.moving=false;if(c.stT<=0)c.st=0;}
     c.pz=c.pos.z;
     if(c.pos.x>10&&c.pos.x<14&&c.pos.z>7.3&&c.pos.z<17){c.pos.z-=9*dt;c.sliding=true;c.g.rotation.y=Math.PI;}
