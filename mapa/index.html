@@ -362,21 +362,24 @@ function board(tex,w,h,x,y,z,ry){var m=new T.Mesh(new T.PlaneGeometry(w,h),new T
   [-1,1].forEach(function(side){
     var ring=new T.Mesh(new T.TorusGeometry(.48,.085,10,30),S(0xe0b33c));
     ring.position.set(side*.28,side*.085,side*.08);ring.rotation.y=side*.5;crest.add(ring);
+    cyl(.105,.14,.10,S(0xe0b33c),side*.28,side*.085+.575,side*.08,crest,10);
     var diamond=new T.Mesh(diamondGeometry,diamondMaterial);
-    diamond.position.set(side*.45,side*.085+.48,side*.08+.05);
-    diamond.scale.set(1.14,.89,.86);diamond.rotation.y=side*.26;crest.add(diamond);
+    diamond.position.set(side*.28,side*.085+.735,side*.08);
+    diamond.scale.set(1.14,.80,.86);diamond.rotation.y=side*.26;crest.add(diamond);
   });
-  gateLock=new T.Group();gateLock.position.set(0,-.26,.38);crest.add(gateLock);
-  // The shackle bends back through the rings and returns in front of the arch.
-  var shacklePath=new T.CatmullRomCurve3([
-    [-.3,-.54,0],[-.3,-.2,0],[-.285,-.02,-.12],[-.22,.12,-.34],
-    [0,.18,-.52],[.22,.12,-.34],[.285,-.02,-.12],[.3,-.2,0],[.3,-.54,0]
-  ].map(function(p){return new T.Vector3(p[0],p[1],p[2]);}));
-  gateLock.add(new T.Mesh(new T.TubeGeometry(shacklePath,32,.056,10,false),S(0xffd77b)));
-  box(.74,.55,.29,0xc4122f,0,-.775,0,gateLock);
-  [-.15,.15].forEach(function(z){
-    ball(.073,0x291a35,0,-.733,z,gateLock,1,1,.13);
-    box(.058,.12,.012,0x291a35,0,-.807,z,gateLock);
+  gateLock=new T.Group();gateLock.position.set(-.1,-.14,.04);crest.add(gateLock);
+  // Angle the rigid U across the arch. The swing keeps both legs on their sides.
+  var lock=new T.Group();lock.rotation.y=-.725;gateLock.add(lock);
+  var shackleRadius=.45,shackleGold=S(0xffd77b),legWidth=.056;
+  var crown=new T.Mesh(new T.TorusGeometry(shackleRadius,legWidth,10,28,Math.PI),shackleGold);
+  crown.position.y=-.26;lock.add(crown);
+  [-shackleRadius,shackleRadius].forEach(function(x){
+    cyl(legWidth,legWidth,.42,shackleGold,x,-.47,0,lock,10);
+  });
+  box(1.06,.58,.32,0xc4122f,0,-.92,0,lock);
+  [-.165,.165].forEach(function(z){
+    ball(.073,0x291a35,0,-.879,z,lock,1,1,.13);
+    box(.058,.12,.012,0x291a35,0,-.953,z,lock);
   });
   var gl=box(3.4,1.2,.1,0x7a5c3e,37.9,H(33,34)+.75,32.4);gl.rotation.y=1.1;
   var sx=40,sz=36,sy=H(sx,sz);box(.2,3.7,.2,WOOD,sx,sy+1.85,sz);
