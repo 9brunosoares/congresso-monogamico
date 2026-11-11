@@ -324,7 +324,60 @@ box(15,.1,11,BRICK,QX,.05,QZ);
 var roofQ=new T.Group();scene.add(roofQ);
 (function(){var r=hip(18.5,3,14.5,TILE);r.position.set(QX,3.1,QZ);roofQ.add(r);box(17,.2,13,0x5a3a28,QX,3.05,QZ,roofQ);})();
 box(5,.14,1.4,0x8f6f4d,QX+2,.95,QZ+1.5);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+.3);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+2.7);box(.2,.9,1.2,WOOD,QX,.47,QZ+1.5);box(.2,.9,1.2,WOOD,QX+4,.47,QZ+1.5);solid(QX-.5,QX+4.5,QZ+.1,QZ+2.9);
-box(3.4,.12,1,0xc4122f,QX-3.5,1.05,QZ+4.8);box(3.4,.12,1,0xb3202f,QX+3.5,1.05,QZ+4.8);
+(function(){
+  const hammock=new T.Group();
+  hammock.name='Rede vermelha do Comedouro';
+  hammock.position.set(QX,0,QZ+5);
+  scene.add(hammock);
+  // O tecido fica no vão da esquerda, entre os postes já existentes.
+  const left=-7+.175,right=-1.6-.175,hookY=2.24;
+  function fabricPoint(u,v){
+    const t=.15+.70*u;
+    const spread=Math.sin(Math.PI*u);
+    const halfWidth=.04+.53*spread;
+    return new T.Vector3(
+      T.MathUtils.lerp(left,right,t),
+      hookY-1.22*4*t*(1-t)+.27*spread*v*v,
+      -.12+v*halfWidth
+    );
+  }
+  const cloth=new T.PlaneGeometry(1,1,24,10);
+  const vertices=cloth.attributes.position;
+  const colors=[],color=new T.Color();
+  for(let i=0;i<vertices.count;i++){
+    const u=vertices.getX(i)+.5,v=2*vertices.getY(i);
+    const point=fabricPoint(u,v);
+    vertices.setXYZ(i,point.x,point.y,point.z);
+    const edge=Math.abs(v);
+    color.setHex(edge>.95?0xc34d52:edge>.70?0x922936:0xb63e47);
+    color.multiplyScalar(.92+.08*Math.sin(Math.PI*u));
+    colors.push(color.r,color.g,color.b);
+  }
+  cloth.setAttribute('color',new T.Float32BufferAttribute(colors,3));
+  cloth.computeVertexNormals();
+  hammock.add(new T.Mesh(cloth,lam(0xffffff,{side:T.DoubleSide,vertexColors:true})));
+  for(const [x,end] of [[left,0],[right,1]]){
+    const anchor=new T.Vector3(x,hookY,0);
+    ball(.066,0x713234,x,hookY,0,hammock);
+    for(const v of [-1,-.5,0,.5,1]){
+      const strand=new T.LineCurve3(anchor,fabricPoint(end,v));
+      hammock.add(new T.Mesh(new T.TubeGeometry(strand,1,.012,4,false),M(0xd6a397)));
+    }
+  }
+
+  // Globos âmbar presos aos postes, à frente do telhado.
+  const lanterns=new T.Group();
+  lanterns.name='Luminárias do Comedouro';
+  scene.add(lanterns);
+  const amber=new T.MeshBasicMaterial({color:0xffca7a});
+  for(const x of [QX-1.6,QX+7]){
+    const z=QZ+5;
+    box(.15,.12,.24,WOOD,x,2.73,z+.19,lanterns);
+    rod(.027,.027,.18,0x523624,x,2.64,z+.31,lanterns);
+    ball(.145,amber,x,2.46,z+.31,lanterns,1,1.06,1);
+    box(.14,.055,.14,0x6c482c,x,2.60,z+.31,lanterns);
+  }
+})();
 (function(){
   const cookout=new T.Group();
   cookout.name='Churrasqueira e balcão';
