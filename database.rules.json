@@ -3,6 +3,13 @@
     ".read": false,
     ".write": false,
     "mapa": {
+      "ambiente": {
+        "porDoSol": {
+          ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/)",
+          ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/) && newData.isBoolean()",
+          ".validate": "newData.isBoolean()"
+        }
+      },
       "xvi": {
         ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/)",
         "$avatar": {

@@ -1,22 +1,24 @@
 import { getApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import {
-  getDatabase, goOffline, goOnline, ref, push, set, remove, onDisconnect, serverTimestamp,
+  getDatabase, goOffline, goOnline, ref, push, set, remove, runTransaction, onDisconnect, serverTimestamp,
   onValue, onChildAdded, onChildChanged, onChildRemoved
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js';
 
 const DATABASE_URL = 'https://congresso-monogamico-default-rtdb.firebaseio.com';
 const ROOM = 'mapa/xvi';
 const SPEECH = 'mapa/falas';
+const SUNSET = 'mapa/ambiente/porDoSol';
 const SPEECH_MS = 5000;
 const SEND_MS = 250;
 const BUMP_MS = 1000;
 const HEARTBEAT_MS = 20000;
 const STALE_MS = 55000;
 
-export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
+export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun }) {
   const db = getDatabase(getApp(), DATABASE_URL);
   const room = ref(db, ROOM);
   const speech = ref(db, SPEECH);
+  const sun = ref(db, SUNSET);
   const rows = new Map();
   const visiblePeers = new Map();
   const subscriptions = [];
@@ -104,6 +106,7 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
         if (remaining > 0) onSpeech(snapshot.key, { ...message, remaining: Math.min(SPEECH_MS, remaining) });
       }),
       onChildRemoved(speech, snapshot => onSpeech(snapshot.key, null)),
+      onValue(sun, snapshot => onSun(snapshot.val() === true), leave),
       onValue(ref(db, '.info/serverTimeOffset'), snapshot => { offset = snapshot.val() ?? 0; }),
       onValue(ref(db, '.info/connected'), async snapshot => {
         const attempt = ++epoch;
@@ -169,6 +172,15 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech }) {
           }).catch(() => {});
         }, SPEECH_MS);
         return true;
+      } catch {
+        return false;
+      }
+    },
+    async toggleSun() {
+      if (!session || !connected) return false;
+      try {
+        const result = await runTransaction(sun, current => current !== true, { applyLocally: false });
+        return result.committed;
       } catch {
         return false;
       }
