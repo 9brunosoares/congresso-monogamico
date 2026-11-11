@@ -57,8 +57,6 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.0
 .brand .roman{font-family:var(--f-display);font-weight:800;font-size:13px;letter-spacing:.2em;color:var(--seal)}
 .brand h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
 .me{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 10px 4px 4px;font-weight:600;font-size:14px}
-.clock{font-size:12px;color:var(--muted);margin:-6px 0 12px}
-.clock b{color:var(--ink)}
 
 /* avatares */
 .av{width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;background:var(--surface-2);display:inline-grid;place-items:center;font-family:var(--f-display);font-weight:800;color:var(--seal);border:2px solid var(--surface)}
@@ -73,6 +71,11 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.0
 .next{background:var(--ink);color:var(--bg);border:0;position:relative;overflow:hidden}
 .next .eyebrow{color:color-mix(in srgb,var(--bg) 70%,transparent)}
 .next h2{font-size:30px;font-weight:800;margin-top:4px}
+.next-place{margin-top:6px;opacity:.8;font-size:14px}
+.next-address{margin:7px 0 0;font-size:13px;opacity:.8}
+.next-following{display:flex;flex-direction:column;gap:4px;border-top:1px solid color-mix(in srgb,var(--bg) 22%,transparent);margin-top:18px;padding-top:14px;font-size:15px}
+.next-following-prep{font-size:13px;opacity:.85}
+.next-agenda{display:block;margin:12px 0 -4px auto;min-height:32px;padding:4px 0 4px 12px;border:0;background:none;color:inherit;font-size:13px;font-weight:700}
 .count{display:flex;gap:8px;margin-top:14px}
 .count div{background:color-mix(in srgb,var(--bg) 12%,transparent);border-radius:12px;padding:8px 10px;min-width:64px;text-align:center}
 .count b{display:block;font-family:var(--f-mono);font-size:26px;line-height:1}
@@ -91,14 +94,15 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.0
 .official-card strong{font-size:15px}.official-card small,.official-resource small{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:3px}
 .resource-icon{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none;color:var(--muted)}
 .official-card:focus-visible,.official-resource:focus-visible{outline:2px solid var(--seal);outline-offset:3px}
-.travel-card{position:relative;overflow:hidden;min-height:58px;margin-top:9px;border-color:#a67d52;background:linear-gradient(108deg,#2b2149,#241936 64%,#381f40);color:#fff3fa}
-.travel-rim{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-.travel-rim rect{fill:none;stroke:#ffe1a1;stroke-width:1.5;stroke-linecap:round;stroke-dasharray:14 86;filter:drop-shadow(0 0 3px #f6bf64bf);animation:travel-orbit 5.2s linear infinite}
-.travel-map-icon{display:grid;place-items:center;width:30px;height:30px;flex:none;color:#ffe4a6;background:#ffe4a615;border-radius:11px}
-.travel-map-icon svg{width:22px;height:22px}
-.travel-chevron{color:#ffe4a6;font-size:21px;line-height:1}
-@keyframes travel-orbit{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}
-@media(prefers-reduced-motion:reduce){.travel-rim{display:none}}
+.travel-portal{position:relative;display:block;width:calc(100% - 16px);margin:20px 8px 4px;padding:0;border:2px solid #d0b578;border-radius:24px 24px 12px 12px;overflow:hidden;background:#83ccef;box-shadow:0 8px 22px #0003,0 0 0 4px color-mix(in srgb,var(--brass) 8%,transparent);isolation:isolate}
+.travel-portal img{display:block;width:100%;height:auto}
+.portal-invite{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:15px;padding:9px 14px;border:1px solid #e5ce88;border-radius:7px;background:#242d24;color:#fff4cb;font-family:var(--f-display);font-size:17px;font-weight:800;box-shadow:3px 3px 0 #38462b}
+.travel-portal:active .portal-invite{transform:translate(1px,1px);box-shadow:2px 2px 0 #38462b}
+.travel-portal.is-appearing{animation:portal-arrival 1.2s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--portal-delay,0ms)}
+@keyframes portal-arrival{0%{opacity:0;transform:perspective(600px) rotateX(12deg) scale(.96) translateY(12px);filter:brightness(1.5)}70%{opacity:1;filter:brightness(1.08)}100%{transform:none;filter:none}}
+@media(prefers-reduced-motion:reduce){.travel-portal.is-appearing{animation:none}}
+.discovery-preview-link{font-size:12px;color:var(--muted)}
+.discovery-checks{padding:8px 0 20px;font-size:14px}
 .travel-map{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#1b1530;color:#fff;overflow:hidden}
 .travel-map[open]{display:grid;grid-template-rows:auto minmax(0,1fr)}
 .travel-map::backdrop{background:#1b1530}
@@ -260,6 +264,8 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 .q-reveal strong{display:block;margin:3px 0;font-size:18px;font-family:var(--f-display)}
 .q-reveal small{display:block;color:var(--muted);font-size:13px}
 .q-reveal-arrow{color:var(--brass);font-size:22px}
+.q-vote{background:var(--surface);border-color:var(--line)}
+.q-quiet{padding-block:10px}.q-quiet>span:last-child{color:var(--muted)}
 .trip-empty{margin:0;font-size:14px}
 .trip-post{padding:0}
 .trip-image{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--surface-2)}
@@ -360,7 +366,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 
 /* Ação de emergência e vitrine dos casos condenados. */
 
-.home-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-bottom:14px}.emergency-report{position:static;flex:0 0 68px;width:68px;padding:0;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;touch-action:manipulation}.home-actions.is-empty .emergency-report{flex:0 0 auto;width:auto;flex-direction:row-reverse;gap:10px}.home-actions.is-empty .emergency-label{border:0;background:transparent;font-size:12px;padding:0;color:var(--muted)}
+.home-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:14px}.emergency-report{position:static;flex:0 0 68px;width:68px;padding:0;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;touch-action:manipulation}.home-actions .official-card{flex:1;min-width:0;min-height:76px;margin:0;padding:12px}.home-actions .official-card small{font-size:11px}.home-actions .official-card .resource-icon{width:18px;height:18px}
 .emergency-disc{width:56px;height:56px;display:grid;place-items:center;border-radius:50%;background:#c4122f;color:#f1eef8;border:2px solid #ee6278;box-shadow:0 4px 16px #0004,inset 0 2px 0 #ffffff25}
 .emergency-disc svg{width:29px;height:29px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .emergency-label{font-size:10px;font-weight:800;line-height:15px;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:1px 7px;border-radius:12px}
@@ -389,7 +395,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261110p"></script>
+<script type="module" src="install.js?v=20261111a"></script>
 
 </body>
 </html>

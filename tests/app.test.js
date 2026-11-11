@@ -1,3 +1,4 @@
+import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from '../discovery.js';
 import {departure,availableDay,agendaFor,votePeople,departureFor} from '../travel.js';
 import test from 'node:test';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from '../finance.js';
@@ -64,9 +65,12 @@ test('Nosso feed tem botão de publicar no título e curtidas simples',()=>{
  assert.match(nodes['#root'].innerHTML,/data-trip-like="c"[^>]+0 curtidas/);
  assert(!nodes['#root'].innerHTML.includes('id="addTripPhoto"'));
 });
-test('Simule a viagem aparece e abre somente para Bruno',()=>{
+test('portão e mapa ficam restritos a Bruno após a descoberta',()=>{
+ const previous=Date.now;Date.now=()=>Date.parse('2026-11-11T10:00:00-03:00');
+ try{
  const {context}=ui();
  const opened=[];
+ vm.runInContext("discovery.record('bruno','open',1);discovery.record('bruno','programa',1);discovery.record('bruno','contas',1);discovery.record('bruno','open',2)",context);
  context.openTravelMap=id=>{opened.push(id);return {close(){}};};
  for(const id of [...ALL.filter(id=>id!=='bruno'),'bruno']){
   context.profile=P[id];
@@ -76,11 +80,27 @@ test('Simule a viagem aparece e abre somente para Bruno',()=>{
   vm.runInContext('simulateTrip()',context);
  }
  assert.deepEqual(opened,['bruno']);
+ }finally{Date.now=previous;}
+});
+
+test('revelação só perde destaque depois de carregar em uma aba visível',()=>{
+ const previous=Date.now;Date.now=()=>Date.parse('2026-11-20T12:00:01-03:00');
+ try{
+  const {context}=ui(),key=dayKey();
+  vm.runInContext("S.me='bruno';tab='querido';markResultSeen()",context);
+  assert(vm.runInContext('homeQueridometro()',context).includes('q-reveal'));
+  vm.runInContext(`S.loaded={'votes-${key}':true};document.hidden=true;markResultSeen()`,context);
+  assert(vm.runInContext('homeQueridometro()',context).includes('q-reveal'));
+  vm.runInContext('document.hidden=false;markResultSeen()',context);
+  assert(vm.runInContext('homeQueridometro()',context).includes('q-quiet'));
+  vm.runInContext("S.me='igor'",context);
+  assert(vm.runInContext('homeQueridometro()',context).includes('q-reveal'));
+ }finally{Date.now=previous;}
 });
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={},events={},timers=new Map();let timerId=0;const context={departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,chatOpen,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={createDiscovery,DISCOVERY_OWNER,DISCOVERY_END,departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,chatOpen,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
@@ -220,8 +240,8 @@ test('resultado fica oculto mesmo com cache até meio-dia; domingo sem promessa 
   Date.now=()=>Date.parse('2026-11-19T12:00:00-03:00');vm.runInContext('render()',context);assert(nodes['#root'].innerHTML.includes('Resultado de 19/11'));assert(nodes['#root'].innerHTML.includes('class="qres'));
   for(const me of ['ob','bruno']){
    const home=vm.runInContext(`S.me='${me}';viewInicio()`,context);
-   assert.match(home,/class="card q-reveal" data-go="querido"/);
-   assert(home.includes('Os votos foram revelados!'));assert(!home.includes('Você já votou hoje.'));
+   assert(home.includes(me==='ob'?'q-quiet':'Os votos foram revelados!'));
+   assert(!home.includes('Você já votou hoje.'));
   }
   vm.runInContext("S.me='ob'",context);
   Date.now=()=>Date.parse('2026-11-22T10:00:00-03:00');const final=dayKey();vm.runInContext(`S.qvoted={'${final}':['ob']};render()`,context);assert(nodes['#root'].innerHTML.includes('Esta foi a última votação do congresso.'));assert(!nodes['#root'].innerHTML.includes('Amanhã'));

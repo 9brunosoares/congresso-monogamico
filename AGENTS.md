@@ -1,5 +1,16 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Home e descoberta privada da chácara (11/11/2026)
+- Home prioriza próxima atividade/saída pessoal. Durante uma atividade, Agora e Depois ficam no mesmo cartão, com preparos reais; sem preenchimento “Nada a preparar”. Endereço do carro usa travelPlan autenticado. Horários em São Paulo; transição de atividades reavalia a tela automaticamente.
+- Relógio global com segundos removido. Mural e sirene ficam após a atividade. Sem condenados, Links oficiais ocupa o espaço ao lado da sirene. Com mural, links vêm na linha seguinte. Feed continua com duas fotos e botão + no título.
+- Queridômetro não ocupa a home antes de abrir. Durante a janela: chamada para votar só após carregar o marcador próprio e respeitando chegada; após votar, aviso compacto. Ao meio-dia, cartão de revelação; só diminui depois que o resultado carregou na aba visível. Marcador de leitura local por perfil/dia, sem consulta nova.
+- `discovery.js`: **DISCOVERY_RELEASED=false, somente Bruno**. NÃO liberar aos outros sem novo aviso do Bruno. Visitar Agenda + Contas e abrir novamente libera portão ilustrado, animação única curta, respeitando redução de movimento. Retorno ao PWA após >=60s em segundo plano também conta como reabertura.
+- Só ao receber ready do iframe se registra a primeira entrada; fechar antes de carregar preserva o portão. Após entrar, portal some da home e Chácara virtual permanece no perfil, com aviso discreto ao voltar. Em 18/11 00h SP deixam de surgir portões; acesso permanece para quem já entrou.
+- Nesta prévia privada, progresso e marcos ficam no localStorage do aparelho, isolados por perfil. Não há telemetria no Firebase, monitoramento dos demais nem painel coletivo ainda. Ao ativar o easter egg publicamente, revisar persistência entre aparelhos e os dois marcos administrativos propostos (desbloqueou/entrou), sem rastrear navegação detalhada.
+- Bruno tem Perfil → Prévia da chácara: progresso, Simular nova abertura, Recomeçar descoberta. Reiniciar afeta só essa descoberta local; não apaga posição do avatar, votos ou dados reais. Outros ADMs não veem controles nem mapa no app.
+- A restrição de descoberta é de interface, como o antigo botão exclusivo; não constitui proteção de arquivos estáticos do mapa público. Esta mudança não altera regras do Firebase nem os dados do congresso.
+- Cenários da home e jornada verificados no navegador com backend simulado, mapa Three.js real em modo solo e larguras320/390/430. Não gravar testes na produção.
+
 ## Chat: cores sorteadas por abertura (01/11/2026)
 - Mensagens novas de um mesmo autor têm a mesma cor discreta (faixa lateral, ponto e fundo suave), sem nome, legenda ou “autor verde”. Palette14 tons distintos claro/escuro; texto mantém cor de leitura. Próprias mensagens continuam à direita e apagar continua aplicando risco duplo.
 - `chat-colors.js`: embaralha cores com crypto em memória por abertura da Fofoca. Entrar novamente na aba, recarregar app ou trocar conta refaz sorteio; snapshots, envio, riscar e paginação NÃO trocam cores já atribuídas naquela abertura. Cada leitor tem sorteio local independente. Nada de cores no Firestore/storage/URL; sorteio aleatório pode repetir uma cor por acaso.

@@ -1,4 +1,4 @@
-export function openTravelMap(avatar, onClose) {
+export function openTravelMap(avatar, onClose, { onReady } = {}) {
   const dialog = document.createElement('dialog');
   dialog.className = 'travel-map';
   dialog.setAttribute('aria-label', 'Simule a viagem');
@@ -74,6 +74,7 @@ export function openTravelMap(avatar, onClose) {
       clearTimeout(timer);
       loading.hidden = true;
       send('start', { avatar });
+      onReady?.();
       frame.focus();
       void joinRoom();
     } else if (message.type === 'pose' && ready) {

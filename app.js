@@ -9,10 +9,15 @@ import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261110a';
 import * as backend from './backend.js?v=20261110a';
-import {openTravelMap} from './mapa-viagem.js?v=20261110p';
+import {openTravelMap} from './mapa-viagem.js?v=20261111a';
+import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111a';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
-const TRAVEL_MAP_OWNER = 'bruno';
+let discoveryStorage;
+try { discoveryStorage=localStorage; } catch {}
+const discovery=createDiscovery(discoveryStorage);
+const openedProfiles=new Set(),seenResults=new Set();
+let portalAppearedAt=0,backgroundAt=0;
 
 // Viagem: quarta 18 à noite até domingo 22/11/2026 no começo da tarde.
 const DAYS = [
@@ -64,10 +69,10 @@ const allPoints = () => scoringPoints(S.points,S.attendance,S.attendanceReady,S.
 const score = id => allPoints().filter(x=>x.who===id).reduce((a,x)=>a+x.d,0);
 const ranking = () => ALL.map(id=>({id,s:score(id),n:allPoints().filter(x=>x.who===id).length})).sort((a,b)=>b.s-a.s||P[a.id].nick.localeCompare(P[b.id].nick));
 const pts = d => `<span class="pts ${d<0?"neg":"pos"}">${d>0?"+":""}${d}</span>`;
-const fmtTime = ms => new Date(ms).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-const dayOf = ms => DAYS.find(x=>x.d===new Date(ms).getDate());
+const fmtTime = ms => new Date(ms).toLocaleTimeString("pt-BR",{...clockZone,hour:"2-digit",minute:"2-digit"});
+const dayOf = ms => DAYS.find(x=>x.d===new Date(ms-10800000).getUTCDate());
 
-function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=notice(msg); document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+function toast(msg,duration=2200){ const t=document.createElement("div"); t.className="toast"; t.textContent=notice(msg); document.body.appendChild(t); setTimeout(()=>t.remove(),duration); }
 
 /* ===================== CONTAS ===================== */
 function balances(){
@@ -119,16 +124,14 @@ function header(){
   return `<div class="top">
     <div class="brand"><div class="roman">XVI CONGRESSO</div><h1>Monogâmico</h1></div>
     <button class="me" id="meBtn" type="button">${av(S.me,"sm")}${S.adminPending?'<i class="notice-dot" aria-label="Pendência de ADM"></i>':''}<span>${esc(first(S.me))}</span>${isAdm()?'<span class="adm">ADM</span>':""}</button>
-  </div>
-  <div class="clock">
-    <span>Agora: <b class="num" id="clock"></b></span>
   </div>`;
 }
 
 function nextItem(){
   const t=now(),trip=departure(S.me);
   const personal=agendaFor(AGENDA,S.me);
-  if(trip)personal.unshift({d:trip.day,title:`Saída · carro de ${first(trip.driver)}`,place:trip.people.map(first).join(' · '),start:trip.start,end:trip.start});
+  if(trip)personal.push({d:trip.day,title:`Saída · carro de ${first(trip.driver)}`,place:trip.people.map(first).join(' · '),start:trip.start,end:trip.start,address:S.travelPlan?.address});
+  personal.sort((a,b)=>a.start-b.start);
   const cur = personal.find(a=>a.start<=t && t<a.end);
   const nxt = personal.find(a=>a.start>t);
   return {cur,nxt};
@@ -142,6 +145,7 @@ function muralTeaser(){
 function emergencyButton(){return `<button class="emergency-report" id="homeReport" type="button" aria-haspopup="dialog" aria-label="Fazer denúncia"><span class="emergency-disc"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 24v-9a7 7 0 0 1 14 0v9M7 24h18v4H7zM16 2v3M4 8l3 2M28 8l-3 2M3 17h3M29 17h-3"/><path d="M13 17v-2a3 3 0 0 1 3-3"/></svg></span><span class="emergency-label">Denunciar</span></button>`;}
 function homeQueridometro(){
   const revealed=resultDay();
+  if(revealed&&resultWasSeen(revealed.key))return `<button class="card official-card q-quiet" data-go="querido" type="button"><span class="grow"><strong>Queridômetro</strong><small>Resultado de ${revealed.day}/11</small></span><span aria-hidden="true">›</span></button>`;
   if(revealed)return `<div class="sec-h"><h3>Queridômetro</h3></div>
     <button class="card q-reveal" data-go="querido" type="button">
       <span class="q-reveal-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS.querido}</svg></span>
@@ -151,8 +155,31 @@ function homeQueridometro(){
   const d=votingKey();
   const blocked=VOTE_DAYS.find(v=>v.key===d)?.day===19&&!votePeople(ALL,19).includes(S.me);
   const done=(S.qvoted[d]||[]).includes(S.me);
-  return `<div class="sec-h"><h3>Queridômetro</h3><button class="link" data-go="querido" type="button">${blocked||done||!votingOpen()?"Ver queridômetro":"Votar agora"}</button></div>
-    <div class="card row"><div class="emo-strip" aria-hidden="true">${EMOJIS.slice(0,5).join("")}</div><div class="grow">${blocked?'Seu Queridômetro começa no dia 20.':done?(d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':"Você já votou hoje. Os votos são anônimos."):votingOpen()?(S.scoreClosing?'Vote até meio-dia. As escolhas são anônimas.':"Vote até meio-dia. Quem não preencher perde 5 pontos."):S.scoreClosing?'De 19 a 22/11, pela manhã até meio-dia.':"De 19 a 22/11, pela manhã até meio-dia. Não preencher custa 5 pontos por dia."}</div></div>`;
+  if(blocked||!votingOpen()||!S.loaded?.['voted-'+d])return '';
+  if(done)return `<button class="card official-card q-quiet" data-go="querido" type="button"><span class="grow"><strong>Votos enviados</strong><small>O Queridômetro será revelado ao meio-dia.</small></span><span aria-hidden="true">›</span></button>`;
+  return `<div class="sec-h"><h3>Queridômetro</h3></div><button class="card q-reveal q-vote" data-go="querido" type="button"><span class="q-reveal-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS.querido}</svg></span><span class="grow"><strong>É hora dos emojis.</strong><small>Votar até meio-dia</small></span><span class="q-reveal-arrow" aria-hidden="true">›</span></button>`;
+}
+function resultWasSeen(key){
+ const id=S.me+':'+key;
+ if(seenResults.has(id))return true;
+ try{return localStorage.getItem('xvi-result-seen-'+id)==='1';}catch{return false;}
+}
+function markResultSeen(){
+ const revealed=resultDay();
+ if(document.hidden||tab!=='querido'||!revealed||!S.loaded?.['votes-'+revealed.key])return;
+ const id=S.me+':'+revealed.key;
+ seenResults.add(id);
+ try{localStorage.setItem('xvi-result-seen-'+id,'1');}catch{}
+}
+function homePortal(){
+ if(!discovery.portal(S.me))return '';
+ const elapsed=Date.now()-portalAppearedAt;
+ return `<button class="travel-portal ${elapsed<1200?'is-appearing':''}" style="--portal-delay:-${Math.max(0,elapsed)}ms" id="simulateTrip" type="button" aria-label="Entrar na chácara virtual" aria-haspopup="dialog"><img src="chacara-portal.svg" alt="" width="520" height="190"><span class="portal-invite">Entrar? <span aria-hidden="true">↗</span></span></button>`;
+}
+function homeShortcuts(){
+ const mural=muralTeaser();
+ const links=`<button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>`;
+ return `<div class="home-actions ${mural?'':'is-empty'}">${mural||links}${emergencyButton()}</div>${mural?links:''}`;
 }
 function tripPost(post){
   const {id,author,reactions={}}=post,photo=S.tripPhotos?.[id],nick=esc(first(author));
@@ -179,28 +206,24 @@ function tripFeed(full=false){
 }
 function viewInicio(){
   const {cur,nxt} = nextItem();
+  const main=cur||nxt;
   return `
-  <div class="home-actions ${(S.hasMural??S.shame.some(c=>c.status==='ok'))?'':'is-empty'}">${muralTeaser()}${emergencyButton()}</div>
-  ${nxt ? `<section class="card next">
+  ${main ? `<section class="card next">
     <div class="sealmark" aria-hidden="true">XVI</div>
-    <div class="eyebrow">Próxima sessão · ${dayOf(nxt.start).wd} ${fmtTime(nxt.start)}</div>
-    <h2>${esc(nxt.title)}</h2>
-    <div style="margin-top:4px;opacity:.8;font-size:14px">${esc(nxt.place||"")}${nxt.pts?` · vale até ${nxt.pts} pts`:""}</div>
-    <div class="count" id="count"></div>
-    ${nxt.prep?`<div class="prep"><small>Exige preparação</small>${esc(nxt.prep)}</div>`:`<div class="prep" style="background:color-mix(in srgb,var(--bg) 12%,transparent);color:inherit"><small>Preparação</small>Nada a preparar. Só aparecer.</div>`}
+    <div class="eyebrow">${cur?`Agora · até ${fmtTime(cur.end)}`:`Próxima atividade · ${dayOf(nxt.start)?.wd||''} ${fmtTime(nxt.start)}`}</div>
+    <h2>${esc(main.title)}</h2>
+    ${main.place||main.pts?`<div class="next-place">${esc(main.place||'')}${main.pts?` · até ${main.pts} pts`:''}</div>`:''}
+    ${main.address?`<p class="next-address">${esc(main.address)}</p>`:''}
+    ${cur?'':'<div class="count" id="count"></div>'}
+    ${main.prep?`<div class="prep"><small>Leve / prepare</small>${esc(main.prep)}</div>`:''}
+    ${cur&&nxt?`<div class="next-following"><span class="eyebrow">Depois · ${dayOf(nxt.start)?.wd||''} ${fmtTime(nxt.start)}</span><b>${esc(nxt.title)}</b>${nxt.prep?`<span class="next-following-prep">Leve / prepare: ${esc(nxt.prep)}</span>`:''}</div>`:''}
+    <button class="next-agenda" data-go="programa" type="button">Agenda <span aria-hidden="true">↗</span></button>
   </section>` : `<section class="card next"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2></section>`}
 
-  ${cur?`<div class="card row" style="margin-top:12px"><span class="tag live">Agora</span><div class="grow"><b>${esc(cur.title)}</b><div class="muted" style="font-size:13px">até ${fmtTime(cur.end)} · ${esc(cur.place||"")}</div></div></div>`:""}
-
-  <button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>
-  ${S.me===TRAVEL_MAP_OWNER ? `<button class="card official-card travel-card" id="simulateTrip" type="button" aria-haspopup="dialog">
-    <svg class="travel-rim" aria-hidden="true"><rect width="100%" height="100%" rx="17" pathLength="100"/></svg>
-    <span class="travel-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8.5 4.75v8.5L12 21l-8.5-4.75v-8.5L12 3Zm-8.5 4.75L12 12.5l8.5-4.75M12 12.5V21"/></svg></span>
-    <strong class="grow">Simule a viagem</strong><span class="travel-chevron" aria-hidden="true">›</span>
-  </button>` : ''}
+  ${homeShortcuts()}
 
   ${homeQueridometro()}
-
+  ${homePortal()}
   ${tripFeed()}
   `;
 }
@@ -580,13 +603,24 @@ function sheetDeleteTripPhoto(id){
 function sheetMe(){
  sheet(`<div class="badge" style="margin-bottom:14px"><div class="lanyard"><span>CREDENCIAL</span><span>${isAdm()?'ORGANIZAÇÃO':'CONGRESSISTA'}</span></div>
  <div class="body row">${av(S.me,'xl')}<div><h3 style="margin:0">${esc(first(S.me))}</h3><div class="muted">${score(S.me)} pontos</div></div></div></div>
- <div class="stack">${isAdm()?`<div class="eyebrow">Painel do ADM</div>
+ <div class="stack">${discovery.access(S.me)?'<button class="btn ghost block" data-a="chacara" type="button">Chácara virtual <span aria-hidden="true">↗</span></button>':''}${isAdm()?`<div class="eyebrow">Painel do ADM</div>
  ${S.scoreClosing?'':'<button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>'}
  <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias</button>${S.closing?'':'<button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>'}`:''}
- <button class="btn ghost block" data-a="out" type="button">Sair</button></div>`,s=>{
+ <button class="btn ghost block" data-a="out" type="button">Sair</button>${S.me===DISCOVERY_OWNER?'<button class="link discovery-preview-link" data-a="preview" type="button">Prévia da chácara</button>':''}</div>`,s=>{
  s.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a==='out'){act(b,async()=>{await backend.logout();s.remove();});return;}s.remove();
- if(a==='give')sheetPoints(false);if(a==='take')sheetPoints(true);if(a==='tribunal')go('tribunal');if(a==='budget')sheetBudget();};});
+ if(a==='give')sheetPoints(false);if(a==='take')sheetPoints(true);if(a==='tribunal')go('tribunal');if(a==='budget')sheetBudget();if(a==='chacara')simulateTrip();if(a==='preview')sheetDiscoveryPreview();};});
+}
+function sheetDiscoveryPreview(){
+ if(S.me!==DISCOVERY_OWNER)return;
+ const state=discovery.read(S.me);
+ const check=(label,done)=>`<div class="row"><span class="grow">${label}</span><span>${done?'✓':'—'}</span></div>`;
+ sheet(`<h3>Prévia da chácara</h3><p class="muted">Só você participa desta prévia. O progresso fica salvo neste aparelho.</p><div class="stack discovery-checks">${check('Visitou a Agenda',state.agenda)}${check('Visitou Contas',state.accounts)}${check('Abriu o app novamente',state.visits>=2)}${check('Desbloqueou o portão',state.unlockedAt)}${check('Entrou na chácara',state.enteredAt)}</div><div class="stack"><button class="btn ghost block" data-preview="return" type="button">Simular nova abertura</button><button class="link" data-preview="reset" type="button">Recomeçar descoberta</button><button class="btn ghost block" data-close type="button">Fechar</button></div>`,s=>{
+  s.onclick=e=>{const action=e.target.closest('[data-preview]')?.dataset.preview;if(!action)return;
+   if(action==='reset'){discovery.reset(S.me);portalAppearedAt=0;}else discovery.record(S.me,'open');
+   s.remove();go('inicio');if(action==='reset')toast('Descoberta reiniciada. Visite Agenda e Contas e reabra o app.',5000);
+  };
+ });
 }
 function sheetBudget(){
  if(!isAdm())return;
@@ -621,8 +655,18 @@ const LABELS={inicio:"Início",programa:"Agenda",placar:"Placar",querido:"Querid
 let enterChat=false;
 let travelMap;
 function simulateTrip(){
- if(S.me!==TRAVEL_MAP_OWNER||travelMap)return;
- travelMap=openTravelMap(S.me,()=>{travelMap=null;$('#simulateTrip')?.focus({preventScroll:true});});
+ if(!discovery.access(S.me)||travelMap)return;
+ const avatar=S.me,firstVisit=!discovery.read(avatar).enteredAt;
+ let entered=false;
+ travelMap=openTravelMap(avatar,()=>{
+  travelMap=null;
+  if(S.me!==avatar)return;
+  render();$('#meBtn')?.focus({preventScroll:true});
+  if(firstVisit&&entered)toast('Volte à chácara pelo seu perfil.',5000);
+ },{onReady(){
+  entered=true;discovery.record(avatar,'enter');
+  if(S.me===avatar)render();
+ }});
 }
 function go(t){if(t==='fofoca'&&tab!=='fofoca')enterChat=true; if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); if(t==='fofoca')scrollChat();else scrollTo({top:0}); }
 
@@ -633,12 +677,15 @@ function render(){
   backend.setView?.(tab);
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
+  if(!openedProfiles.has(S.me)){openedProfiles.add(S.me);discovery.record(S.me,'open');}
+  if(tab==='programa'||tab==='contas')discovery.record(S.me,tab);
+  if(tab==='inicio'&&discovery.portal(S.me)&&!portalAppearedAt)portalAppearedAt=Date.now();
   const body = ({inicio:viewInicio,fotos:()=>tripFeed(true),programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app auth-view ${tab==='fofoca'?'chat-view':''}">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
     <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
-  tick();watchPhotos();refreshRecipientPix();
+  tick();watchPhotos();refreshRecipientPix();markResultSeen();
 }
 
 let photoObserver;
@@ -718,7 +765,6 @@ document.addEventListener('click',e=>{
 });
 
 function tick(){
-  const c=$("#clock"); if(c){ const t=new Date(now()); c.textContent=`${t.toLocaleDateString("pt-BR",clockZone)} ${t.toLocaleTimeString("pt-BR",clockZone)}`; }
   const box=$("#count"); const {nxt}=nextItem();
   if(box&&nxt){ let s=Math.max(0,Math.floor((nxt.start-now())/1000)); const dd=Math.floor(s/86400); s%=86400; const h=Math.floor(s/3600); s%=3600; const m=Math.floor(s/60); s%=60;
     const parts = dd?[[dd,"dias"],[h,"h"],[m,"min"]]:[[h,"h"],[m,"min"],[s,"seg"]];
@@ -731,8 +777,16 @@ document.addEventListener('submit',e=>{
  act(e.target.querySelector('button'),async()=>{await backend.sendChat(text);if($('#chatIn')?.value.trim()===text)$('#chatIn').value='';$('#chatIn')?.focus();});
 });
 function votingPhaseAt(at=Date.now()){return resultDay(at)?.key??votingOpen(at);}
-let votingPhase=votingPhaseAt(),chatAvailable=chatOpen();
-setInterval(()=>{tick();const phase=votingPhaseAt(),chat=chatOpen();if(phase!==votingPhase||chat!==chatAvailable){votingPhase=phase;chatAvailable=chat;backend.refreshTime?.();render();}},1000);
+function homePhase(){const {cur,nxt}=nextItem();return `${cur?.start}:${nxt?.start}:${Date.now()<DISCOVERY_END}`;}
+let votingPhase=votingPhaseAt(),chatAvailable=chatOpen(),currentHomePhase=homePhase();
+setInterval(()=>{tick();const phase=votingPhaseAt(),chat=chatOpen(),home=homePhase();if(phase!==votingPhase||chat!==chatAvailable||home!==currentHomePhase){votingPhase=phase;chatAvailable=chat;currentHomePhase=home;backend.refreshTime?.();render();}},1000);
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden){backgroundAt=Date.now();return;}
+ // Uma volta após um minuto fora também conta como novo acesso no PWA do iOS.
+ if(S.ready&&S.me&&backgroundAt&&Date.now()-backgroundAt>=60000){discovery.record(S.me,'open');render();}
+ if(S.ready&&S.me)markResultSeen();
+ backgroundAt=0;
+});
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
