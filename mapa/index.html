@@ -366,14 +366,18 @@ var FX=38,FZ=-23,flame;
 var pineM=lam(0x2f5d3a),pineM2=lam(0x3b6f44),trunkM=lam(0x6b4a33),leafM=[lam(0x4f8a3c),lam(0x5b9a45),lam(0x447a36)],jacM=lam(0x8f6fc9),jabM=lam(0x2c5a30);
 function pine(x,z,s){var y=H(x,z),h=6*s;cyl(.22*s,.32*s,h,trunkM,x,y+h/2,z,null,6);for(var i=0;i<3;i++){var c=new T.Mesh(new T.ConeGeometry((2.4-i*.55)*s,3*s,7),i%2?pineM2:pineM);c.position.set(x,y+h*.55+i*1.7*s,z);scene.add(c);}
   if(Math.abs(x)<86&&z<82)CIRC.push([x,z,.5]);}
-function tree(x,z,s,m){var y=H(x,z);cyl(.25*s,.35*s,2.6*s,trunkM,x,y+1.3*s,z,null,6);var f=new T.Mesh(new T.IcosahedronGeometry(2.3*s,0),m||leafM[(rnd()*3)|0]);f.position.set(x,y+3.8*s,z);f.rotation.set(rnd()*3,rnd()*3,0);f.scale.y=.85;scene.add(f);
-  if(Math.abs(x)<86&&z<82)CIRC.push([x,z,.55]);}
+function tree(x,z,s,m){var y=H(x,z);var trunk=cyl(.25*s,.35*s,2.6*s,trunkM,x,y+1.3*s,z,null,6);var f=new T.Mesh(new T.IcosahedronGeometry(2.3*s,0),m||leafM[(rnd()*3)|0]);f.position.set(x,y+3.8*s,z);f.rotation.set(rnd()*3,rnd()*3,0);f.scale.y=.85;scene.add(f);
+  if(Math.abs(x)<86&&z<82)CIRC.push([x,z,.55]);return trunk;}
+var lakeNoticeTrunk;
 (function(){var i,x,z,n=0;
   pine(14,-33,1.25);tree(29.5,-38,1.3,jacM);
   n=0;while(n<16){x=rr(-84,-46);z=rr(-42,34);if(Math.hypot(x+33,z+11)<10)continue;tree(x,z,rr(1.3,2.1));n++;}
   for(i=0;i<34;i++){var a=rnd();if(a<.4){x=rr(-110,110);z=rr(86,120);}else if(a<.7){x=rr(90,120);z=rr(-50,110);}else{x=rr(-120,-90);z=rr(-50,110);}
     if(rnd()<.45)pine(x,z,rr(1.3,2));else tree(x,z,rr(1.3,2.2));}
-  [[52,-28],[60,-38],[70,-22],[48,-44],[66,-46],[-30,-47],[10,-47],[58,24],[70,52],[-60,52],[-70,58],[-20,60],[10,70],[52,66],[-45,70]].forEach(function(p){tree(p[0],p[1],rr(1.1,1.8));});
+  [[52,-28],[60,-38],[70,-22],[48,-44],[66,-46],[-30,-47],[10,-47],[58,24],[70,52],[-60,52],[-70,58],[-20,60],[10,70],[52,66],[-45,70]].forEach(function(p){
+    var trunk=tree(p[0],p[1],rr(1.1,1.8));
+    if(p[0]===-30&&p[1]===-47)lakeNoticeTrunk=trunk;
+  });
   [[-30,-15.5],[-35.5,-16],[-38.5,-11],[-34.5,-6],[-30,-9.5],[-27,-18]].forEach(function(q){tree(q[0],q[1],1.15,jabM);});
   tree(64,-6,1.4,jacM);pine(-28,52,1.8);pine(30,50,1.6);pine(62,-4,1.5);})();
 /* lona azul no barranco */
@@ -396,6 +400,31 @@ function sign(lines,w,h,bg,fg,arrow){return textTex(function(g,W,Hh){g.fillStyle
     lines.forEach(function(line,i){g.fillText(line,center,Hh*(i+1)/(lines.length+1));});
   },w,h);}
 function board(tex,w,h,x,y,z,ry){var m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:tex,transparent:true}));m.position.set(x,y,z);m.rotation.y=ry||0;scene.add(m);return m;}
+function pinLakeNotice(trunk){
+  const texture=textTex(function(g){
+    g.fillStyle='#f4e6c4';
+    g.beginPath();g.moveTo(11,12);g.lineTo(564,7);g.lineTo(566,302);
+    g.lineTo(520,341);g.lineTo(8,345);g.closePath();g.fill();
+    g.fillStyle='#dbc69e';
+    g.beginPath();g.moveTo(520,341);g.lineTo(528,304);g.lineTo(566,302);g.closePath();g.fill();
+    g.fillStyle='#51463a';g.beginPath();g.arc(288,43,11,0,Math.PI*2);g.fill();
+    g.fillStyle='#b5a28c';g.beginPath();g.arc(285,40,3.5,0,Math.PI*2);g.fill();
+    g.fillStyle='#2e251e';g.font='600 46px "Trebuchet MS", Arial, sans-serif';
+    ['Manter as capivaras','fechadas para os','portões não subirem'].forEach(function(line,i){
+      g.fillText(line,48,126+i*64,480);
+    });
+  },576,352);
+  const {radiusTop,radiusBottom,height}=trunk.geometry.parameters;
+  const yaw=-Math.PI/6;
+  const facet=Math.cos(Math.PI/6);
+  const distance=(radiusTop+radiusBottom)/2*facet+.012;
+  const slope=(radiusTop-radiusBottom)/height*facet;
+  const paper=board(texture,1.55,1.55*352/576,
+    trunk.position.x+Math.sin(yaw)*distance,trunk.position.y,
+    trunk.position.z+Math.cos(yaw)*distance,yaw);
+  paper.name='Aviso das capivaras';
+  paper.rotation.set(Math.atan(slope),yaw,-.075,'YXZ');
+}
 (function(){
   /* patamar das jabuticabeiras: muro, cercado e escada rente à casa */
   box(.3,2.3,14.7,0x9a948a,-21.2,-1.1,-14.35);box(4.7,2.3,.3,0x9a948a,-23.4,-1.1,-21.85);box(.3,2.3,20.7,0x9a948a,-25.75,-1.1,-32.05);
@@ -451,15 +480,7 @@ function board(tex,w,h,x,y,z,ry){var m=new T.Mesh(new T.PlaneGeometry(w,h),new T
   /* cerca do lago com portãozinho ao sul */
   fence(-88,LAKE_FENCE_Z,-36.2,LAKE_FENCE_Z,5);fence(-33.8,LAKE_FENCE_Z,88,LAKE_FENCE_Z,5);
   [-36.2,-33.8].forEach(function(x){box(.22,1.6,.22,WOOD,x,H(x,LAKE_FENCE_Z)+.8,LAKE_FENCE_Z);});var lg=box(2.2,.9,.08,0x7a5c3e,-34.6,H(-35,LAKE_FENCE_Z)+.6,-46.6);lg.rotation.y=.9;
-  var signX=-39.4,signZ=LAKE_FENCE_Z+.65,signY=H(signX,signZ)+2.12;
-  [signX-1.85,signX+1.85].forEach(function(x){
-    var ground=H(x,signZ),height=signY-1.02-ground;
-    box(.16,height,.16,WOOD,x,ground+height/2,signZ);
-  });
-  var lakeSign=sign(['Manter as capivaras','fechadas para os','portões não subirem'],960,428,'#f6f1dc','#1b1530');
-  box(4.74,2.19,.20,0x5a3a28,signX,signY,signZ);
-  board(lakeSign,4.6,2.05,signX,signY,signZ+.105);
-  board(lakeSign,4.6,2.05,signX,signY,signZ-.105,Math.PI);
+  pinLakeNotice(lakeNoticeTrunk);
   /* caiaque duplo na margem */
   var ky=kayak=new T.Group();ky.position.set(-29,H(-29,-68.3)+.22,-68.3);ky.rotation.y=.35;scene.add(ky);ball(1,0xf0a51e,0,0,0,ky,2.3,.26,.42);ball(1,0x2a2a2a,-.8,.12,0,ky,.42,.14,.26);ball(1,0x2a2a2a,.8,.12,0,ky,.42,.14,.26);
   var pd=rod(.035,.035,2.6,0x333333,0,.36,.1,ky);pd.rotation.z=Math.PI/2;pd.rotation.y=.25;ball(1,0xd8d8d8,-1.3,.36,.42,ky,.26,.03,.14);ball(1,0xd8d8d8,1.3,.36,-.22,ky,.26,.03,.14);
