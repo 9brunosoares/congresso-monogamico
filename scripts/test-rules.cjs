@@ -109,6 +109,28 @@ const {context}=require('./firebase-context.cjs');
   return {expectation,request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path,method,resource:{data:structuredClone(path===taskPath?taskData:taskPoint)}},resource:{data:structuredClone(path===taskPath?taskData:taskPoint)},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,admin),mock('exists',prefix+'/scoreClosures/main',closed),mock('exists',taskPath,false),mock('getAfter',taskPath,{data:taskData}),mock('getAfter',taskPointPath,{data:taskPoint}),mock('existsAfter',taskPointPath,!closed)]};
  }
  cases.push(directTaskCase(taskPath,'create'),directTaskCase(taskPointPath,'create'));
+ const firstTripMoment='2026-11-18T03:00:00.000Z',lastPreTripMoment='2026-11-18T02:59:59.999Z';
+ for(const [time,expectation] of [[lastPreTripMoment,'DENY'],[firstTripMoment,'ALLOW']]){
+  for(const path of [taskPath,taskPointPath]){
+   const t=directTaskCase(path,'create',expectation);
+   t.request.time=time;t.request.resource.data.createdAt=time;
+   t.functionMocks.filter(m=>m.function==='getAfter').forEach(m=>{m.result.value=structuredClone(m.result.value);m.result.value.data.createdAt=time;});
+   cases.push(t);
+  }
+  const close=scoreCase('create',true);
+  close.expectation=expectation;close.request.time=time;close.request.resource.data.closedAt=time;cases.push(close);
+  const point=scoreCase('create',true);
+  point.expectation=expectation;point.request.time=time;point.request.path=prefix+'/points/manual';
+  point.request.resource.data={...taskPoint,createdAt:time};cases.push(point);
+  const report=photoTest('create',photo,'pend',false,expectation);report.request.time=time;
+  const attached=structuredClone(report);
+  report.request.path=casePath;report.request.resource.data={...caseData,at:'18/11, 00:00',createdAt:time};
+  report.functionMocks.push(mock('getAfter',photoPath,{data:photo}));cases.push(report,attached);
+  const verdict=photoTest('update',photo,'pend',true,expectation,true);
+  verdict.request.time=time;verdict.request.path=casePath;
+  verdict.resource={data:{...caseData,at:'18/11, 00:00',createdAt:firstTripMoment}};
+  verdict.request.resource={data:{...verdict.resource.data,status:'ok'}};cases.push(verdict);
+ }
  cases.push(directTaskCase(taskPath,'create','ALLOW',true),directTaskCase(taskPointPath,'create','DENY',true));
  for(const path of [taskPath,taskPointPath]){
   const guest=directTaskCase(path,'create','DENY');guest.request.auth=null;cases.push(guest);

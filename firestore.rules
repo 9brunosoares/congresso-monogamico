@@ -151,6 +151,7 @@ service cloud.firestore {
     && d.d is int && d.d != 0 && d.d >= -100 && d.d <= 100
     && text(d.why,200) && d.kind in ['aux','jogo','inf'] && text(d.at,40) && d.createdAt is timestamp;
   }
+  function tripStarted() { return request.time >= timestamp.date(2026,11,18) + duration.value(3,'h'); }
   function scoringOpen() { return !exists(/databases/$(database)/documents/scoreClosures/main); }
   function directTaskPoint(id,d) {
    let taskId=id.split('task_')[1];
@@ -162,15 +163,15 @@ service cloud.firestore {
   }
   match /scoreClosures/{id} {
    allow read: if isMember();
-   allow create: if id == 'main' && isAdmin() && only(request.resource.data,['closedAt','closedBy'])
+   allow create: if id == 'main' && tripStarted() && isAdmin() && only(request.resource.data,['closedAt','closedBy'])
     && request.resource.data.closedAt is timestamp && request.resource.data.closedAt == request.time && request.resource.data.closedBy == personId();
    allow update, delete: if false;
   }
   match /points/{id} {
    allow read: if isMember();
-   allow create: if isMember() && scoringOpen() && isValidPoint(request.resource.data) && fresh(request.resource.data)
+   allow create: if tripStarted() && isMember() && scoringOpen() && isValidPoint(request.resource.data) && fresh(request.resource.data)
     && (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,request.resource.data)));
-   allow update: if isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && sameCreation();
+   allow update: if tripStarted() && isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && sameCreation();
    allow delete: if isAdmin() && scoringOpen();
   }
   function isValidExpense(d) {
@@ -288,10 +289,10 @@ service cloud.firestore {
   }
   match /cases/{id} {
    allow read: if isMember() && (resource.data.status == 'ok' || isAdmin());
-   allow create: if isMember() && isValidCase(request.resource.data) && fresh(request.resource.data)
+   allow create: if tripStarted() && isMember() && isValidCase(request.resource.data) && fresh(request.resource.data)
     && request.resource.data.by == personId() && request.resource.data.status == 'pend'
     && (!request.resource.data.get('hasPhoto',false) || validPhoto(getAfter(/databases/$(database)/documents/casePhotos/$(id)).data));
-   allow update: if isAdmin() && isValidCase(request.resource.data) && sameCreation()
+   allow update: if tripStarted() && isAdmin() && isValidCase(request.resource.data) && sameCreation()
     && resource.data.status == 'pend' && request.resource.data.status == 'ok'
     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
    allow delete: if isAdmin();
@@ -305,7 +306,7 @@ service cloud.firestore {
   match /casePhotos/{id} {
    allow get: if isMember() && (get(/databases/$(database)/documents/cases/$(id)).data.status == 'ok' || isAdmin());
    allow list, update: if false;
-   allow create: if isMember() && validPhoto(request.resource.data)
+   allow create: if tripStarted() && isMember() && validPhoto(request.resource.data)
     && !exists(/databases/$(database)/documents/cases/$(id))
     && getAfter(/databases/$(database)/documents/cases/$(id)).data.by == personId()
     && getAfter(/databases/$(database)/documents/cases/$(id)).data.status == 'pend'
@@ -394,7 +395,7 @@ service cloud.firestore {
   }
   match /tasks/{id} {
    allow read: if isMember();
-   allow create: if isMember() && isValidTask(request.resource.data) && fresh(request.resource.data)
+   allow create: if tripStarted() && isMember() && isValidTask(request.resource.data) && fresh(request.resource.data)
     && request.resource.data.who == personId() && request.resource.data.status == 'ok' && presetTask(request.resource.data)
     && (scoringOpen() ? taskPointsSaved(id,request.resource.data) : !existsAfter(/databases/$(database)/documents/points/$('task_' + id)));
    allow update: if false;
@@ -406,7 +407,7 @@ service cloud.firestore {
     && text(d.text,280) && d.createdAt is timestamp && d.struck is bool
     && (!('threadKey' in d) || validThreadKey(d.threadKey));
   }
-  function canUseChat() { return request.time >= timestamp.date(2026,11,18) + duration.value(3,'h') && isMember(); }
+  function canUseChat() { return tripStarted() && isMember(); }
   match /chat/{id} {
    allow read: if canUseChat();
    allow create: if canUseChat() && isValidChat(request.resource.data) && fresh(request.resource.data)

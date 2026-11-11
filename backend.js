@@ -11,7 +11,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js?v=20261107c';
-import { dayKey, tripPhotoDay, chatOpen, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261110a';
+import { dayKey, tripStarted, tripPhotoDay, chatOpen, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261111i';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -229,6 +229,7 @@ export async function login(id,pin,create=false){
 export const logout=()=>signOut(auth);
 function member(){if(quotaBlocked)throw Object.assign(Error(errorText({code:'resource-exhausted'})),{code:'resource-exhausted'});if(!state.me||!state.ready||!navigator.onLine)throw Error('Conecte-se à internet antes de enviar.');}
 function requireChat(){member();if(!chatOpen())throw Error('O chat abre em 18 de novembro.');}
+function requireTripStart(){if(!tripStarted())throw Error('Disponível a partir de 18 de novembro.');}
 function admin(){member();if(!state.admin)throw Error('Esta ação é exclusiva dos ADMs.');}
 export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Agora';}
 const stamp=()=>new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
@@ -285,7 +286,7 @@ export async function setTripReaction(id,emoji){
    tx.update(ref,{reactions:next});
  });}finally{if(version===generation){delete state.tripReactionPending[id];emit();}}
 }
-export async function addPoints(data){admin();const ref=doc(collection(db,'points'));await runTransaction(db,async tx=>{const closed=await tx.get(doc(db,'scoreClosures','main'));if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,created(data));});return ref;}
+export async function addPoints(data){admin();requireTripStart();const ref=doc(collection(db,'points'));await runTransaction(db,async tx=>{const closed=await tx.get(doc(db,'scoreClosures','main'));if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,created(data));});return ref;}
 export async function saveOfficialLinks(data,expectedVersion){
  admin();const values=normalizeOfficialLinks(data);
  await runTransaction(db,async tx=>{
@@ -294,7 +295,7 @@ export async function saveOfficialLinks(data,expectedVersion){
   tx.set(ref,{...values,version:version+1,updatedBy:state.me,updatedAt:serverTimestamp()});
  });
 }
-export async function closeScores(){admin();await runTransaction(db,async tx=>{const ref=doc(db,'scoreClosures','main'),closed=await tx.get(ref);if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,{closedBy:state.me,closedAt:serverTimestamp()});});}
+export async function closeScores(){admin();requireTripStart();await runTransaction(db,async tx=>{const ref=doc(db,'scoreClosures','main'),closed=await tx.get(ref);if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,{closedBy:state.me,closedAt:serverTimestamp()});});}
 const financeCollection=type=>({expense:'expenses',payment:'payments',budget:'settings'})[type];
 async function financeWrite(type,id,changes,expectedVersion){
  member();const ref=id?doc(db,financeCollection(type),id):doc(collection(db,financeCollection(type)));
@@ -363,7 +364,7 @@ export async function loadOlderFinanceHistory(){
 export async function savePix(type,value){member();await setDoc(doc(db,'pixKeys',state.me),normalizePix(type,value));}
 export async function removePix(){member();await deleteDoc(doc(db,'pixKeys',state.me));}
 export async function submitTask(data){
- member();const ref=doc(collection(db,'tasks')),actor=state.me;
+ member();requireTripStart();const ref=doc(collection(db,'tasks')),actor=state.me;
  const values={'Lavar a louça':5,'Tirar o lixo':5,'Cozinhar uma refeição':10,'Repor gelo ou bebida':3};
  if(values[data.why]!==data.d)throw Error('Escolha uma tarefa da tabela.');
  await runTransaction(db,async tx=>{
@@ -384,14 +385,14 @@ export async function deleteTask(id){
  });
 }
 export async function addCase(data,photo=''){
- member();if(photo&&!validReportPhoto(photo))throw Error('A foto anexada não é válida. Escolha outra.');
+ member();requireTripStart();if(photo&&!validReportPhoto(photo))throw Error('A foto anexada não é válida. Escolha outra.');
  const ref=doc(collection(db,'cases')),batch=writeBatch(db);
  batch.set(ref,created({...data,by:state.me,status:'pend',hasPhoto:!!photo}));
  if(photo)batch.set(doc(db,'casePhotos',ref.id),{dataUrl:photo});
  await batch.commit();return ref;
 }
 export async function judgeCase(id,condemn){
- admin();await runTransaction(db,async tx=>{
+ admin();if(condemn)requireTripStart();await runTransaction(db,async tx=>{
   const closed=await tx.get(doc(db,'scoreClosures','main'));
   const ref=doc(db,'cases',id),snap=await tx.get(ref);if(!snap.exists()||snap.data().status!=='pend')throw Error('Esta denúncia já foi julgada.');
   if(condemn){tx.update(ref,{status:'ok'});if(!closed.exists())tx.set(doc(db,'points',`case_${id}`),created({who:snap.data().who,d:-15,why:'Infração da monogamia (Mural)',kind:'inf'}));}

@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {ALL,PEOPLE,P,EMOJIS} from '../roster.js';
-import {dayKey,chatOpen,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
+import {dayKey,tripStarted,chatOpen,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
 
 test('PIN aceita exatamente seis algarismos',()=>{
  for(const pin of ['000000','123456','098765'])assert.doesNotThrow(()=>validatePin(pin));
@@ -100,7 +100,7 @@ test('revelação só perde destaque depois de carregar em uma aba visível',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={},events={},timers=new Map();let timerId=0;const context={createDiscovery,DISCOVERY_OWNER,DISCOVERY_END,departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,chatOpen,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={createDiscovery,DISCOVERY_OWNER,DISCOVERY_END,departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,tripStarted,chatOpen,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
@@ -135,11 +135,20 @@ test('seletor abre com toque ou pressão longa; rolagem cancela a pressão',()=>
  send('click',{target:{closest:()=>null}});assert.equal(vm.runInContext('reactionPicker',context),null);
 });
 
-test('tarefas não pedem aprovação; somente ADM vê excluir antes de fechar o placar',()=>{
+test('histórico unificado, exclusão por ADM e lançamento a partir de 18/11',()=>{
  const {context}=ui();
  vm.runInContext("S={...S,ready:true,me:'ob',admin:false,tasks:[{id:'task-example',who:'ob',d:5,why:'Lavar a louça',status:'ok'}],points:[{id:'task_task-example',who:'ob',d:5,why:'Lavar a louça',kind:'aux'}]}",context);
+ let at=Date.parse('2026-11-18T03:00:00Z')-1;
+ context.tripStarted=()=>tripStarted(at);
  let html=vm.runInContext('viewPlacar()',context);
- assert(!html.includes('aprova'));assert(html.includes('Fiz uma tarefa'));assert(!html.includes('data-delete-task'));
+ assert(html.includes('Os lançamentos abrem em 18/11.'));
+ assert(!html.includes('id="quickReport"'));assert(!html.includes('id="givePts"'));
+ assert(!vm.runInContext('viewInicio()',context).includes('id="homeReport"'));
+ at++;html=vm.runInContext('viewPlacar()',context);
+ assert(html.includes('Histórico de lançamentos'));
+ assert.equal((html.match(/Lavar a louça/g)||[]).length,1);
+ assert(html.includes('Fiz uma tarefa'));assert(!html.includes('data-delete-task'));
+ assert(vm.runInContext('viewInicio()',context).includes('id="homeReport"'));
  vm.runInContext('S.admin=true',context);html=vm.runInContext('viewPlacar()',context);assert(html.includes('data-delete-task="task-example"'));
  vm.runInContext("S.scoreClosing={closedAt:{toMillis:()=>Date.now()}}",context);assert(!vm.runInContext('viewPlacar()',context).includes('data-delete-task'));
 });
@@ -172,7 +181,7 @@ test('telas renderizam para os 14 e controles ADM usam papel do servidor',()=>{
  const {context,nodes,html}=ui();assert(!html.includes('xvi-congresso'));assert(!html.includes('base64'));
  vm.runInContext('S.ready=true;viewLogin();',context);assert.equal((nodes['#root'].innerHTML.match(/data-id=/g)||[]).length,13);
  for(const id of ALL){vm.runInContext(`S={...S,me:'${id}',admin:false,ready:true};for(const key of Object.keys(LABELS)){tab=key;render();}`,context);assert(!nodes['#root'].innerHTML.includes('id="givePts"'));}
- vm.runInContext("S.me='bruno';S.admin=true;tab='placar';render()",context);assert(nodes['#root'].innerHTML.includes('id="givePts"'));
+ context.tripStarted=()=>true;vm.runInContext("S.me='bruno';S.admin=true;tab='placar';render()",context);assert(nodes['#root'].innerHTML.includes('id="givePts"'));
 });
 test('rateio entre 14 pessoas e acerto não perdem saldo',()=>{
  const {context}=ui();vm.runInContext("S.me='bruno';S.exps=[{payer:'bruno',amount:130,split:ALL}];",context);
@@ -196,7 +205,7 @@ test('votação somente nas quatro manhãs e penalidade única após o prazo',()
  assert.equal(missedVotePoints({},VOTE_DAYS[3].deadline).length,47);
 });
 test('home mostra mural apenas após condenação; login sem selo ADM',()=>{
- const {context,nodes}=ui();vm.runInContext('S.ready=true;viewLogin()',context);
+ const {context,nodes}=ui();context.tripStarted=()=>true;vm.runInContext('S.ready=true;viewLogin()',context);
  assert(nodes['#root'].innerHTML.includes('Quem é você?'));assert(!nodes['#root'].innerHTML.includes('class="adm"'));
  vm.runInContext("S.me='bruno';S.shame=[{status:'ok'}];tab='inicio';render()",context);
  assert(nodes['#root'].innerHTML.includes('Fazer denúncia'));assert(nodes['#root'].innerHTML.includes('Mural da Vergonha'));

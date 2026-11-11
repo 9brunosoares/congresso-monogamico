@@ -7,8 +7,8 @@ import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
-import {dayKey,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261110a';
-import * as backend from './backend.js?v=20261110a';
+import {dayKey,tripStarted,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261111i';
+import * as backend from './backend.js?v=20261111i';
 import {openTravelMap} from './mapa-viagem.js?v=20261111h';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111a';
 /* ===================== DADOS ===================== */
@@ -179,6 +179,7 @@ function homePortal(){
 function homeShortcuts(){
  const mural=muralTeaser();
  const links=`<button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>`;
+ if(!tripStarted())return mural?`<div class="home-actions">${mural}</div>${links}`:links;
  return `<div class="home-actions ${mural?'':'is-empty'}">${mural||links}${emergencyButton()}</div>${mural?links:''}`;
 }
 function tripPost(post){
@@ -255,20 +256,29 @@ function viewPrograma(){
   </section>${isAdm()?`<button class="btn ghost block" style="margin-top:12px" id="addAct" type="button">Adicionar sessão (ADM)</button>`:""}`;
 }
 
+let scoreHistoryLimit=12;
 function viewPlacar(){
   const rk=ranking();
-  const log=allPoints().sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0)).slice(0,12);
-  const tasks=S.tasks.filter(t=>t.status==='ok'&&(isAdm()||t.who===S.me)).slice().reverse();
-  const approvals=tasks.length?`<div class="sec-h"><h3>${isAdm()?'Tarefas':'Minhas tarefas'}</h3></div><div class="card stack">${tasks.map(t=>`<div class="row"><div class="grow"><b>${esc(first(t.who))}</b> · ${esc(t.why)}${S.points.some(p=>p.id==='task_'+t.id)?` (+${t.d})`:''}<div class="muted" style="font-size:12px">${esc(t.at||'')}</div></div>${isAdm()&&!S.scoreClosing?`<button class="link" data-delete-task="${esc(t.id)}" type="button" aria-label="Excluir tarefa de ${esc(first(t.who))}">Excluir</button>`:''}</div>`).join('')}</div>`:'';
+  const started=tripStarted(),organizer=isAdm(),closed=!!S.scoreClosing;
+  const entries=new Map(allPoints().map(point=>[point.id,point]));
+  for(const task of S.tasks){
+    if(task.status!=='ok'||(!organizer&&task.who!==S.me))continue;
+    const id='task_'+task.id;
+    entries.set(id,{...(entries.get(id)||{...task,id,d:0}),taskId:task.id});
+  }
+  const log=[...entries.values()].sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+  const taskButton='<button class="btn ghost" id="quickReport" type="button">Fiz uma tarefa</button>';
+  const pointsButton='<button class="btn seal" id="givePts" type="button">Lançar pontos</button>';
+  const infractionButton='<button class="btn ghost" id="takePts" type="button">Registrar infração</button>';
   return `
   <div class="card">${podium(rk)}</div>
-  ${isAdm()?(!S.scoreClosing?`<div class="fab-row" style="margin-top:12px"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`:''):`<div class="fab-row"><button class="btn seal" id="givePts" type="button">Lançar pontos</button><button class="btn ghost" id="takePts" type="button">Registrar infração</button></div>`}
-  ${S.scoreClosing?'<p class="muted" style="font-size:13px">Placar encerrado.</p>':isAdm()?'<button class="link" style="margin-top:12px;font-size:13px" id="closeScores" type="button">Encerrar placar</button>':''}
+  ${!started?'<p class="muted" style="font-size:13px">Os lançamentos abrem em 18/11.</p>':`<div class="fab-row" style="margin-top:12px">${organizer&&!closed?pointsButton:''}${taskButton}${!closed?infractionButton:''}</div>`}
+  ${closed?'<p class="muted" style="font-size:13px">Placar encerrado.</p>':started&&organizer?'<button class="link" style="margin-top:12px;font-size:13px" id="closeScores" type="button">Encerrar placar</button>':''}
   <div class="sec-h"><h3>Classificação</h3><span class="muted" style="font-size:13px">${ALL.length} congressistas</span></div>
   <div class="card rank" style="padding-block:4px">${rk.map((r,i)=>`<div class="rk ${r.id===S.me?"me-row":""}"><span class="pos">${i+1}</span>${av(r.id)}<div><div class="nm">${esc(P[r.id].nick)}</div><div class="sub">${r.n} lançamentos</div></div><span class="score">${r.s}</span></div>`).join("")}</div>
-  <div class="sec-h"><h3>Últimos lançamentos</h3></div>
-  <div class="card" style="padding-block:4px">${log.map(x=>`<div class="log">${av(x.who,"sm")}<div><b>${esc(first(x.who))}</b> · ${esc(x.why)}<div class="muted" style="font-size:12px">${esc(x.at)}</div></div>${pts(x.d)}</div>`).join("")}</div>
-  <button class="btn ghost" id="quickReport" type="button">Fiz uma tarefa</button>${approvals}`;
+  <div class="sec-h"><h3>Histórico de lançamentos</h3></div>
+  <div class="card" style="padding-block:4px">${log.length?log.slice(0,scoreHistoryLimit).map(x=>`<div class="log">${av(x.who,"sm")}<div><b>${esc(first(x.who))}</b> · ${esc(x.why)}<div class="muted" style="font-size:12px">${esc(x.at||'')}${x.d?'':' · Sem pontos'}</div></div><div class="score-log-actions">${x.d?pts(x.d):''}${organizer&&!closed&&x.taskId?`<button class="link" data-delete-task="${esc(x.taskId)}" type="button" aria-label="Excluir tarefa de ${esc(first(x.who))}">Excluir</button>`:''}</div></div>`).join(''):'<p class="muted">Nenhum lançamento por enquanto.</p>'}</div>
+  ${log.length>scoreHistoryLimit?'<button class="link" id="olderScores" type="button">Ver mais lançamentos</button>':''}`;
 }
 
 function viewContas(){
@@ -344,7 +354,7 @@ function caseCard(item,pending=false){
  return `<article class="shame">
  ${photo?`<img class="case-photo" src="${esc(photo)}" alt="Foto da denúncia contra ${esc(first(item.who))}" loading="lazy">`:item.hasPhoto?`<div class="case-photo-placeholder" ${S.photoErrors?.[item.id]?'':`data-photo-id="${esc(item.id)}"`}>${av(item.who,'lg')}${S.photoErrors?.[item.id]?`<button class="link" data-photo-retry="${esc(item.id)}" type="button">Tentar carregar foto</button>`:'<span class="muted">Carregando foto…</span>'}</div>`:av(item.who,'xl')}
  <h3>${esc(item.what)}</h3><div class="row" style="margin-top:10px"><b class="grow">${esc(first(item.who))}</b>${pending?'':!S.scoreClosing||S.points.some(p=>p.id==='case_'+item.id)?pts(-15):''}</div>
- ${pending?`<div class="fab-row" style="margin-top:14px"><button class="btn sm seal" data-judge="${esc(item.id)}" data-v="ok" type="button">${S.scoreClosing?'Condenar':'Condenar (−15)'}</button><button class="btn sm ghost" data-judge="${esc(item.id)}" data-v="no" type="button">Absolver</button></div>`:caseReactions(item.id)}
+ ${pending?`<div class="fab-row" style="margin-top:14px"><button class="btn sm seal" data-judge="${esc(item.id)}" data-v="ok" type="button" ${tripStarted()?'':'disabled title="Disponível em 18/11"'}>${S.scoreClosing?'Condenar':'Condenar (−15)'}</button><button class="btn sm ghost" data-judge="${esc(item.id)}" data-v="no" type="button">Absolver</button></div>`:caseReactions(item.id)}
  </article>`;
 }
 function viewMural(){
@@ -418,6 +428,7 @@ function sheet(html, onMount){
 const personOpts = (sel)=>PEOPLE.map(p=>`<option value="${p.id}" ${p.id===sel?"selected":""}>${esc(p.nick)}</option>`).join("");
 
 function sheetPoints(neg){
+ if(!tripStarted())return toast('Disponível a partir de 18 de novembro.');
  if(!isAdm()){if(neg)return toast('Procure um adm.');return sheetTask();}
  const opts=(neg?RULES.minus:RULES.plus.concat([["Jogo: 1º lugar",20],["Jogo: 2º lugar",10],["Participação",5]])).filter(o=>typeof o[1]==='number');
  sheet(`<h3>${neg?'Registrar infração':'Lançar pontos'}</h3><div class="stack">
@@ -432,6 +443,7 @@ function sheetPoints(neg){
  });});
 }
 function sheetTask(){
+ if(!tripStarted())return toast('Disponível a partir de 18 de novembro.');
  sheet(`<h3>Fiz uma tarefa</h3><div class="stack">
  <label class="f">Tarefa<select id="tkWhy">${RULES.plus.filter(o=>typeof o[1]==='number').map(([n,v])=>`<option value="${v}">${n}${S.scoreClosing?'':` (+${v})`}</option>`).join('')}</select></label>
  <button class="btn block" id="tkOk" type="button">Registrar tarefa</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
@@ -442,6 +454,7 @@ function sheetDeleteTask(id){
  sheet(`<h3>Excluir tarefa?</h3><p>${esc(first(task.who))} · ${esc(task.why)}${S.points.some(p=>p.id==='task_'+id)?`<br>Os ${task.d} pontos serão retirados.`:''}</p><div class="stack"><button class="btn block" id="deleteTaskOk" type="button">Excluir tarefa</button><button class="btn ghost block" data-close type="button">Voltar</button></div>`,s=>{s.querySelector('#deleteTaskOk').onclick=()=>act(s.querySelector('#deleteTaskOk'),async()=>{await backend.deleteTask(id);s.remove();toast('Tarefa excluída.');});});
 }
 function sheetCloseScores(){
+ if(!tripStarted())return toast('Disponível a partir de 18 de novembro.');
  sheet('<h3>Encerrar placar?</h3><p>A pontuação e a classificação ficarão congeladas. O restante do app continua funcionando.</p><div class="stack"><button class="btn block" id="scoreCloseOk" type="button">Encerrar placar</button><button class="btn ghost block" data-close type="button">Voltar</button></div>',s=>{s.querySelector('#scoreCloseOk').onclick=()=>act(s.querySelector('#scoreCloseOk'),async()=>{await backend.closeScores();s.remove();toast('Placar encerrado.');});});
 }
 function resourceIcon(kind){
@@ -537,6 +550,7 @@ function sheetPix(id=S.me){
  });
 }
 function sheetReport(){
+ if(!tripStarted())return toast('Disponível a partir de 18 de novembro.');
  let photo='',photoJob=0;
  sheet(`<h3>Fazer denúncia</h3><div class="stack">
  <label class="f">Denunciado<select id="rpW">${PEOPLE.filter(p=>p.id!==S.me).map(p=>`<option value="${p.id}">${esc(p.nick)}</option>`).join('')}</select></label>
@@ -604,7 +618,7 @@ function sheetMe(){
  sheet(`<div class="badge" style="margin-bottom:14px"><div class="lanyard"><span>CREDENCIAL</span><span>${isAdm()?'ORGANIZAÇÃO':'CONGRESSISTA'}</span></div>
  <div class="body row">${av(S.me,'xl')}<div><h3 style="margin:0">${esc(first(S.me))}</h3><div class="muted">${score(S.me)} pontos</div></div></div></div>
  <div class="stack">${discovery.access(S.me)?'<button class="btn ghost block" data-a="chacara" type="button">Chácara virtual <span aria-hidden="true">↗</span></button>':''}${isAdm()?`<div class="eyebrow">Painel do ADM</div>
- ${S.scoreClosing?'':'<button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>'}
+ ${!tripStarted()||S.scoreClosing?'':'<button class="btn block" data-a="give" type="button">Lançar pontos</button><button class="btn ghost block" data-a="take" type="button">Registrar infração</button>'}
  <button class="btn ghost block" data-a="tribunal" type="button">Julgar denúncias</button>${S.closing?'':'<button class="btn ghost block" data-a="budget" type="button">Ajustar orçamento</button>'}`:''}
  <button class="btn ghost block" data-a="out" type="button">Sair</button>${S.me===DISCOVERY_OWNER?'<button class="link discovery-preview-link" data-a="preview" type="button">Prévia da chácara</button>':''}</div>`,s=>{
  s.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
@@ -760,6 +774,7 @@ document.addEventListener('click',e=>{
  const dl=e.target.closest('[data-del]');if(dl){act(dl,()=>backend.deleteChat(dl.dataset.del));return;}
  const j=e.target.closest('[data-judge]');if(j){act(j,async()=>{await backend.judgeCase(j.dataset.judge,j.dataset.v==='ok');toast('Julgamento registrado');});return;}
  const button=e.target.closest('button'),id=button?.id;
+ if(id==='olderScores'){scoreHistoryLimit+=12;render();return;}
  ({fullAgenda:()=>{agendaAdminMode=!agendaAdminMode;render();},officialLinks:sheetOfficialLinks,closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
  qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');})})[id]?.();
 });

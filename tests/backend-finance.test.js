@@ -38,6 +38,10 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   const resources={albumUrl:'',playlistUrl:'https://example.com/playlist',mapUrl:'https://example.com/map',airbnbUrl:'https://example.com/house',address:'',wifiName:'',wifiPassword:''};
   await api.saveOfficialLinks(resources,0);assert.equal(records.get('officialLinks/main').version,1);
   await assert.rejects(api.saveOfficialLinks(resources,0),/alterados/);
+  await assert.rejects(api.addPoints({who:'ob',d:5,why:'Tarefa',kind:'aux'}),/18 de novembro/);
+  await assert.rejects(api.closeScores(),/18 de novembro/);
+  await assert.rejects(api.addCase({who:'ob',what:'Teste'}),/18 de novembro/);
+  await assert.rejects(api.judgeCase('antes-da-viagem',true),/18 de novembro/);
   const auth=async id=>{user={uid:'uid-'+id,email:id+'@congresso.app'};await authCallback(user);await flush();await flush()};
   const expense=await api.addExpense({title:'Casa',cat:'casa',amount:'14.01',payer:'pig',split:['ob','bruno','pig']});
   assert(records.has('financeHistory/expense_'+expense.path.split('/')[1]+'_1'));
@@ -51,6 +55,8 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   const payment=await api.savePayment({from:'ob',to:'pig',amount:'3',kind:'payment',settlementId:'',note:'Parcial',paidOn:'2026-10-29'});
   assert.equal(ledgerBalances(state.exps,state.payments).ob,-700);
   await api.cancelPayment(payment.path.split('/')[1],1);assert.equal(ledgerBalances(state.exps,state.payments).ob,-1000);
+  await assert.rejects(api.submitTask({why:'Lavar a louça',d:5}),/18 de novembro/);
+  time=Date.parse('2026-11-18T03:00:00Z');
   const task=await api.submitTask({why:'Lavar a louça',d:5});
   assert.equal(records.get(task.path).status,'ok');assert.equal(records.get('points/task_'+task.id).d,5);
   await assert.rejects(api.submitTask({why:'Lavar a louça',d:20}),/tabela/);
