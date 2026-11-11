@@ -320,17 +320,18 @@ for(var span of [[-10.65,QX-1.4],[QX+1.4,4.65]]){
   box(span[1]-span[0],.9,.3,WALL,(span[0]+span[1])/2,.45,4.15);solid(span[0],span[1],4,4.3);
 }
 box(15,.1,11,BRICK,QX,.05,QZ);
-[[-7,-5],[0,-5],[7,-5],[-7,5],[-1.6,5],[1.6,5],[7,5]].forEach(function(p){box(.35,3.1,.35,WOOD,QX+p[0],1.55,QZ+p[1]);CIRC.push([QX+p[0],QZ+p[1],.3]);});
+[[-7,-5],[0,-5],[7,-5],[-7,5],[-1.6,5],[1.6,5],[7,5],[7,0]].forEach(function(p){box(.35,3.1,.35,WOOD,QX+p[0],1.55,QZ+p[1]);CIRC.push([QX+p[0],QZ+p[1],.3]);});
 var roofQ=new T.Group();scene.add(roofQ);
 (function(){var r=hip(18.5,3,14.5,TILE);r.position.set(QX,3.1,QZ);roofQ.add(r);box(17,.2,13,0x5a3a28,QX,3.05,QZ,roofQ);})();
 box(5,.14,1.4,0x8f6f4d,QX+2,.95,QZ+1.5);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+.3);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+2.7);box(.2,.9,1.2,WOOD,QX,.47,QZ+1.5);box(.2,.9,1.2,WOOD,QX+4,.47,QZ+1.5);solid(QX-.5,QX+4.5,QZ+.1,QZ+2.9);
 (function(){
   const hammock=new T.Group();
   hammock.name='Rede vermelha do Comedouro';
-  hammock.position.set(QX,0,QZ+5);
+  hammock.position.set(QX+7,0,QZ);
+  hammock.rotation.y=-Math.PI/2;
   scene.add(hammock);
-  // O tecido fica no vão da esquerda, entre os postes já existentes.
-  const left=-7+.175,right=-1.6-.175,hookY=2.24;
+  // Fachada voltada para os carros, no vão mais próximo da Capela.
+  const left=.175,right=5-.175,hookY=2.24;
   function fabricPoint(u,v){
     const t=.15+.70*u;
     const spread=Math.sin(Math.PI*u);
@@ -338,7 +339,7 @@ box(5,.14,1.4,0x8f6f4d,QX+2,.95,QZ+1.5);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+.3);box
     return new T.Vector3(
       T.MathUtils.lerp(left,right,t),
       hookY-1.22*4*t*(1-t)+.27*spread*v*v,
-      -.12+v*halfWidth
+      .12+v*halfWidth
     );
   }
   const cloth=new T.PlaneGeometry(1,1,24,10);
@@ -370,12 +371,12 @@ box(5,.14,1.4,0x8f6f4d,QX+2,.95,QZ+1.5);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+.3);box
   lanterns.name='Luminárias do Comedouro';
   scene.add(lanterns);
   const amber=new T.MeshBasicMaterial({color:0xffca7a});
-  for(const x of [QX-1.6,QX+7]){
-    const z=QZ+5;
-    box(.15,.12,.24,WOOD,x,2.73,z+.19,lanterns);
-    rod(.027,.027,.18,0x523624,x,2.64,z+.31,lanterns);
-    ball(.145,amber,x,2.46,z+.31,lanterns,1,1.06,1);
-    box(.14,.055,.14,0x6c482c,x,2.60,z+.31,lanterns);
+  for(const z of [QZ,QZ-5]){
+    const x=QX+7;
+    box(.24,.12,.15,WOOD,x+.19,2.73,z,lanterns);
+    rod(.027,.027,.18,0x523624,x+.31,2.64,z,lanterns);
+    ball(.145,amber,x+.31,2.46,z,lanterns,1,1.06,1);
+    box(.14,.055,.14,0x6c482c,x+.31,2.60,z,lanterns);
   }
 })();
 (function(){
