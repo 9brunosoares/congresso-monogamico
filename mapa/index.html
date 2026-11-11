@@ -564,7 +564,7 @@ var POOL_LAND_HOLD=.34,POOL_GET_UP=.64,POOL_RECOVER_SECONDS=POOL_LAND_HOLD+POOL_
 var POOL_RECOVER_MOTION=10;
 function poolSpan(x){return x>=PX0&&x<=PX1;}
 function inPool(p){return poolSpan(p.x)&&p.z>=POOL_LIP_Z&&p.z<PZ1-.2;}
-function stun(c,message){c.st=2;c.stT=STUN_SECONDS;if(c===me&&message)toast(message,2600);}
+function stun(c){c.st=2;c.stT=STUN_SECONDS;}
 function place(c,dt){var remote=c.remote,swimming=remote?remote.m===2||remote.m===3:inPool(c.pos);c.swim+=((swimming?1:0)-c.swim)*Math.min(1,dt*6);var inBoat=remote?remote.m===8||remote.m===9:boat&&c===me,s=c.s,wet=c.swim>.5;
   c.nameTag.position.y=2.52*s+.42;
   var y=(swimming?0:H(c.pos.x,c.pos.z))-c.swim*1.2*s;c.ph+=dt*(c.moving?(wet?6:9.5):2);c.amp+=((c.moving?1:0)-c.amp)*Math.min(1,dt*9);
@@ -988,7 +988,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
     var fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);var mag=Math.min(1,Math.hypot(ix,iy));
     if(me.st){me.moving=false;pressure=null;contactPeer=null;contactTime=0;}
     else if(boat){if(mag>.12){var bx=fx*iy+rx*ix,bz=fz*iy+rz*ix,bl=Math.hypot(bx,bz)||1;me.pos.x=Math.max(-110,Math.min(110,me.pos.x+bx/bl*6*mag*dt));me.pos.z=Math.max(-150,Math.min(-72,me.pos.z+bz/bl*6*mag*dt));
-        if(me.pos.z>-72.2&&bz>0){KX=Math.max(-84,Math.min(84,me.pos.x));dock();me.pos.set(KX+1.8,0,-66.4);boatArm=false;toast('Caiaque na areia.',1800);}
+        if(me.pos.z>-72.2&&bz>0){KX=Math.max(-84,Math.min(84,me.pos.x));dock();me.pos.set(KX+1.8,0,-66.4);boatArm=false;}
         var tr=Math.atan2(bx,bz),dr=tr-me.g.rotation.y;while(dr>Math.PI)dr-=6.2832;while(dr<-Math.PI)dr+=6.2832;me.g.rotation.y+=dr*Math.min(1,dt*4);me.moving=true;}else me.moving=false;
       if(boat){var kr=me.g.rotation.y;kayak.position.set(me.pos.x+Math.sin(kr)*.8,-2.3+Math.sin(tt*1.6)*.03,me.pos.z+Math.cos(kr)*.8);kayak.rotation.set(0,kr-Math.PI/2,0);}}
     else{
@@ -1003,12 +1003,12 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
       }else{me.moving=false;contactPeer=null;contactTime=0;}
     }
     if(!boat){var kd=Math.hypot(me.pos.x-KX,me.pos.z-KZ);if(!boatArm&&kd>3.2)boatArm=true;
-      if(boatArm&&kd<1.5&&!me.st){boat=true;me.pos.set(KX,0,-74.5);me.g.rotation.y=Math.PI;yaw=0;toast('Reme para onde quiser. As capivaras têm preferência.',3000);}}}
+      if(boatArm&&kd<1.5&&!me.st){boat=true;me.pos.set(KX,0,-74.5);me.g.rotation.y=Math.PI;yaw=0;}}}
   hintL.hidden=!(touch&&me&&!joy.on);hintR.hidden=!(touch&&me&&!look.on);
   for(i=0;i<chars.length;i++){c=chars[i];
     if(c!==me){if(c.remote)drawPeer(c,dt);else if(me)restAvatar(c,dt);continue;}
     if(c.st===0&&c.pos.z<c.pz&&c.pos.z<MIRANTE_CREST_Z-.4&&c.pos.z>MIRANTE_FOOT_Z&&miranteBank(c.pos.x)>.7&&!(boat&&c===me)){c.st=1;c.g.rotation.y=Math.PI;}
-    if(c.st===1){c.pos.z-=9*dt;c.moving=false;if(c.pos.z<=LAKE_FENCE_Z+1.2){c.pos.z=LAKE_FENCE_Z+1.2;stun(c,'Desceu rolando. A cerca agradece a visita.');}}
+    if(c.st===1){c.pos.z-=9*dt;c.moving=false;if(c.pos.z<=LAKE_FENCE_Z+1.2){c.pos.z=LAKE_FENCE_Z+1.2;stun(c);}}
     else if(c.st===POOL_FALL){
       c.fallY-=11*(c.stT+dt/2)*dt;c.stT+=dt;
       if(c.fallY<=H(c.pos.x,c.pos.z)){c.st=POOL_RECOVER;c.stT=POOL_RECOVER_SECONDS;}}
@@ -1018,7 +1018,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
     else if(c.st===2){c.stT-=dt;c.moving=false;if(c.stT<=0)c.st=0;}
     c.pz=c.pos.z;
     if(c.pos.x>10&&c.pos.x<14&&c.pos.z>7.3&&c.pos.z<17){c.pos.z-=9*dt;c.sliding=true;c.g.rotation.y=Math.PI;}
-    else if(c.sliding){c.sliding=false;toast('Descida na lona homologada pela COMORG.',2600);}
+    else if(c.sliding){c.sliding=false;}
     place(c,dt);}
   moveDog(dt);
   shark.rotation.y=Math.sin(tt*1.4)*.5;shark.position.y=Math.abs(Math.sin(tt*3))*.15;
