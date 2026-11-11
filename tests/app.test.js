@@ -239,6 +239,33 @@ test('fechamento oculta lançamentos e exibe relatório e confirmações',()=>{
  assert(!nodes['#root'].innerHTML.includes('id=\"quickExp\"'));assert(nodes['#root'].innerHTML.includes('Acerto final'));
  vm.runInContext("tab='fechamento';render()",context);assert(nodes['#root'].innerHTML.includes('Copiar relatório'));assert(nodes['#root'].innerHTML.includes('Confirmar pagamento'));assert(nodes['#root'].innerHTML.includes('pix@example.com'));
 });
+test('detalhes do saldo mostram somente os Pix do perfil e atualizam com pagamentos',()=>{
+ const {context,nodes}=ui();
+ const views=[];
+ context.backend.setView=view=>views.push(view);
+ vm.runInContext(`S={...S,me:'ob',ready:true,loaded:{pix:true},pixKeys:{bruno:{type:'email',value:'bruno@example.com'}},payments:[],exps:[
+  {id:'a',title:'Casa',cat:'casa',payer:'bruno',amount:120,split:['bruno','ob','igor']},
+  {id:'b',title:'Comida',cat:'mercado',payer:'pig',amount:50,split:['pig','luan']}
+ ]};tab='contas';render()`,context);
+ assert.match(nodes['#root'].innerHTML,/data-go="saldo"[^>]*>[^]*Ver detalhes/);
+ vm.runInContext("go('saldo')",context);
+ assert.equal(views.at(-1),'contas');
+ let html=nodes['#root'].innerHTML;
+ assert.match(html,/Você paga[^]*Bruno[^]*R\$ 40,00/);
+ assert(html.includes('data-pix="bruno"'));
+ for(const other of ['Igor','Pig','Luan','Você recebe'])assert(!html.includes(other));
+
+ vm.runInContext("S.payments=[{from:'ob',to:'bruno',amountCents:1000,status:'active'}];render()",context);
+ assert(nodes['#root'].innerHTML.includes('R$ 30,00'));
+ vm.runInContext("S.me='bruno';render()",context);
+ html=nodes['#root'].innerHTML;
+ assert(html.includes('Você recebe')&&html.includes('OB')&&html.includes('Igor'));
+ assert(!html.includes('Você paga')&&!html.includes('data-pix=')&&!html.includes('Luan'));
+
+ vm.runInContext("S.me='ob';S.closing=closingSnapshot(S.exps,S.payments,13000);const own=S.closing.transfers.find(t=>t.from==='ob');S.payments.push({kind:'settlement',status:'active',settlementId:own.id});render()",context);
+ assert(nodes['#root'].innerHTML.includes('Você não tem valores a pagar ou receber.'));
+ assert(!nodes['#root'].innerHTML.includes('data-pix='));
+});
 test('resultado fica oculto mesmo com cache até meio-dia; domingo sem promessa de amanhã',()=>{
  const previous=Date.now;
  try{

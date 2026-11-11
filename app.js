@@ -174,7 +174,7 @@ function markResultSeen(){
 function homePortal(){
  if(!discovery.portal(S.me))return '';
  const elapsed=Date.now()-portalAppearedAt;
- return `<button class="travel-portal ${elapsed<1200?'is-appearing':''}" style="--portal-delay:-${Math.max(0,elapsed)}ms" id="simulateTrip" type="button" aria-label="Entrar na chácara virtual" aria-haspopup="dialog"><img src="chacara-portal.svg" alt="" width="520" height="190"><span class="portal-invite">Entrar? <span aria-hidden="true">↗</span></span></button>`;
+ return `<button class="travel-portal ${elapsed<1200?'is-appearing':''}" style="--portal-delay:-${Math.max(0,elapsed)}ms" id="simulateTrip" type="button" aria-haspopup="dialog"><img src="chacara-portal.svg" alt="" width="520" height="190"><span class="portal-invite">quer entrar na chácara? <span aria-hidden="true">↗</span></span></button>`;
 }
 function homeShortcuts(){
  const mural=muralTeaser();
@@ -289,7 +289,7 @@ function viewContas(){
   if(contasSeg==="despesas"){
     const b=balances()[S.me];
     body=`<div class="card row" style="margin-top:12px"><div class="grow"><div class="eyebrow">Total gasto</div><div class="bigfig num">${brl0(total)}</div><div class="muted" style="font-size:13px">${brl(total/ALL.length)} por pessoa em média</div></div>${S.closing?'':'<button class="btn" id="quickExp" type="button">Lançar gasto</button>'}</div>
-    <div class="card row" style="margin-top:10px">${av(S.me)}<div class="grow"><b>Seu saldo</b><div class="muted" style="font-size:13px">${b>=0?"os outros te devem":"você deve ao grupo"}</div></div><span class="money" style="color:${b>=0?"var(--good)":"var(--bad)"}">${b>=0?"+":"−"} ${brl(Math.abs(b))}</span></div>
+    <button class="card row balance-card" type="button" data-go="saldo" aria-label="Ver detalhes do seu saldo">${av(S.me)}<span class="grow"><b>Seu saldo</b><span class="balance-details-label">Ver detalhes</span></span><span class="money" style="color:${b>=0?"var(--good)":"var(--bad)"}">${b>=0?"+":"−"} ${brl(Math.abs(b))}</span></button>
     <div class="sec-h"><h3>Gastos lançados</h3></div>
     <div class="card" style="padding-block:4px">${activeExpenses(S.exps).slice().reverse().map(e=>`<div class="exp" data-exp="${esc(e.id)}">${av(e.payer)}<div style="min-width:0"><button class="link t" type="button" data-exp="${esc(e.id)}">${esc(e.title)}</button><div class="s">${esc(first(e.payer))} pagou · dividido por ${e.split.length===ALL.length?"todos":e.split.length} · ${CATS.find(c=>c.id===e.cat).name}</div></div><span class="money">${brl(e.amount)}</span></div>`).join("")}</div>`;
   }
@@ -308,6 +308,31 @@ function viewContas(){
     <div class="card" style="padding-block:4px">${CATS.map(c=>{const s=activeExpenses(S.exps).filter(e=>e.cat===c.id).reduce((a,e)=>a+expenseCents(e),0)/100;return `<div class="cat"><b>${c.name}</b><span class="money" style="font-size:14px">${brl(s)}</span></div>`}).join("")}</div>`;
   }
   return seg+`<div class="row" style="margin-top:12px;gap:16px;flex-wrap:wrap"><button class="link" id="myPix" type="button" ${S.loaded?.pix?'':'disabled'}>Minha chave Pix</button><button class="link" data-go="historico" type="button">Histórico</button>${S.closing?'<button class="link" data-go="fechamento" type="button">Acerto final</button>':isAdm()&&settlementsOpen()?'<button class="btn sm" id="closeAccounts" type="button">Encerrar contas</button>':''}</div>`+body;
+}
+function viewPersonalBalance(){
+ const payments=S.payments||[];
+ const transfers=S.closing
+  ?transferRows(S.closing).filter(t=>!payments.some(p=>p.kind==='settlement'&&p.settlementId===t.id&&p.status==='active'))
+  :settle();
+ const outgoing=transfers.filter(t=>t.from===S.me);
+ const incoming=transfers.filter(t=>t.to===S.me);
+
+ function section(title,rows,paying){
+  if(!rows.length)return '';
+  return `<div class="sec-h"><h3>${title}</h3></div><div class="card balance-transfers">${rows.map(t=>{
+   const other=paying?t.to:t.from;
+   const pix=paying?(S.loaded?.pix
+    ?(S.pixKeys?.[other]?.value?`<button class="link" data-pix="${esc(other)}" type="button" aria-label="Ver chave Pix de ${esc(first(other))}">Ver chave Pix</button>`:'<small class="muted">Chave Pix não cadastrada.</small>')
+    :'<small class="muted">Carregando chave Pix…</small>'):'';
+   return `<div class="log">${av(other,'sm')}<div><b>${esc(first(other))}</b>${pix}</div><span class="money">${brl(t.amountCents/100)}</span></div>`;
+  }).join('')}</div>`;
+ }
+
+ return `<button class="link" data-go="contas" type="button">← Contas</button>
+  <h2 class="page-title balance-title">Seu saldo</h2>
+  <p class="muted balance-note">${S.closing?'Valores pendentes do acerto final.':'As sugestões de Pix podem mudar conforme os gastos e pagamentos são registrados.'}</p>
+  ${section('Você paga',outgoing,true)}${section('Você recebe',incoming,false)}
+  ${!outgoing.length&&!incoming.length?'<div class="card empty">Você não tem valores a pagar ou receber.</div>':''}`;
 }
 function viewPayments(back=true){
  const rows=(S.payments||[]).filter(p=>p.status!=='cancelled').reverse().map(p=>`
@@ -688,16 +713,16 @@ function chatSeenKey(){return 'xvi-chat-seen-'+S.me;}
 function unreadChat(){try{return chatOpen()&&!!S.latestChat&&S.latestChat!==localStorage.getItem(chatSeenKey());}catch{return false;}}
 function scrollChat(){requestAnimationFrame(()=>{if(tab!=='fofoca')return;scrollTo(0,document.documentElement.scrollHeight);try{if(S.latestChat)localStorage.setItem(chatSeenKey(),S.latestChat);document.querySelector('[data-go="fofoca"] .notice-dot')?.remove();}catch{}});}
 function render(){
-  backend.setView?.(tab);
+  backend.setView?.(tab==='saldo'?'contas':tab);
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
   if(!openedProfiles.has(S.me)){openedProfiles.add(S.me);discovery.record(S.me,'open');}
   if(tab==='programa'||tab==='contas')discovery.record(S.me,tab);
   if(tab==='inicio'&&discovery.portal(S.me)&&!portalAppearedAt)portalAppearedAt=Date.now();
-  const body = ({inicio:viewInicio,fotos:()=>tripFeed(true),programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
+  const body = ({inicio:viewInicio,fotos:()=>tripFeed(true),programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,saldo:viewPersonalBalance,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
   $("#root").innerHTML = `<div class="app auth-view ${tab==='fofoca'?'chat-view':''}">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
-    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
+    <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['saldo','pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
   for(const id of busyActions){const button=document.getElementById?.(id);if(button)button.disabled=true;}
   tick();watchPhotos();refreshRecipientPix();markResultSeen();
 }

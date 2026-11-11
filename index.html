@@ -96,7 +96,7 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.0
 .official-card:focus-visible,.official-resource:focus-visible{outline:2px solid var(--seal);outline-offset:3px}
 .travel-portal{position:relative;display:block;width:calc(100% - 16px);margin:20px 8px 4px;padding:0;border:2px solid #d0b578;border-radius:24px 24px 12px 12px;overflow:hidden;background:#83ccef;box-shadow:0 8px 22px #0003,0 0 0 4px color-mix(in srgb,var(--brass) 8%,transparent);isolation:isolate}
 .travel-portal img{display:block;width:100%;height:auto}
-.portal-invite{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:15px;padding:9px 14px;border:1px solid #e5ce88;border-radius:7px;background:#242d24;color:#fff4cb;font-family:var(--f-display);font-size:17px;font-weight:800;box-shadow:3px 3px 0 #38462b}
+.portal-invite{position:absolute;right:12px;bottom:12px;max-width:calc(100% - 24px);display:flex;align-items:center;gap:9px;padding:9px 14px;border:1px solid #e5ce88;border-radius:7px;background:#242d24;color:#fff4cb;font-family:var(--f-display);font-size:17px;font-weight:800;text-align:left;box-shadow:3px 3px 0 #38462b}
 .travel-portal:active .portal-invite{transform:translate(1px,1px);box-shadow:2px 2px 0 #38462b}
 .travel-portal.is-appearing{animation:portal-arrival 1.2s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--portal-delay,0ms)}
 @keyframes portal-arrival{0%{opacity:0;transform:perspective(600px) rotateX(12deg) scale(.96) translateY(12px);filter:brightness(1.5)}70%{opacity:1;filter:brightness(1.08)}100%{transform:none;filter:none}}
@@ -178,6 +178,13 @@ body:has(.travel-map[open]){overflow:hidden}
 .payment-row .link{text-align:left;overflow-wrap:anywhere}
 .payment-row .s{grid-column:1/-1;overflow-wrap:anywhere}
 .money{font-family:var(--f-mono);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.balance-card{width:100%;margin-top:10px;text-align:left}
+.balance-details-label{display:block;margin-top:2px;color:var(--seal);font-size:13px;font-weight:700}
+.balance-title{margin-bottom:6px}
+.balance-note{margin:0 0 14px;font-size:14px}
+.balance-transfers{padding-block:4px}
+.balance-transfers .log{grid-template-columns:28px minmax(0,1fr) auto}
+.balance-transfers .log .link,.balance-transfers .log small{display:block;text-align:left}
 .bal{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:8px 0}
 .bal .money.pos{color:var(--good)} .bal .money.neg{color:var(--bad)}
 .settle{display:grid;grid-template-columns:28px auto 28px 1fr auto;gap:8px;align-items:center;padding:12px 0;border-top:1px solid var(--line);font-size:14px}
@@ -396,7 +403,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261111k"></script>
+<script type="module" src="install.js?v=20261111l"></script>
 
 </body>
 </html>
