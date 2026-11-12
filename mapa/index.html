@@ -469,7 +469,9 @@ function sharkAt(t){return [10.5+4*(.6*Math.sin(t*.23)+.4*Math.sin(t*.11+1.3)),2
   var n=new T.Mesh(new T.PlaneGeometry(10,1),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.4,side:T.DoubleSide}));n.position.set(0,2,0);g.add(n);
   box(10,.06,.06,0xffffff,0,2.5,0,g);ball(.28,0xf2e34a,2,.3,3,g);})();
 function adir(x,z){var g=new T.Group();g.position.set(x,H(x,z),z);scene.add(g);box(.9,.1,.9,0x9a7a56,0,.45,0,g);var b=box(.9,1.2,.1,0x9a7a56,0,.95,.5,g);b.rotation.x=.3;box(.1,.45,.1,0x7a5c3e,-.4,.22,-.35,g);box(.1,.45,.1,0x7a5c3e,.4,.22,-.35,g);box(.12,.08,1,0x9a7a56,-.5,.7,0,g);box(.12,.08,1,0x9a7a56,.5,.7,0,g);CIRC.push([x,z,.6]);}
-adir(20,-34.6);adir(23,-34.6);adir(-5.3,-19.2);adir(-2.7,-19.2);
+var porchChairs=[[-5.3,-19.2],[-2.7,-19.2]];
+adir(20,-34.6);adir(23,-34.6);
+porchChairs.forEach(function([x,z]){adir(x,z);});
 function picnic(x,z,ry){var g=new T.Group();g.position.set(x,H(x,z),z);g.rotation.y=ry||0;scene.add(g);box(2.4,.12,1,0x8f6f4d,0,.9,0,g);box(2.4,.1,.4,0x8f6f4d,0,.5,-.85,g);box(2.4,.1,.4,0x8f6f4d,0,.5,.85,g);box(.14,.9,1.6,WOOD,-.9,.45,0,g);box(.14,.9,1.6,WOOD,.9,.45,0,g);CIRC.push([x,z,1.3]);}
 picnic(12,-27,.3);picnic(19,-25,-.4);picnic(24,-33,1.2);
 var FX=38,FZ=-23,flame;
@@ -692,14 +694,15 @@ var furniture=[
   [0,55.6,-14,1.1,.5,53.8,-14], [1,55.6,-18,1.1,.5,53.8,-18],
   [2,-23,-38,.45,1.1,-24.45,-37.8], [3,-20.5,-38,.45,1.1,-19.15,-37.8],
   [4,-23,-33.5,.45,1.1,-24.45,-33.3], [5,-2.5,-8.1,1.9,.7,-2.5,-9.62],
-  [11,20,-34.6,.6,.6,20,-35.95], [12,23,-34.6,.6,.6,23,-35.95]
+  [11,20,-34.6,.6,.6,20,-35.95], [12,23,-34.6,.6,.6,23,-35.95],
+  ...porchChairs.map(function([x,z]){return [null,x,z,.6,.6,x,z-1.35];})
 ].map(function([owner,x,z,halfX,halfZ,exitX,exitZ],index){
-  var home=restSpots[owner],kind=owner<2?'lie':'sit';
+  var home=restSpots[owner]||['sit',x,z,.5,Math.PI],kind=owner===0||owner===1?'lie':'sit';
   var lounge=owner>=2&&owner<=4;
   var pose=[kind,home[1],lounge?z-.62:home[2],home[3],kind==='sit'?Math.PI:home[4]];
   var spot={pose:pose,x:x,z:z,halfX:halfX,halfZ:halfZ,exitX:exitX,exitZ:exitZ,motion:FIRST_FURNITURE_MOTION+index,owner:chars[owner]};
-  chars[owner].restFurniture=spot;
-  // Beds and the lookout chairs already have their own colliders.
+  if(spot.owner)spot.owner.restFurniture=spot;
+  // Beds and Adirondack chairs already have their own colliders.
   if(lounge||owner===5)solid(x-halfX,x+halfX,z-halfZ,z+halfZ);
   return spot;
 });
@@ -716,7 +719,7 @@ function tryFurniture(c,x,z){
   if(c.lastFurniture&&!atFurniture(c.lastFurniture,c.pos.x,c.pos.z,.68))c.lastFurniture=null;
   var spot=furniture.find(function(item){
     return item!==c.lastFurniture&&atFurniture(item,c.pos.x,c.pos.z,.50)&&!atFurniture(item,x,z,.50)
-      &&!liveOccupant(item)&&(item.owner===me||item.owner.remote);
+      &&!liveOccupant(item)&&(!item.owner||item.owner===me||item.owner.remote);
   });
   if(!spot)return false;
   c.furniture=spot;c.furnitureExit={x:x,z:z};c.readyToStand=false;
@@ -1130,7 +1133,7 @@ function replyAt(event){
   if(bubble.to===me)openSpeech(bubble.from,true);
 }
 
-/* Pose wire format: centimetres, angle in hundredths of a radian, and motion 0–18. */
+/* Pose wire format: centimetres, angle in hundredths of a radian, and motion 0–20. */
 var sentAt=-Infinity,sentMotion=-1,sentContact=null;
 function sendPose(c){
   var motion=c.furniture?.motion??(boat?(c.moving?9:8):c.st===POOL_FALL?6:c.st===POOL_RECOVER?POOL_RECOVER_MOTION:c.st===2?5:c.st===1?4:c.sliding?7:c.swim>.5?(c.moving?3:2):c.moving?1:0);
