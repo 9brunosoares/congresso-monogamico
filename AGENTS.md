@@ -1,5 +1,13 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Chácara: conversa por balões mais fluida (12/11/2026, Claude)
+- A janela central virou uma barra no topo (`#speech-overlay`), sem escurecer a cena e sem esconder os balões. Fica no topo, e não no rodapé, para o teclado do iPhone não cobrir nem deslocar a cena. Ela continua aberta depois de enviar.
+- Duração do balão: `speechMs` em `mapa-sala.js` (4 s + 60 ms por caractere, teto de 10 s).
+- Cada participante vê o próprio balão e os que recebe de frente e sem encolher com a distância. Terceiros veem o balão voltado para a câmera do destinatário; o verso mostra só o formato com três pontos.
+- Quem recebe uma fala pode responder por 30 s mesmo fora dos 5,5 m (`replyUntil`); o botão vira "Responder X".
+- Aviso lateral também quando o balão está encoberto (`balloonOccluded`, raycast a cada 280 ms só para falas dirigidas ao usuário).
+- "Digitando": uma fala com o texto `…` enviada pelo mesmo canal `mapa/falas`, no máximo a cada 3,5 s, e substituída quando a fala real chega. Os códigos de movimento da pose (0–20) já estão todos ocupados, por isso não foi usado `m`. Nenhuma regra do Firebase mudou.
+
 ## Chácara: bola, rede de vôlei e acabamento visual (12/11/2026, Claude)
 - `mapa/index.html`: a rede de vôlei virou uma corda elástica simulada (24 nós presos nos postes). Corpos encostados viram apoio; quem insiste estica até o limite e quem solta é devolvido. Os postes entraram em `CIRC`.
 - A bola tem física própria (`ballStep`, passo fixo de 1/120 s): gravidade, quique, atrito de rolagem, declive do terreno, `BOXES`, `CIRC` (inclui o tubarão), avatares, piscina e represa. Na represa ou fora do mapa ela volta para a quadra.

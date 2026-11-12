@@ -10,7 +10,8 @@ const SPEECH = 'mapa/falas';
 const SUNSET = 'mapa/ambiente/porDoSol';
 const BALL = 'mapa/bola';
 const BALL_KEYS = ['x', 'y', 'z', 'vx', 'vy', 'vz'];
-const SPEECH_MS = 5000;
+// Um balão dura o tempo de leitura do texto: 4 s mais 60 ms por caractere, até 10 s.
+const speechMs = text => Math.min(10000, 4000 + 60 * String(text ?? '').length);
 const SEND_MS = 250;
 const BUMP_MS = 1000;
 const HEARTBEAT_MS = 20000;
@@ -105,8 +106,9 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
       }, leave),
       onChildAdded(speech, snapshot => {
         const message = snapshot.val();
-        const remaining = message.t + SPEECH_MS - (Date.now() + offset);
-        if (remaining > 0) onSpeech(snapshot.key, { ...message, remaining: Math.min(SPEECH_MS, remaining) });
+        const duration = speechMs(message.text);
+        const remaining = message.t + duration - (Date.now() + offset);
+        if (remaining > 0) onSpeech(snapshot.key, { ...message, remaining: Math.min(duration, remaining) });
       }),
       onChildRemoved(speech, snapshot => onSpeech(snapshot.key, null)),
       onValue(sun, snapshot => onSun(snapshot.val() === true), leave),
@@ -178,7 +180,7 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
           void remove(entry).then(() => {
             if (current === session) return onDisconnect(entry).cancel();
           }).catch(() => {});
-        }, SPEECH_MS);
+        }, speechMs(message));
         return true;
       } catch {
         return false;
