@@ -335,6 +335,54 @@ var roofQ=new T.Group();scene.add(roofQ);
 (function(){var r=hip(18.5,3,14.5,TILE);r.position.set(QX,3.1,QZ);roofQ.add(r);box(17,.2,13,0x5a3a28,QX,3.05,QZ,roofQ);})();
 box(5,.14,1.4,0x8f6f4d,QX+2,.95,QZ+1.5);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+.3);box(5,.1,.5,0x8f6f4d,QX+2,.55,QZ+2.7);box(.2,.9,1.2,WOOD,QX,.47,QZ+1.5);box(.2,.9,1.2,WOOD,QX+4,.47,QZ+1.5);solid(QX-.5,QX+4.5,QZ+.1,QZ+2.9);
 (function(){
+  const drum=new T.Group();
+  drum.name='Tambor azul de latinhas';
+  drum.position.set(QX-6.05,.1,QZ-3.95);
+  scene.add(drum);
+  CIRC.push([drum.position.x,drum.position.z,.67]);
+
+  const shell=new T.CylinderGeometry(.65,.56,1.39,16,1,true);
+  const body=new T.Mesh(shell,lam(0x1767b8,{side:T.DoubleSide}));
+  body.position.y=.72;drum.add(body);
+  cyl(.55,.55,.1,0x12375a,0,.08,0,drum,16);
+  cyl(.61,.61,.09,0x15334d,0,1.19,0,drum,16);
+  for(const [y,r,t,color] of [[.16,.576,.032,0x125298],[.46,.602,.028,0x2178cc],
+                             [1.01,.636,.028,0x247dd0],[1.415,.65,.053,0x2d88df]]){
+    const ring=new T.Mesh(new T.TorusGeometry(r,t,6,16),M(color));
+    ring.rotation.x=-Math.PI/2;ring.position.y=y;drum.add(ring);
+  }
+
+  const cans=[
+    [-.38,1.33,.31,.6,-.3,0],[-.07,1.38,.39,-.3,.36,1],[.22,1.40,.38,.6,-.24,2],
+    [.44,1.36,.15,-.48,.58,3],[-.47,1.37,.03,-.62,.24,1],[-.23,1.42,.1,.5,.62,2],
+    [.04,1.47,.10,.5,-.22,3],[.32,1.43,.08,.72,.53,0],[-.36,1.37,-.24,-.37,-.58,3],
+    [-.15,1.44,-.20,-.62,.24,0],[.12,1.43,-.17,-.55,-.48,1],[.35,1.37,-.26,.38,-.46,2],
+    [.07,1.38,-.44,.49,.18,2],[-.10,1.36,-.42,-.54,-.20,3],[-.25,1.54,.38,1.1,.16,0],
+    [.43,1.51,.35,1.1,-.35,1],[.51,1.47,-.15,.92,-.6,2],[-.40,1.52,-.29,-1.18,.52,1],
+    [-.68,.112,.84,Math.PI/2,-.54,0],[.16,.112,.99,Math.PI/2,.59,2],
+    [.76,.145,.65,.15,-.12,1],[.96,.112,.11,Math.PI/2,1.07,3],[.57,.112,-.74,Math.PI/2,-.76,1]
+  ];
+  const colors=[0xb72533,0xdca331,0x2a794d,0xe4d7b7];
+  const bands=[0xefd2b5,0xf8edc6,0xcbdc92,0x3d7b9a];
+  const cansBody=new T.InstancedMesh(new T.CylinderGeometry(.103,.102,.27,10),lam(0xffffff),cans.length);
+  const labels=new T.InstancedMesh(new T.CylinderGeometry(.104,.104,.083,10,1,true),lam(0xffffff),cans.length);
+  const ends=new T.InstancedMesh(new T.CylinderGeometry(.108,.108,.024,10),M(0xd1d8dc),cans.length*2);
+  const tabs=new T.InstancedMesh(new T.TorusGeometry(.024,.005,4,8).rotateX(-Math.PI/2).translate(.012,.15,0),M(0x7b8792),cans.length);
+  const pose=new T.Object3D(),matrix=new T.Matrix4(),offset=new T.Matrix4(),color=new T.Color();
+  cans.forEach(function([x,y,z,tilt,turn,palette],i){
+    pose.position.set(x,y,z);pose.rotation.set(tilt,turn,tilt===Math.PI/2?0:Math.sin(i)*.45,'YXZ');
+    pose.updateMatrix();
+    cansBody.setMatrixAt(i,pose.matrix);cansBody.setColorAt(i,color.setHex(colors[palette]));
+    labels.setMatrixAt(i,pose.matrix);labels.setColorAt(i,color.setHex(bands[palette]));
+    tabs.setMatrixAt(i,pose.matrix);
+    for(const [end,sign] of [[0,-1],[1,1]]){
+      matrix.multiplyMatrices(pose.matrix,offset.makeTranslation(0,.135*sign,0));
+      ends.setMatrixAt(i*2+end,matrix);
+    }
+  });
+  drum.add(cansBody,labels,ends,tabs);
+})();
+(function(){
   const hammock=new T.Group();
   hammock.name='Rede vermelha do Comedouro';
   hammock.position.set(QX+7,0,QZ);
