@@ -106,7 +106,7 @@ var PEOPLE=[
  {id:'bruno',nick:'Bruno',org:1,s:1,skin:0xf29a56,hair:0xe0627a,style:'shoulder',beard:0,sunga:0x2a2f7a},
  {id:'igor',nick:'Igor',org:1,s:1.1,skin:0xf29a56,hair:0x4a2f25,style:'quiff',beard:0x4a2c1e,sunga:0xb3202f},
  {id:'pig',nick:'Pig',org:1,s:1,skin:0xf29a56,hair:0x8a4420,style:'curlfade',beard:0x7a3a18,sunga:0x2f6b35},
- {id:'ob',nick:'OB',s:.9,skin:0xf49d5e,hair:0x653824,style:'curly',beard:0,sunga:0x5a2a7a},
+ {id:'ob',nick:'OB',s:.9,skin:0xf49d5e,hair:0x653824,style:'curly',beard:0,sunga:0x5a2a7a,cap:0x1b2350},
  {id:'luan',nick:'Luan',s:1.1,skin:0xf4a160,hair:0x5a3020,style:'quiff',beard:0x5a3020,sunga:0x2f6b35},
  {id:'pelado',nick:'Pelado',s:.9,skin:0xf29a5e,hair:0x5e3d34,style:'quiff',beard:0x55301f,sunga:0xefa778,bare:1},
  {id:'gherardi',nick:'Gherardi',s:1.1,skin:0xf6ab7a,hair:0x6a3c2c,style:'quiff',beard:0x5e3426,sunga:0x2a3070},
@@ -789,11 +789,14 @@ function makeChar(p,i){var g=new T.Group(),roll=new T.Group(),b=new T.Group(),s=
       lump(Math.cos(a)*.43,-.26+Math.sin(k*1.9)*.02,-Math.sin(a)*.38-.06,.15);}
     for(k=0;k<7;k++){a=(k/6-.5)*2.2;lump(Math.sin(a)*.3,.52,-.02-Math.abs(a)*.05,.19);lump(Math.sin(a)*.34,.44,-.24,.2);}
     lump(-.43,.28,.1,.14);lump(.43,.28,.1,.14);lump(-.46,0,.1,.14);lump(.46,0,.1,.14);lump(-.44,-.22,.1,.13);lump(.44,-.22,.1,.13);}
-  else if(st==='curly'||st==='curlfade'){var sd=st==='curly'?1:.45;for(k=0;k<12;k++){a=k/12*6.283;lump(Math.cos(a)*.3,.4+Math.sin(k*1.7)*.03,Math.sin(a)*.27-.04,.15);}
-    for(k=0;k<6;k++){a=k/6*6.283;lump(Math.cos(a)*.14,.52,Math.sin(a)*.13-.02,.15);}
+  else if(st==='curly'||st==='curlfade'){var sd=st==='curly'?1:.45;if(!p.cap){for(k=0;k<12;k++){a=k/12*6.283;lump(Math.cos(a)*.3,.4+Math.sin(k*1.7)*.03,Math.sin(a)*.27-.04,.15);}
+    for(k=0;k<6;k++){a=k/6*6.283;lump(Math.cos(a)*.14,.52,Math.sin(a)*.13-.02,.15);}}
     if(sd===1)for(k=0;k<10;k++){a=Math.PI*.1+k/9*Math.PI*1.8;if(Math.sin(a)<-.2)continue;lump(Math.cos(a)*.41,.2,-Math.sin(a)*.38,.14);}}
   else{var up=st==='spiky'?1.5:st==='short'?.8:1.15;for(k=0;k<5;k++){a=(k/4-.5)*1.5;lump(Math.sin(a)*.28,.44,.2-Math.abs(a)*.08,.16,up);lump(Math.sin(a)*.3,.47,-.02,.17,up*.9);lump(Math.sin(a)*.28,.42,-.22,.16);}
     if(st!=='short'){lump(.06,.56,.22,.14,up);lump(-.1,.54,.14,.13,up);}}
+  /* boné: copa por cima do cabelo e aba para a frente */
+  if(p.cap){var capM=S(p.cap),dome=new T.Mesh(new T.SphereGeometry(1,18,10,0,6.2832,0,1.4),capM);dome.scale.set(.44,.5,.45);dome.position.set(0,.07,-.01);dome.rotation.x=-.16;hd.add(dome);
+    var visor=ball(1,capM,0,.25,.47,hd,.3,.028,.22);visor.rotation.x=.1;ball(.045,capM,0,.57,-.1,hd);}
   var stars=new T.Group();stars.position.y=2.5*s;stars.visible=false;for(k=0;k<3;k++){var sr=new T.Sprite(starM);sr.scale.set(.36,.36,1);sr.position.set(Math.cos(k*2.094)*.55,0,Math.sin(k*2.094)*.55);stars.add(sr);}g.add(stars);
   var lb=label(p.nick,.62);lb.position.y=2.52*s+.42;g.add(lb);
   var blob=new T.Mesh(blobG,blobM);blob.rotation.x=-Math.PI/2;blob.position.y=.04;g.add(blob);
