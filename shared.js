@@ -5,7 +5,6 @@ export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)
 const tripStart=Date.parse('2026-11-18T00:00:00-03:00');
 const tripPhotoEnd=Date.parse('2026-11-23T00:00:00-03:00');
 export function tripStarted(at=Date.now()){return at>=tripStart;}
-export const chatOpen=tripStarted;
 export function tripPhotoDay(at=Date.now()){
  return tripStarted(at)&&at<tripPhotoEnd?dayKey(at):null;
 }

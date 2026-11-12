@@ -7,9 +7,9 @@ import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
-import {dayKey,tripStarted,tripPhotoDay,chatOpen,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261111i';
-import * as backend from './backend.js?v=20261111i';
-import {openTravelMap} from './mapa-viagem.js?v=20261111n';
+import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261112a';
+import * as backend from './backend.js?v=20261112a';
+import {openTravelMap} from './mapa-viagem.js?v=20261112a';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
@@ -430,7 +430,6 @@ function viewQuerido(){
 }
 
 function viewFofoca(){
-  if(!chatOpen())return '<h2 class="page-title">Chat anônimo</h2><div class="card">O chat abre em 18 de novembro.</div>';
   return `<h2 class="page-title">Chat anônimo</h2>
   ${S.loaded&&!S.loaded.chat?'<p role="status" class="muted">Carregando mensagens…</p>':''}
   ${S.chatHasMore?`<button class="btn ghost block" id="olderChat" type="button" ${S.chatLoadingOlder?'disabled':''}>${S.chatLoadingOlder?'Carregando…':'Ver mensagens anteriores'}</button>`:''}
@@ -710,7 +709,7 @@ function simulateTrip(){
 function go(t){if(t==='fofoca'&&tab!=='fofoca')enterChat=true; if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); if(t==='fofoca')scrollChat();else scrollTo({top:0}); }
 
 function chatSeenKey(){return 'xvi-chat-seen-'+S.me;}
-function unreadChat(){try{return chatOpen()&&!!S.latestChat&&S.latestChat!==localStorage.getItem(chatSeenKey());}catch{return false;}}
+function unreadChat(){try{return !!S.latestChat&&S.latestChat!==localStorage.getItem(chatSeenKey());}catch{return false;}}
 function scrollChat(){requestAnimationFrame(()=>{if(tab!=='fofoca')return;scrollTo(0,document.documentElement.scrollHeight);try{if(S.latestChat)localStorage.setItem(chatSeenKey(),S.latestChat);document.querySelector('[data-go="fofoca"] .notice-dot')?.remove();}catch{}});}
 function render(){
   backend.setView?.(tab==='saldo'?'contas':tab);
@@ -818,8 +817,8 @@ document.addEventListener('submit',e=>{
 });
 function votingPhaseAt(at=Date.now()){return resultDay(at)?.key??votingOpen(at);}
 function homePhase(){const {cur,nxt}=nextItem();return `${cur?.start}:${nxt?.start}:${Date.now()<DISCOVERY_END}`;}
-let votingPhase=votingPhaseAt(),chatAvailable=chatOpen(),currentHomePhase=homePhase();
-setInterval(()=>{tick();const phase=votingPhaseAt(),chat=chatOpen(),home=homePhase();if(phase!==votingPhase||chat!==chatAvailable||home!==currentHomePhase){votingPhase=phase;chatAvailable=chat;currentHomePhase=home;backend.refreshTime?.();render();}},1000);
+let votingPhase=votingPhaseAt(),currentHomePhase=homePhase();
+setInterval(()=>{tick();const phase=votingPhaseAt(),home=homePhase();if(phase!==votingPhase||home!==currentHomePhase){votingPhase=phase;currentHomePhase=home;backend.refreshTime?.();render();}},1000);
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden){backgroundAt=Date.now();return;}
  // Uma volta após um minuto fora também conta como novo acesso no PWA do iOS.

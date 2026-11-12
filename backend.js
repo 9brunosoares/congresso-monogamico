@@ -11,7 +11,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js?v=20261107c';
-import { dayKey, tripStarted, tripPhotoDay, chatOpen, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261111i';
+import { dayKey, tripStarted, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261112a';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -86,7 +86,7 @@ function syncData(){
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(3)),snap=>{state.hasMural=!snap.empty;state.muralPreview=[...new Set(snap.docs.map(d=>d.data().who))].filter(id=>ALL.includes(id))},true);
  const car=departure(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
- const at=Date.now(),chatAvailable=chatOpen(at);
+ const at=Date.now();
  if(['inicio','fotos'].includes(currentView)){
   const full=currentView==='fotos';
   const key=full?'tripGallery':'tripFeed';
@@ -111,7 +111,7 @@ function syncData(){
  if(currentView==='mural')for(const item of state.shame.filter(x=>x.status==='ok')){
   listen('reactions-'+item.id,doc(db,'caseReactions',item.id),snap=>{state.caseReactions={...state.caseReactions,[item.id]:snap.data()?.votes||{}}});
  }
- if(chatAvailable)listen('latestChat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(1)),snap=>{state.latestChat=snap.docs[0]?.id||null});
+ listen('latestChat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(1)),snap=>{state.latestChat=snap.docs[0]?.id||null});
  if(state.admin)listen('adminPending',query(collection(db,'cases'),where('status','==','pend'),limit(1)),snap=>{state.adminPending=!snap.empty});
  const key=votingKey(),votingDay=VOTE_DAYS.find(d=>d.key===key);
  if(key!==currentDay){currentDay=key;state.qvoted={};state.querido={};state.voterCount=0;}
@@ -126,10 +126,10 @@ function syncData(){
  for(const day of VOTE_DAYS.filter(d=>(state.scoreClosing?.closedAt?.toMillis?.()??Date.now())>=d.deadline))listen('participation-'+day.key,collection(db,'participation',day.key,'people'),snap=>{
   state.attendance={...state.attendance,[day.key]:Object.fromEntries(snap.docs.map(d=>[d.id,true]))};state.attendanceReady={...state.attendanceReady,[day.key]:true};
  },true);
- if(chatAvailable&&lazy.chat)listen('chatMine',collection(db,'chatAuthors',auth.currentUser.uid,'messages'),snapshot=>{
+ if(lazy.chat)listen('chatMine',collection(db,'chatAuthors',auth.currentUser.uid,'messages'),snapshot=>{
   mine=new Set(snapshot.docs.map(d=>d.id));publishChat();
  });
- if(chatAvailable&&lazy.chat)listen('chat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(PAGE_SIZE)),snapshot=>{
+ if(lazy.chat)listen('chat',query(collection(db,'chat'),orderBy('createdAt','desc'),limit(PAGE_SIZE)),snapshot=>{
   if(chatOlder.length)chatOlder=mergeRows(chatOlder,chatHead);
   chatHead=rows(snapshot);
   if(!chatOlder.length){chatCursor=snapshot.docs.at(-1)||null;state.chatHasMore=snapshot.size===PAGE_SIZE;}
@@ -164,7 +164,7 @@ export function loadTripPhoto(id,retry=false){if(retry)delete state.tripPhotoErr
 export function retrySync(){pool.stop();quotaBlocked=false;state.error='';syncData();emit();}
 export function reportError(error){if(error.code==='resource-exhausted')failed(error);}
 export async function loadOlderChat(){
- requireChat();if(currentView!=='fofoca'||!chatCursor||!state.chatHasMore||state.chatLoadingOlder)return;
+ member();if(currentView!=='fofoca'||!chatCursor||!state.chatHasMore||state.chatLoadingOlder)return;
  state.chatLoadingOlder=true;emit();const version=generation;
  try{
   const snapshot=await getDocs(query(collection(db,'chat'),orderBy('createdAt','desc'),startAfter(chatCursor),limit(PAGE_SIZE)));
@@ -228,7 +228,6 @@ export async function login(id,pin,create=false){
 }
 export const logout=()=>signOut(auth);
 function member(){if(quotaBlocked)throw Object.assign(Error(errorText({code:'resource-exhausted'})),{code:'resource-exhausted'});if(!state.me||!state.ready||!navigator.onLine)throw Error('Conecte-se à internet antes de enviar.');}
-function requireChat(){member();if(!chatOpen())throw Error('O chat abre em 18 de novembro.');}
 function requireTripStart(){if(!tripStarted())throw Error('Disponível a partir de 18 de novembro.');}
 function admin(){member();if(!state.admin)throw Error('Esta ação é exclusiva dos ADMs.');}
 export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Agora';}
@@ -417,7 +416,7 @@ export async function setCaseReaction(id,emoji){
  });}finally{if(version===generation){state.reactionPending={...state.reactionPending,[id]:false};emit();}}
 }
 export async function sendChat(text){
- requireChat();const ref=doc(collection(db,'chat')),uid=auth.currentUser.uid,version=generation;
+ member();const ref=doc(collection(db,'chat')),uid=auth.currentUser.uid,version=generation;
  const profile=doc(db,'chatAuthors',uid),candidate=crypto.randomUUID().replaceAll('-','');
  await runTransaction(db,async tx=>{
   const author=await tx.get(profile);
@@ -432,7 +431,7 @@ export async function sendChat(text){
  });return ref;
 }
 export async function deleteChat(id){
- requireChat();const uid=auth.currentUser.uid,version=generation;
+ member();const uid=auth.currentUser.uid,version=generation;
  await runTransaction(db,async tx=>{
   const ref=doc(db,'chat',id);
   const [owner,message]=await Promise.all([tx.get(doc(db,'chatAuthors',uid,'messages',id)),tx.get(ref)]);

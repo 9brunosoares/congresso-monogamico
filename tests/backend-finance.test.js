@@ -88,7 +88,9 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   time=Date.parse('2026-11-17T23:59:59-03:00');api.setView('inicio');await auth('bruno');
   const photo='data:image/jpeg;base64,AAAA',firstId='20775_bruno';
   await assert.rejects(api.addTripPhoto(photo),/abrem/);
-  await assert.rejects(api.sendChat('Antes da abertura'),/abre em 18/);
+  const preTripMessage=await api.sendChat('Antes da viagem');
+  assert.equal(records.get(preTripMessage.path).text,'Antes da viagem');
+  await api.deleteChat(preTripMessage.id);assert.equal(records.get(preTripMessage.path).struck,true);
   time=Date.parse('2026-11-18T00:00:00-03:00');api.refreshTime();await flush();
   const uploads=await Promise.allSettled([api.addTripPhoto(photo),api.addTripPhoto(photo)]);
   assert.equal(uploads.filter(r=>r.status==='fulfilled').length,1);

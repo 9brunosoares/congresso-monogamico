@@ -183,15 +183,16 @@ const {context}=require('./firebase-context.cjs');
  const forgedMessage=chatCase(chatPath,'create','DENY');forgedMessage.request.resource.data.threadKey='b'.repeat(32);cases.push(forgedMessage);
  const recolor=chatCase(chatPath,'update','DENY');recolor.request.resource.data.threadKey='b'.repeat(32);cases.push(recolor);
  const previous=chatCase(chatPath,'update');previous.resource={data:{...previous.resource.data}};delete previous.resource.data.threadKey;delete previous.request.resource.data.threadKey;cases.push(previous);
- const beforeChat='2026-11-18T02:59:59.999Z',openChat='2026-11-18T03:00:00.000Z';
+ const preTripChat='2026-11-12T15:00:00.000Z';
  for(const path of [chatPath,ownerPath,authorPath,threadPath]){
   for(const method of ['get','create',...(path===chatPath?['list','update']:[])]){
-   for(const [time,expectation] of [[beforeChat,'DENY'],[openChat,'ALLOW']]){
+   for(const [member,expectation] of [[true,'ALLOW'],[false,'DENY']]){
     const t=[authorPath,threadPath].includes(path)?threadCase(path,method,expectation):chatCase(path,method,expectation);
-    t.request.time=time;
-    if(path===chatPath&&method==='create')t.request.resource.data.createdAt=time;
+    t.request.time=preTripChat;
+    if(!member)t.functionMocks.find(m=>m.function==='get'&&m.args[0].exactValue===prefix+'/people/bruno').result.value={data:{uid:'other-member'}};
+    if(path===chatPath&&method==='create')t.request.resource.data.createdAt=preTripChat;
     const messageAfter=t.functionMocks.find(m=>m.function==='getAfter'&&m.args[0].exactValue===chatPath);
-    if(messageAfter)messageAfter.result.value={data:{...chatData,createdAt:time}};
+    if(messageAfter)messageAfter.result.value={data:{...chatData,createdAt:preTripChat}};
     cases.push(t);
    }
   }

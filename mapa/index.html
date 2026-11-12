@@ -46,6 +46,11 @@ button:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
 .world-actions{position:fixed;z-index:7;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:grid;gap:8px;justify-items:center}
 .world-actions .btn{white-space:nowrap;border-color:var(--brass)}
 .world-actions .btn:disabled{opacity:.6}
+.speech-edge{position:fixed;z-index:6;top:24%;bottom:25%;width:min(calc(50vw - 16px),220px);display:flex;flex-direction:column;justify-content:center;gap:6px;pointer-events:none}
+.speech-edge.left{left:max(8px,env(safe-area-inset-left,0px));align-items:flex-start}
+.speech-edge.right{right:max(8px,env(safe-area-inset-right,0px));align-items:flex-end}
+.speech-edge button{pointer-events:auto;max-width:100%;padding:7px 10px;border:1px solid var(--brass);border-radius:12px;background:var(--ink);text-align:left;overflow-wrap:anywhere;font-size:14px;line-height:1.2}
+.speech-edge b{display:block;color:var(--brass);font-size:12px;margin-bottom:3px}
 .speech-overlay{position:fixed;inset:0;z-index:8;display:grid;place-items:center;padding:16px;background:#140e2480}
 .speech-form{width:min(100%,360px);display:grid;gap:12px;padding:18px;border:1px solid var(--brass);border-radius:16px;background:var(--ink);box-shadow:0 10px 40px #0005}
 .speech-form label{font-family:var(--display);font-size:19px;font-weight:800}
@@ -70,6 +75,8 @@ button:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
 <div class="hint l" id="hint-l" hidden><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#fff" stroke-width="3"/><circle cx="50" cy="50" r="17" fill="#fff"/><path d="M50 9l8 10H42zM50 91l8-10H42zM9 50l10-8v16zM91 50l-10-8v16z" fill="#fff"/></svg><span>andar</span></div>
 <div class="hint r" id="hint-r" hidden><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#fff" stroke-width="3"/><path d="M26 44a26 26 0 1 1 5 24" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M14 40l14 14 8-18z" fill="#fff"/><circle cx="50" cy="50" r="7" fill="#fff"/></svg><span>olhar</span></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="speech-left" class="speech-edge left"></div>
+<div id="speech-right" class="speech-edge right"></div>
 <div class="world-actions">
   <button id="light-switch" class="btn" type="button" hidden>Apertar</button>
   <button id="talk" class="btn" type="button" hidden></button>
@@ -936,6 +943,7 @@ var speechForm=document.getElementById('speech-form'),speechText=document.getEle
 var speechSend=document.getElementById('speech-send'),speechLabel=document.getElementById('speech-label');
 var speechTarget=null,speechTap=null,nearbyPeer=null,roomOnline=false,replying=false,requestNumber=0;
 var balloons=new Map(),speechRay=new T.Raycaster(),speechPointer=new T.Vector2(),viewpoint=new T.Vector3();
+var speechEdges=[document.getElementById('speech-left'),document.getElementById('speech-right')],projectedBubble=new T.Vector3();
 var bubbleFont='600 30px Figtree, system-ui, sans-serif';
 
 function canTalk(c){
@@ -979,6 +987,7 @@ speechForm.addEventListener('submit',function(event){
 });
 function removeBalloon(id){
   var bubble=balloons.get(id);if(!bubble)return;
+  bubble.edge?.remove();
   scene.remove(bubble.mesh);bubble.mesh.geometry.dispose();
   bubble.mesh.material.map.dispose();bubble.mesh.material.dispose();balloons.delete(id);
 }
@@ -1011,15 +1020,42 @@ function addBalloon(id,message){
   var mesh=new T.Mesh(new T.PlaneGeometry(w/135,h/135),
     new T.MeshBasicMaterial({map:texture,transparent:true,side:T.FrontSide,depthWrite:false}));
   mesh.visible=false;scene.add(mesh);
-  balloons.set(id,{mesh:mesh,from:from,to:to,expires:performance.now()+message.remaining,height:h/135});
+  balloons.set(id,{mesh:mesh,from:from,to:to,text:text,expires:performance.now()+message.remaining,height:h/135});
+}
+function balloonInFrame(mesh){
+  var size=mesh.geometry.parameters;
+  mesh.updateMatrixWorld();
+  for(var x of [-1,1])for(var y of [-1,1]){
+    projectedBubble.set(x*size.width/2,y*size.height/2,0).applyMatrix4(mesh.matrixWorld).project(camera);
+    if(Math.abs(projectedBubble.x)>1||Math.abs(projectedBubble.y)>1||Math.abs(projectedBubble.z)>1)return false;
+  }
+  return true;
+}
+function showEdgeBalloon(bubble){
+  projectedBubble.copy(bubble.mesh.position).applyMatrix4(camera.matrixWorldInverse);
+  var parent=speechEdges[projectedBubble.x<0?0:1];
+  if(!bubble.edge){
+    var button=document.createElement('button'),name=document.createElement('b');
+    button.type='button';name.textContent=bubble.from.p.nick;
+    button.append(name,bubble.text);
+    button.addEventListener('click',function(){
+      if(performance.now()<bubble.expires)openSpeech(bubble.from,true);
+    });
+    bubble.edge=button;
+  }
+  if(bubble.edge.parentNode!==parent)parent.append(bubble.edge);
+  bubble.edge.hidden=!!speechTarget;
 }
 function drawBalloons(){
+  if(!balloons.size)return;
+  camera.updateMatrixWorld();
   var now=performance.now(),heights=new Map();
   for(var [id,bubble] of balloons){
     if(now>=bubble.expires){removeBalloon(id);continue;}
     var from=bubble.from,to=bubble.to,mesh=bubble.mesh;
     mesh.visible=(from===me||!!from.remote)&&(to===me||!!to.remote);
-    if(!mesh.visible)continue;
+    var incoming=to===me&&roomOnline;
+    if(!mesh.visible&&!incoming){if(bubble.edge)bubble.edge.hidden=true;continue;}
     var base=heights.get(from)||from.s*2.55+.75;
     mesh.position.copy(from.g.position);mesh.position.y+=base+bubble.height/2;
     heights.set(from,base+bubble.height+.12);
@@ -1027,6 +1063,9 @@ function drawBalloons(){
     else if(to.cameraView)viewpoint.copy(to.cameraView);
     else{viewpoint.copy(to.g.position);viewpoint.y+=2.5;}
     mesh.lookAt(viewpoint);
+    if(incoming&&(!mesh.visible||!balloonInFrame(mesh))){
+      mesh.visible=false;showEdgeBalloon(bubble);
+    }else if(bubble.edge)bubble.edge.hidden=true;
   }
 }
 function replyAt(event){

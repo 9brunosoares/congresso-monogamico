@@ -407,7 +407,7 @@ service cloud.firestore {
     && text(d.text,280) && d.createdAt is timestamp && d.struck is bool
     && (!('threadKey' in d) || validThreadKey(d.threadKey));
   }
-  function canUseChat() { return tripStarted() && isMember(); }
+  function canUseChat() { return isMember(); }
   match /chat/{id} {
    allow read: if canUseChat();
    allow create: if canUseChat() && isValidChat(request.resource.data) && fresh(request.resource.data)

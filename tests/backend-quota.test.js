@@ -36,7 +36,7 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
  };
  const active=()=>listeners.filter(x=>x.active),flush=()=>new Promise(resolve=>setImmediate(resolve));
  try{
-  Date.now=()=>Date.parse('2026-11-17T23:59:59-03:00');
+  Date.now=()=>Date.parse('2026-11-12T12:00:00-03:00');
   Object.defineProperty(navigator,'onLine',{value:true,configurable:true});
   globalThis.indexedDB={};globalThis.sessionStorage={getItem(){return null},setItem(){}};
   globalThis.window={addEventListener(name,fn){handlers[name]=fn}};
@@ -54,16 +54,16 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   await fs.writeFile(backendPath,source);
   const api=await import(pathToFileURL(backendPath).href);await api.start(next=>{state=next});await flush();await flush();
   assert(state.ready);assert.equal(cacheSettings.localCache.kind,'persistent');assert(cacheSettings.localCache.tabManager.multi);
-  assert.deepEqual(active().map(x=>x.ref.path).sort(),['agenda','cases','expenses','financeClosings/main','officialLinks/main','payments','points','scoreClosures/main','settings/main','travelPlans/bruno','tripPosts']);
+  assert.deepEqual(active().map(x=>x.ref.path).sort(),['agenda','cases','chat','expenses','financeClosings/main','officialLinks/main','payments','points','scoreClosures/main','settings/main','travelPlans/bruno','tripPosts']);
+  assert(active().find(x=>x.ref.path==='chat').ref.filters.some(f=>f.limit===1));
   assert(active().find(x=>x.ref.path==='tripPosts').ref.filters.some(f=>f.limit===2));
   assert(!gets.some(x=>typeof x==='string'&&x.startsWith('tripPhotos/')));
   assert.equal(gets.filter(x=>typeof x==='string'&&x.startsWith('casePhotos/')).length,0);
-  const coreCount=listeners.length;api.setView('fofoca');await flush();assert.equal(listeners.length,coreCount);
-  Date.now=()=>Date.parse('2026-11-18T00:00:00-03:00');api.refreshTime();await flush();assert.equal(listeners.length,coreCount+3);
+  const coreCount=listeners.length;api.setView('fofoca');await flush();assert.equal(listeners.length,coreCount+2);
   const chatQuery=active().find(x=>x.ref.path==='chat'&&x.ref.filters.some(f=>f.limit===50)).ref;assert(chatQuery.filters.some(f=>f.limit===50));assert.equal(state.chat.length,50);assert(state.chatHasMore);assert(active().some(x=>x.ref.path==='chatAuthors/'+user.uid+'/messages'));
   assert(!active().some(x=>x.ref.path==='tripPosts'));
   await api.loadOlderChat();assert(gets.some(ref=>ref.path==='chat'&&ref.filters.some(f=>f.after)));assert(!state.chatHasMore);
-  for(let i=0;i<20;i++)api.setView('fofoca');assert.equal(listeners.length,coreCount+3);
+  for(let i=0;i<20;i++)api.setView('fofoca');assert.equal(listeners.length,coreCount+2);
   api.setView('contas');await flush();assert(active().some(x=>x.ref.path==='pixKeys'));assert(state.loaded.pix);
   api.setView('inicio');await flush();assert(!active().some(x=>x.ref.path==='pixKeys'));
   api.setView('mural');await flush();assert(active().filter(x=>x.ref.path==='chat').every(x=>x.ref.filters.some(f=>f.limit===1)));assert(!active().some(x=>x.ref.path.startsWith('chatAuthors/')));assert.equal(state.shame.length,12);

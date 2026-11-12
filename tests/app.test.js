@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {ALL,PEOPLE,P,EMOJIS} from '../roster.js';
-import {dayKey,tripStarted,chatOpen,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
+import {dayKey,tripStarted,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
 
 test('PIN aceita exatamente seis algarismos',()=>{
  for(const pin of ['000000','123456','098765'])assert.doesNotThrow(()=>validatePin(pin));
@@ -105,7 +105,7 @@ test('revelação só perde destaque depois de carregar em uma aba visível',()=
 function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
- const nodes={},events={},timers=new Map();let timerId=0;const context={createDiscovery,DISCOVERY_OWNER,DISCOVERY_END,departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,tripStarted,chatOpen,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ const nodes={},events={},timers=new Map();let timerId=0;const context={createDiscovery,DISCOVERY_OWNER,DISCOVERY_END,departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,tripStarted,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
@@ -161,11 +161,8 @@ test('histórico unificado, exclusão por ADM e lançamento a partir de 18/11',(
 test('chat: só o autor vê apagar; mensagem riscada continua legível e ADM não recebe poder extra',()=>{
  const {context,html:styles}=ui();
  vm.runInContext("S={...S,me:'bruno',admin:true,chat:[{id:'own',text:'Minha mensagem',mine:true},{id:'other',text:'Mensagem de outro',mine:false},{id:'struck',text:'Ainda dá para ler',mine:true,struck:true}]}",context);
- context.chatOpen=()=>false;
- const closed=vm.runInContext('viewFofoca()',context);
- assert(closed.includes('O chat abre em 18 de novembro.'));assert(!closed.includes('chatForm'));assert(!closed.includes('Minha mensagem'));
- context.chatOpen=()=>true;
  const html=vm.runInContext('viewFofoca()',context);
+ assert(html.includes('chatForm'));assert(html.includes('Minha mensagem'));
  assert(html.includes('data-del="own"'));assert(!html.includes('data-del="other"'));assert(!html.includes('data-del="struck"'));
  assert(html.includes('class="chat-text struck">Ainda dá para ler</div>'));
  assert(styles.includes('text-decoration-style:double'));assert(!html.includes('risco duplo'));
@@ -174,7 +171,6 @@ test('chat: só o autor vê apagar; mensagem riscada continua legível e ADM nã
 
 test('chat agrupa falas por cor sem imprimir chave/identidade; mensagens antigas são neutras',()=>{
  const {context}=ui();
- context.chatOpen=()=>true;
  vm.runInContext("S.chat=[{text:'Primeira',threadKey:'a'.repeat(32)},{text:'Segunda',threadKey:'b'.repeat(32)},{text:'Terceira',threadKey:'a'.repeat(32)},{text:'Antiga'}]",context);
  const html=vm.runInContext('viewFofoca()',context),colors=[...html.matchAll(/style="--chat-light:([^;]+);--chat-dark:([^"]+)"/g)];
  assert.equal(colors.length,3);assert.equal(colors[0][0],colors[2][0]);assert.notEqual(colors[0][0],colors[1][0]);
@@ -333,9 +329,9 @@ test('pagamento acompanha Pix do recebedor e não mantém chave de outra pessoa'
  nodes['#pmTo'].value='igor';vm.runInContext('refreshRecipientPix()',context);assert(nodes['#paymentRecipientPix'].hidden);assert(!nodes['#paymentRecipientPix'].innerHTML.includes('ob@example.com'));
 });
 
-test('chat abre à meia-noite de 18/11 e votação só nos dias oficiais',()=>{
+test('viagem começa à meia-noite de 18/11 e votação só nos dias oficiais',()=>{
  const start=Date.parse('2026-11-18T00:00:00-03:00'),before=start-1;
- assert(!chatOpen(before));assert(chatOpen(start));assert(!votingOpen(start));
+ assert(!tripStarted(before));assert(tripStarted(start));assert(!votingOpen(start));
  assert.equal(resultDay(start),null);assert.equal(missedVotePoints({},start).length,0);
 });
 test('editor da agenda só é oferecido a ADM, inclusive na agenda completa',()=>{
