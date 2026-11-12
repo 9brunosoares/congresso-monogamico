@@ -10,9 +10,10 @@ const shareIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9H5v12h
 export function installationMarkup(platform,promptAvailable=false,installed=false,desktop=false){
  const ios=platform==='ios';
  const steps=ios?[
-  ['Abra no Safari',`${shareIcon}Toque em Compartilhar.`],
-  ['Adicione à Tela de Início','Mantenha “Abrir como App da Web” ativado, se aparecer.'],
-  ['Abra Congresso pelo ícone','Na tela inicial do celular.']
+  ['Abra o link no Safari','Se estiver no navegador do WhatsApp, copie o link e cole no Safari.'],
+  ['Toque em Compartilhar',`${shareIcon}Se o ícone estiver oculto, toque em ⋯ e escolha “Compartilhar”.`],
+  ['Toque em “Adicionar à Tela de Início”','Role a lista até encontrar essa opção. Se aparecer “Abrir como App da Web”, deixe ativado. Depois toque em “Adicionar”.'],
+  ['Abra o Congresso pelo ícone','Na Tela de Início do aparelho.']
  ]:[
   ['Abra no Chrome','Toque no menu ⋮.'],
   ['Instale o aplicativo','Escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.'],

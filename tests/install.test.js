@@ -11,7 +11,11 @@ function harness({standalone=false,apple=false,userAgent='iPhone',platform='iPho
  return {env,root,listeners,media,get loads(){return loads},get reloads(){return reloads}};
 }
 test('modo navegador mostra tutorial sem carregar o app; modo instalado entra direto',()=>{
- const browser=harness();assert.equal(browser.loads,0);assert(browser.root.innerHTML.includes('Adicione à Tela de Início'));assert(!browser.root.innerHTML.includes('loginForm'));
+ const browser=harness();assert.equal(browser.loads,0);assert(!browser.root.innerHTML.includes('loginForm'));
+ assert.deepEqual([...browser.root.innerHTML.matchAll(/<h2>([^<]+)<\/h2>/g)].map(match=>match[1]),[
+  'Abra o link no Safari','Toque em Compartilhar','Toque em “Adicionar à Tela de Início”','Abra o Congresso pelo ícone'
+ ]);
+ assert(browser.root.innerHTML.includes('Depois toque em “Adicionar”'));
  assert.equal(harness({standalone:true}).loads,1);assert.equal(harness({apple:true}).loads,1);
  assert(!isAppMode(browser.env));
 });
@@ -20,7 +24,7 @@ test('identifica iPad com agente de desktop e oferece instruções dos dois sist
  assert.equal(devicePlatform({userAgent:'Android',platform:'Linux',maxTouchPoints:1}),'android');
  const h=harness({userAgent:'Android'});assert(h.root.innerHTML.includes('Abra no Chrome'));
  await h.listeners['root:click']({target:{closest(selector){return selector==='[data-platform]'?{dataset:{platform:'ios'}}:null}}});
- assert(h.root.innerHTML.includes('Abra no Safari'));assert.equal(h.loads,0);
+ assert(h.root.innerHTML.includes('Abra o link no Safari'));assert.equal(h.loads,0);
  assert(installationMarkup('ios').includes('Abrir como App da Web'));assert(!installationMarkup('ios').includes('id="installNow"'));
 });
 test('instalar ou declarar instalado não libera o navegador; abrir no modo app carrega uma vez',async()=>{
