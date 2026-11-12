@@ -51,11 +51,13 @@ button:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
 .speech-edge.right{right:max(8px,env(safe-area-inset-right,0px));align-items:flex-end}
 .speech-edge button{pointer-events:auto;max-width:100%;padding:7px 10px;border:1px solid var(--brass);border-radius:12px;background:var(--ink);text-align:left;overflow-wrap:anywhere;font-size:14px;line-height:1.2}
 .speech-edge b{display:block;color:var(--brass);font-size:12px;margin-bottom:3px}
-.speech-overlay{position:fixed;inset:0;z-index:8;display:grid;place-items:center;padding:16px;background:#140e2480}
-.speech-form{width:min(100%,360px);display:grid;gap:12px;padding:18px;border:1px solid var(--brass);border-radius:16px;background:var(--ink);box-shadow:0 10px 40px #0005}
-.speech-form label{font-family:var(--display);font-size:19px;font-weight:800}
-.speech-form input{min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:#322747;color:var(--paper);font:16px var(--body);user-select:text;-webkit-user-select:text}
-.speech-actions{display:flex;justify-content:flex-end;gap:8px}
+.speech-overlay{position:fixed;z-index:8;left:0;right:0;top:calc(8px + env(safe-area-inset-top,0px));display:grid;justify-items:center;padding:0 max(10px,env(safe-area-inset-right,0px)) 0 max(10px,env(safe-area-inset-left,0px));pointer-events:none}
+.speech-form{pointer-events:auto;width:min(100%,430px);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px;border:1px solid var(--brass);border-radius:16px;background:var(--ink);box-shadow:0 10px 30px #0006}
+.speech-form label{grid-column:1;font-family:var(--display);font-size:15px;font-weight:800;padding-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.speech-form #speech-cancel{grid-column:2;justify-self:end;padding:5px 10px;font-size:12.5px}
+.speech-form input{grid-column:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:#322747;color:var(--paper);font:16px var(--body);user-select:text;-webkit-user-select:text}
+.speech-form .speech-send{grid-column:2}
+body.composing .hud{visibility:hidden}
 .speech-send{background:var(--brass);color:var(--ink);border-color:var(--brass)}
 .speech-send:disabled{opacity:.6}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -82,13 +84,11 @@ button:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
   <button id="talk" class="btn" type="button" hidden></button>
 </div>
 <div id="speech-overlay" class="speech-overlay" hidden>
-  <form id="speech-form" class="speech-form" role="dialog" aria-modal="true" aria-labelledby="speech-label">
+  <form id="speech-form" class="speech-form" aria-labelledby="speech-label">
     <label id="speech-label" for="speech-text"></label>
-    <input id="speech-text" name="message" type="text" maxlength="100" placeholder="Mensagem" autocomplete="off" required>
-    <div class="speech-actions">
-      <button id="speech-cancel" class="btn" type="button">Cancelar</button>
-      <button id="speech-send" class="btn speech-send" type="submit">Enviar</button>
-    </div>
+    <button id="speech-cancel" class="btn" type="button">Fechar</button>
+    <input id="speech-text" name="message" type="text" maxlength="100" placeholder="Mensagem" autocomplete="off" enterkeyhint="send" required>
+    <button id="speech-send" class="btn speech-send" type="submit">Enviar</button>
   </form>
 </div>
 
@@ -1037,7 +1037,9 @@ addEventListener('keydown',function(e){
 addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;});
 addEventListener('blur',function(){keys={};joy.on=false;joy.id=-1;joy.x=joy.y=0;look.on=false;look.id=-1;joyEl.hidden=true;});
 addEventListener('blur',function(){keys={};});
-cv.addEventListener('pointerdown',function(e){if(!me||speechTarget)return;try{cv.setPointerCapture(e.pointerId);}catch(_){}
+cv.addEventListener('pointerdown',function(e){if(!me)return;
+  if(speechTarget){speechTap={id:e.pointerId,x:e.clientX,y:e.clientY,composing:true};return;}
+  try{cv.setPointerCapture(e.pointerId);}catch(_){}
   speechTap={id:e.pointerId,x:e.clientX,y:e.clientY};
   if(e.pointerType!=='mouse'&&e.clientX<innerWidth*.5&&!joy.on){joy.on=true;joy.id=e.pointerId;joy.ox=e.clientX;joy.oy=e.clientY;joy.x=joy.y=0;joyEl.hidden=false;joyEl.style.left=e.clientX+'px';joyEl.style.top=e.clientY+'px';knob.style.transform='';}
   else if(!look.on){look.on=true;look.id=e.pointerId;look.x=e.clientX;look.y=e.clientY;}});
@@ -1048,7 +1050,8 @@ function up(e){if(e.pointerId===joy.id){joy.on=false;joy.id=-1;joy.x=joy.y=0;joy
 cv.addEventListener('pointerup',function(e){
   up(e);
   if(speechTap?.id!==e.pointerId)return;
-  if(Math.hypot(e.clientX-speechTap.x,e.clientY-speechTap.y)<9)replyAt(e);
+  // Com a barra aberta, tocar num balão troca o destinatário; tocar na cena vazia fecha a barra sem texto.
+  if(Math.hypot(e.clientX-speechTap.x,e.clientY-speechTap.y)<9&&!replyAt(e)&&speechTap.composing&&!speechText.value.trim())closeSpeech();
   speechTap=null;
 });
 cv.addEventListener('pointercancel',function(e){up(e);if(speechTap?.id===e.pointerId)speechTap=null;});
@@ -1115,64 +1118,90 @@ document.addEventListener('visibilitychange',function(){if(document.hidden)saveT
 var talkButton=document.getElementById('talk'),speechOverlay=document.getElementById('speech-overlay');
 var speechForm=document.getElementById('speech-form'),speechText=document.getElementById('speech-text');
 var speechSend=document.getElementById('speech-send'),speechLabel=document.getElementById('speech-label');
-var speechTarget=null,speechTap=null,nearbyPeer=null,roomOnline=false,replying=false,requestNumber=0;
+var speechTarget=null,speechTap=null,nearbyPeer=null,roomOnline=false,requestNumber=0;
 var balloons=new Map(),speechRay=new T.Raycaster(),speechPointer=new T.Vector2(),viewpoint=new T.Vector3();
 var speechEdges=[document.getElementById('speech-left'),document.getElementById('speech-right')],projectedBubble=new T.Vector3();
 var bubbleFont='600 30px Figtree, system-ui, sans-serif';
+/* Conversa: quem recebeu uma fala pode responder por REPLY_MS mesmo que o outro tenha se afastado.
+   "…" sozinho é o aviso de digitação: vai pelo mesmo canal das falas e some quando a fala chega. */
+var REPLY_MS=30000,TYPING='…',TYPING_EVERY_MS=3500,replyUntil=new Map(),typingSentAt=-Infinity,talkLabel='',occluders=null,clippedPoint=new T.Vector3();
 
 function canTalk(c){
   return c.remote&&Math.abs(c.remoteY-me.g.position.y)<3&&Math.hypot(c.pos.x-me.pos.x,c.pos.z-me.pos.z)<=5.5;
 }
+function canReply(c){return !!c.remote&&replyUntil.get(c)>performance.now();}
+function canReach(c){return canTalk(c)||canReply(c);}
 function updateTalk(){
-  var next=null,distance=Infinity;
+  var next=null,distance=Infinity,latest=0,label='';
   if(me&&roomOnline&&!speechTarget){
     for(var c of chars){
-      if(c===me||!canTalk(c))continue;
+      if(c===me||!c.remote)continue;
+      // Quem acabou de falar comigo tem prioridade sobre quem só está perto.
+      if(canReply(c)){if(replyUntil.get(c)>latest){latest=replyUntil.get(c);next=c;}continue;}
+      if(latest||!canTalk(c))continue;
       var d=Math.hypot(c.pos.x-me.pos.x,c.pos.z-me.pos.z);
       if(d<distance){distance=d;next=c;}
     }
+    if(next)label=(latest?'Responder ':'Conversar com ')+next.p.nick;
   }
-  if(next===nearbyPeer)return;
-  nearbyPeer=next;talkButton.hidden=!next;
-  if(next)talkButton.textContent='Conversar com '+next.p.nick;
+  if(next===nearbyPeer&&label===talkLabel)return;
+  nearbyPeer=next;talkLabel=label;talkButton.hidden=!next;
+  if(next)talkButton.textContent=label;
 }
-function openSpeech(c,reply){
-  if(!roomOnline||!c?.remote||(!reply&&!canTalk(c)))return;
-  requestNumber++;speechTarget=c;replying=reply;keys={};joy.x=joy.y=0;
-  speechLabel.textContent='Conversar com '+c.p.nick;
-  speechText.value='';speechSend.disabled=false;speechOverlay.hidden=false;
+function openSpeech(c){
+  if(!roomOnline||!c?.remote||!canReach(c))return;
+  if(speechTarget!==c){speechText.value='';typingSentAt=-Infinity;}
+  requestNumber++;speechTarget=c;keys={};joy.x=joy.y=0;
+  speechLabel.textContent='Para '+c.p.nick;
+  speechSend.disabled=false;speechOverlay.hidden=false;document.body.classList.add('composing');
   updateTalk();speechText.focus();
 }
 function closeSpeech(){
-  requestNumber++;speechTarget=null;speechOverlay.hidden=true;
-  updateTalk();if(!talkButton.hidden)talkButton.focus();
+  requestNumber++;speechTarget=null;speechOverlay.hidden=true;document.body.classList.remove('composing');speechText.blur();
+  updateTalk();
 }
-talkButton.addEventListener('click',function(){openSpeech(nearbyPeer,false);});
+talkButton.addEventListener('click',function(){openSpeech(nearbyPeer);});
 document.getElementById('speech-cancel').addEventListener('click',closeSpeech);
+speechText.addEventListener('input',function(){
+  var now=performance.now();
+  if(!speechTarget||!roomOnline||!speechText.value.trim()||now-typingSentAt<TYPING_EVERY_MS||!canReach(speechTarget))return;
+  typingSentAt=now;post('say',{to:speechTarget.p.id,text:TYPING,request:-1});
+});
 speechForm.addEventListener('submit',function(event){
   event.preventDefault();
   if(speechSend.disabled||!speechTarget)return;
-  if(!roomOnline||!speechTarget.remote||(!replying&&!canTalk(speechTarget))){
+  if(!roomOnline||!canReach(speechTarget)){
     closeSpeech();toast('O congressista está fora de alcance.');return;
   }
   var text=speechText.value.trim();if(!text)return;
-  speechSend.disabled=true;
+  speechSend.disabled=true;typingSentAt=-Infinity;
   post('say',{to:speechTarget.p.id,text:text,request:++requestNumber});
 });
 function removeBalloon(id){
   var bubble=balloons.get(id);if(!bubble)return;
   bubble.edge?.remove();
   scene.remove(bubble.mesh);bubble.mesh.geometry.dispose();
-  bubble.mesh.material.map.dispose();bubble.mesh.material.dispose();balloons.delete(id);
+  bubble.mesh.material.map.dispose();bubble.mesh.material.dispose();
+  bubble.back.material.map.dispose();bubble.back.material.dispose();balloons.delete(id);
 }
+function bubbleShape(g,w,h){
+  rrect(g,2,2,w-4,h-16,15);
+  g.fillStyle='#1b1530';g.fill();g.strokeStyle='#e0b33c';g.lineWidth=3;g.stroke();
+  g.beginPath();g.moveTo(w/2-10,h-15);g.lineTo(w/2,h-2);g.lineTo(w/2+10,h-15);
+  g.fill();g.stroke();
+}
+function bubbleDots(g,w,h,color){g.fillStyle=color;for(var k=-1;k<=1;k++){g.beginPath();g.arc(w/2+k*22,(h-14)/2,6.5,0,6.2832);g.fill();}}
 function addBalloon(id,message){
   if(!message){removeBalloon(id);return;}
   var from=charById.get(message.from),to=charById.get(message.to);
-  var text=message.text.trim();
+  var text=message.text.trim(),typing=text===TYPING;
   if(!text||!from||!to||balloons.has(id)||message.remaining<=0)return;
+  // Uma fala nova substitui o aviso de digitação de quem falou; um aviso novo substitui o anterior.
+  for(var [oldId,old] of balloons)if(old.typing&&old.from===from)removeBalloon(oldId);
+  if(to===me&&from.remote&&!typing)replyUntil.set(from,performance.now()+REPLY_MS);
   mctx.font=bubbleFont;
   var lines=[],line='';
-  for(var char of text){
+  if(!typing)for(var char of text){
     if(line&&mctx.measureText(line+char).width>430){
       var space=line.lastIndexOf(' ');
       if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);}
@@ -1181,20 +1210,24 @@ function addBalloon(id,message){
     if(line||char!==' ')line+=char;
   }
   if(line)lines.push(line);
-  var w=Math.ceil(Math.max(...lines.map(function(value){return mctx.measureText(value).width;})))+42;
-  var h=lines.length*38+38;
+  var w=typing?116:Math.ceil(Math.max(...lines.map(function(value){return mctx.measureText(value).width;})))+42;
+  var h=typing?70:lines.length*38+38;
   var texture=textTex(function(g){
-    rrect(g,2,2,w-4,h-16,15);
-    g.fillStyle='#1b1530';g.fill();g.strokeStyle='#e0b33c';g.lineWidth=3;g.stroke();
-    g.beginPath();g.moveTo(w/2-10,h-15);g.lineTo(w/2,h-2);g.lineTo(w/2+10,h-15);
-    g.fill();g.stroke();
+    bubbleShape(g,w,h);
+    if(typing){bubbleDots(g,w,h,'#e0b33c');return;}
     g.font=bubbleFont;g.fillStyle='#fff';g.textAlign='center';g.textBaseline='middle';
     lines.forEach(function(value,i){g.fillText(value,w/2,24+i*38);});
   },w,h);
-  var mesh=new T.Mesh(new T.PlaneGeometry(w/135,h/135),
+  // O verso mostra só o formato do balão: quem está atrás percebe a conversa, mas precisa dar a volta para ler.
+  var reverse=textTex(function(g){bubbleShape(g,w,h);bubbleDots(g,w,h,typing?'#e0b33c':'#8d86a8');},w,h);
+  var geometry=new T.PlaneGeometry(w/135,h/135);
+  var mesh=new T.Mesh(geometry,
     new T.MeshBasicMaterial({map:texture,transparent:true,side:T.FrontSide,depthWrite:false}));
+  var back=new T.Mesh(geometry,
+    new T.MeshBasicMaterial({map:reverse,transparent:true,side:T.FrontSide,depthWrite:false}));
+  back.rotation.y=Math.PI;mesh.add(back);
   mesh.visible=false;scene.add(mesh);
-  balloons.set(id,{mesh:mesh,from:from,to:to,text:text,expires:performance.now()+message.remaining,height:h/135});
+  balloons.set(id,{mesh:mesh,back:back,from:from,to:to,text:text,typing:typing,expires:performance.now()+message.remaining,height:h/135,occluded:false,checkAt:0});
 }
 function balloonInFrame(mesh){
   var size=mesh.geometry.parameters;
@@ -1205,20 +1238,38 @@ function balloonInFrame(mesh){
   }
   return true;
 }
+/* Balão encoberto por telhado, parede, árvore ou morro: conferido poucas vezes por segundo, só para falas dirigidas a mim. */
+function balloonOccluded(bubble,now){
+  if(now<bubble.checkAt)return bubble.occluded;
+  bubble.checkAt=now+280;
+  if(!occluders){
+    var skip=new Set(chars.map(function(c){return c.g;}));occluders=[];
+    (function walk(o){if(skip.has(o))return;if(o.isMesh&&!Array.isArray(o.material)&&!o.material.transparent)occluders.push(o);for(var k=0;k<o.children.length;k++)walk(o.children[k]);})(scene);
+  }
+  var origin=camera.position,target=bubble.mesh.position,distance=origin.distanceTo(target);
+  speechRay.camera=camera;speechRay.ray.origin.copy(origin);speechRay.ray.direction.copy(target).sub(origin).normalize();
+  speechRay.near=.3;speechRay.far=Math.max(.3,distance-.4);
+  var hits=speechRay.intersectObjects(occluders,false);speechRay.near=0;speechRay.far=Infinity;
+  bubble.occluded=hits.some(function(hit){
+    for(var o=hit.object;o;o=o.parent)if(!o.visible)return false;
+    var planes=hit.object.material.clippingPlanes;
+    if(planes)for(var k=0;k<planes.length;k++)if(planes[k].distanceToPoint(clippedPoint.copy(hit.point))<0)return false;
+    return true;
+  });
+  return bubble.occluded;
+}
 function showEdgeBalloon(bubble){
   projectedBubble.copy(bubble.mesh.position).applyMatrix4(camera.matrixWorldInverse);
   var parent=speechEdges[projectedBubble.x<0?0:1];
   if(!bubble.edge){
     var button=document.createElement('button'),name=document.createElement('b');
     button.type='button';name.textContent=bubble.from.p.nick;
-    button.append(name,bubble.text);
-    button.addEventListener('click',function(){
-      if(performance.now()<bubble.expires)openSpeech(bubble.from,true);
-    });
+    button.append(name,bubble.typing?'digitando…':bubble.text);
+    button.addEventListener('click',function(){openSpeech(bubble.from);});
     bubble.edge=button;
   }
   if(bubble.edge.parentNode!==parent)parent.append(bubble.edge);
-  bubble.edge.hidden=!!speechTarget;
+  bubble.edge.hidden=false;
 }
 function drawBalloons(){
   if(!balloons.size)return;
@@ -1231,27 +1282,35 @@ function drawBalloons(){
     var incoming=to===me&&roomOnline;
     if(!mesh.visible&&!incoming){if(bubble.edge)bubble.edge.hidden=true;continue;}
     var base=heights.get(from)||from.s*2.55+.75;
-    mesh.position.copy(from.g.position);mesh.position.y+=base+bubble.height/2;
-    heights.set(from,base+bubble.height+.12);
-    if(to===me)viewpoint.copy(camera.position);
+    mesh.position.copy(from.g.position);
+    // Para quem participa da conversa o balão não encolhe com a distância; para os demais ele tem tamanho de mundo.
+    var mine=to===me||from===me;
+    mesh.position.y+=base;
+    var scale=mine?Math.max(1,camera.position.distanceTo(mesh.position)/11):1;
+    mesh.scale.setScalar(scale);mesh.position.y+=bubble.height*scale/2;
+    heights.set(from,base+bubble.height*scale+.12);
+    // Cada um vê o próprio balão de frente; os outros o veem voltado para a câmera do destinatário.
+    if(mine)viewpoint.copy(camera.position);
     else if(to.cameraView)viewpoint.copy(to.cameraView);
     else{viewpoint.copy(to.g.position);viewpoint.y+=2.5;}
     mesh.lookAt(viewpoint);
     if(incoming&&(!mesh.visible||!balloonInFrame(mesh))){
       mesh.visible=false;showEdgeBalloon(bubble);
-    }else if(bubble.edge)bubble.edge.hidden=true;
+    }else if(incoming&&balloonOccluded(bubble,now))showEdgeBalloon(bubble);
+    else if(bubble.edge)bubble.edge.hidden=true;
   }
 }
 function replyAt(event){
-  if(!roomOnline||!balloons.size)return;
+  if(!roomOnline||!balloons.size)return false;
   var rect=cv.getBoundingClientRect();
   speechPointer.set((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2);
   speechRay.setFromCamera(speechPointer,camera);
   var displayed=[...balloons.values()].filter(function(b){return b.mesh.visible&&b.expires>performance.now();});
   var hit=speechRay.intersectObjects(displayed.map(function(b){return b.mesh;}))[0];
-  if(!hit)return;
+  if(!hit)return false;
   var bubble=displayed.find(function(b){return b.mesh===hit.object;});
-  if(bubble.to===me)openSpeech(bubble.from,true);
+  if(bubble.to!==me)return false;
+  openSpeech(bubble.from);return true;
 }
 
 /* Pose wire format: centimetres, angle in hundredths of a radian, and motion 0–20. */
@@ -1336,10 +1395,13 @@ addEventListener('message',function(event){
       switchPending=false;switchButton.disabled=false;
       for(var id of balloons.keys())removeBalloon(id);
       if(speechTarget)closeSpeech();
+      replyUntil.clear();
     }
   }else if(data.type==='say-result'&&data.request===requestNumber&&speechTarget){
-    if(data.ok)closeSpeech();
-    else{closeSpeech();toast('Não foi possível enviar a mensagem.');}
+    // A barra continua aberta para a próxima fala.
+    speechSend.disabled=false;
+    if(data.ok){speechText.value='';speechText.focus();}
+    else toast('Não foi possível enviar a mensagem.');
   }
 });
 
