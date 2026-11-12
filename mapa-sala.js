@@ -8,17 +8,20 @@ const DATABASE_URL = 'https://congresso-monogamico-default-rtdb.firebaseio.com';
 const ROOM = 'mapa/xvi';
 const SPEECH = 'mapa/falas';
 const SUNSET = 'mapa/ambiente/porDoSol';
+const BALL = 'mapa/bola';
+const BALL_KEYS = ['x', 'y', 'z', 'vx', 'vy', 'vz'];
 const SPEECH_MS = 5000;
 const SEND_MS = 250;
 const BUMP_MS = 1000;
 const HEARTBEAT_MS = 20000;
 const STALE_MS = 55000;
 
-export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun }) {
+export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBall }) {
   const db = getDatabase(getApp(), DATABASE_URL);
   const room = ref(db, ROOM);
   const speech = ref(db, SPEECH);
   const sun = ref(db, SUNSET);
+  const ball = ref(db, BALL);
   const rows = new Map();
   const visiblePeers = new Map();
   const subscriptions = [];
@@ -107,6 +110,11 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun }) {
       }),
       onChildRemoved(speech, snapshot => onSpeech(snapshot.key, null)),
       onValue(sun, snapshot => onSun(snapshot.val() === true), leave),
+      // A bola é opcional: sem permissão de leitura ela fica local e a sala continua no ar.
+      onValue(ball, snapshot => {
+        const state = snapshot.val();
+        if (state) onBall?.(state, Math.max(0, Date.now() + offset - (Number(state.t) || 0)));
+      }, () => {}),
       onValue(ref(db, '.info/serverTimeOffset'), snapshot => { offset = snapshot.val() ?? 0; }),
       onValue(ref(db, '.info/connected'), async snapshot => {
         const attempt = ++epoch;
@@ -175,6 +183,12 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun }) {
       } catch {
         return false;
       }
+    },
+    kick(state) {
+      if (!session || !connected || !state || !BALL_KEYS.every(key => Number.isInteger(state[key]))) return;
+      const next = { by: avatar, t: serverTimestamp() };
+      for (const key of BALL_KEYS) next[key] = state[key];
+      void set(ball, next).catch(() => {});
     },
     async toggleSun() {
       if (!session || !connected) return false;

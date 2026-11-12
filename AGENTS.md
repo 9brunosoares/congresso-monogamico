@@ -1,5 +1,12 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Chácara: bola, rede de vôlei e acabamento visual (12/11/2026, Claude)
+- `mapa/index.html`: a rede de vôlei virou uma corda elástica simulada (24 nós presos nos postes). Corpos encostados viram apoio; quem insiste estica até o limite e quem solta é devolvido. Os postes entraram em `CIRC`.
+- A bola tem física própria (`ballStep`, passo fixo de 1/120 s): gravidade, quique, atrito de rolagem, declive do terreno, `BOXES`, `CIRC` (inclui o tubarão), avatares, piscina e represa. Na represa ou fora do mapa ela volta para a quadra.
+- Sincronização: quem tocou por último é a autoridade e publica posição e velocidade em `mapa/bola` (iframe → `mapa-viagem.js` → `mapa-sala.js`, método `kick`). Os outros simulam a partir do último estado; estado antigo é avançado em até 20 s.
+- **Pendente de deploy:** a regra de `mapa/bola` está em `database.rules.json`, mas só vale depois de `firebase deploy --only database`. Sem ela a leitura é negada, o listener da bola se encerra sozinho e cada aparelho vê a própria bola; presença, falas e interruptor não são afetados.
+- Visual sem passada extra de desenho: textura procedural na grama, sombra de contato das árvores numa malha só, e detalhe por `onBeforeCompile` (`fx`) em telhado, piso, deck, represa e piscina. Não há shadow map nem pós-processamento, de propósito, para preservar o desempenho no celular.
+
 ## Home e descoberta da chácara (11/11/2026)
 - Home prioriza próxima atividade/saída pessoal. Durante uma atividade, Agora e Depois ficam no mesmo cartão, com preparos reais; sem preenchimento “Nada a preparar”. Endereço do carro usa travelPlan autenticado. Horários em São Paulo; transição de atividades reavalia a tela automaticamente.
 - Relógio global com segundos removido. Mural e sirene ficam após a atividade. Sem condenados, Links oficiais ocupa o espaço ao lado da sirene. Com mural, links vêm na linha seguinte. Feed continua com duas fotos e botão + no título.
