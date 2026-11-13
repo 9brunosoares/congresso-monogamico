@@ -637,7 +637,7 @@ var lakeNoticeTrunk;
 /* cercas, escada, estrada, placas, capivaras e caiaque */
 var kayak=null,boat=false,boatArm=true,gateLock;
 /* Resgate das latinhas: 30 s remando pela represa. Só o recorde é compartilhado; o jogo roda no aparelho de quem rema. */
-var CAN_X0=-88,CAN_X1=30,CAN_Z0=-146,CAN_Z1=-80,CAN_SECONDS=30,CAN_HURRY=5,CAN_COMBO=4,CAN_GAP=7,CAN_COUNT=32,cans=[],recordTex;
+var CAN_X0=-88,CAN_X1=30,CAN_Z0=-146,CAN_Z1=-80,CAN_SECONDS=30,CAN_HURRY=5,CAN_COMBO=1.5,CAN_GAP=5,CAN_COUNT=48,CAN_NEAR=8,CAN_FAR=18,cans=[],recordTex;
 var CAN_SHOW=4.5,CAN_LOCK=2,CAN_RELEASE=1,canFreeze=0;
 var canGame=null,canRecord=null,canBest=0,canGoT=0,CAN_TESTER='bruno'; // o Bruno testa o mapa: joga, mas não marca recorde
 function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.height,q=7,i;function rd(){q=(q*1664525+1013904223)>>>0;return q/4294967296;}
@@ -652,14 +652,15 @@ function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.h
   if(pts>0){paint('RECORDE DAS LATINHAS',50,44,'#f4ecd8');paint(name.toUpperCase(),148,name.length>9?84:118,'#fff8e6');paint(pts+' PTS',248,68,'#f6cf52');}
   else{paint('NÃO JOGUE',112,84,'#fff8e6');paint('LIXO NA ÁGUA',212,84,'#fff8e6');}
   recordTex.needsUpdate=true;}
-/* Ondas: 1 latinha, depois 2, 4, 8, 16... Cada onda nasce em volta do caiaque, num raio que cresce com ela, sempre dentro da área. */
-function canPlace(can,reach){var x,z,n=0,a,r;do{a=Math.random()*6.2832;r=10+Math.random()*(reach-10);
+/* Começa com 1 latinha; cada coleta faz surgirem 2, então sempre fica uma a mais na água.
+   As novas nascem em volta do caiaque, nem coladas nem longe, sempre dentro da área. */
+function canPlace(can){var x,z,n=0,a,r,far=CAN_FAR+cans.filter(function(o){return o.g.visible;}).length*.3;do{a=Math.random()*6.2832;r=CAN_NEAR+Math.random()*(far-CAN_NEAR);
     x=Math.max(CAN_X0+3,Math.min(CAN_X1-3,me.pos.x+Math.cos(a)*r));z=Math.max(CAN_Z0+3,Math.min(CAN_Z1-3,me.pos.z+Math.sin(a)*r));}
-  while(++n<60&&(Math.hypot(x-me.pos.x,z-me.pos.z)<9||cans.some(function(o){return o!==can&&o.g.visible&&Math.hypot(o.x-x,o.z-z)<CAN_GAP;})));
+  while(++n<60&&(Math.hypot(x-me.pos.x,z-me.pos.z)<CAN_NEAR-1||cans.some(function(o){return o!==can&&o.g.visible&&Math.hypot(o.x-x,o.z-z)<CAN_GAP;})));
   can.x=x;can.z=z;can.g.visible=can.ring.visible=true;}
-function canWave(game){game.wave++;game.left=Math.min(CAN_COUNT,Math.pow(2,game.wave-1));for(var k=0;k<game.left;k++)canPlace(cans[k],12+game.wave*4);}
+function canSpawn(count){for(var k=0;k<cans.length&&count>0;k++)if(!cans[k].g.visible){canPlace(cans[k]);count--;}}
 function canBanner(html,seconds){var el=document.getElementById('cans-go');el.hidden=true;el.innerHTML=html;void el.offsetWidth;el.hidden=false;canGoT=seconds;}
-function canStart(){canFreeze=0;canGame={phase:0,t:1.6,score:0,last:-9,shown:'',wave:0,left:0};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
+function canStart(){canFreeze=0;canGame={phase:0,t:1.6,score:0,last:-9,shown:''};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
 /* landed: o tempo acabou na água. O jogador desembarca ao lado da placa, de frente para a câmera, com a placa no quadro. */
 function canEnd(landed){if(!canGame)return;var game=canGame,top=canRecord?canRecord.pts:canBest;canGame=null;
   cans.forEach(function(can){can.g.visible=can.ring.visible=false;});document.getElementById('cans-hud').hidden=true;
@@ -673,13 +674,13 @@ function canFrame(dt){
   if(canGoT>0&&(canGoT-=dt)<=0)document.getElementById('cans-go').hidden=true;
   if(!canGame)return;var game=canGame,k;
   if(game.phase===0){if((game.t-=dt)>0)return;
-    game.phase=1;game.t=CAN_SECONDS;canWave(game);canBanner('Peguem suas latinhas!',1.4);document.getElementById('cans-hud').hidden=false;document.getElementById('cans-hud').classList.remove('hurry');document.getElementById('cans-score').textContent='0';}
+    game.phase=1;game.t=CAN_SECONDS;canSpawn(1);canBanner('Peguem suas latinhas!',1.4);document.getElementById('cans-hud').hidden=false;document.getElementById('cans-hud').classList.remove('hurry');document.getElementById('cans-score').textContent='0';}
   game.t-=dt;
   for(k=0;k<cans.length;k++){var can=cans[k];if(!can.g.visible)continue;
     can.g.position.set(can.x,-2.26+Math.sin(tt*1.9+can.ph)*.05,can.z);can.g.rotation.set(can.tilt+Math.sin(tt*1.1+can.ph)*.12,tt*.4+can.ph,.3);
     var pulse=1+.3*Math.sin(tt*2.4+can.ph);can.ring.position.set(can.x,-2.37,can.z);can.ring.scale.set(pulse,pulse,1);
     if(Math.hypot(can.x-kayak.position.x,can.z-kayak.position.z)<2||Math.hypot(can.x-me.pos.x,can.z-me.pos.z)<1.5){
-      game.score+=tt-game.last<CAN_COMBO?2:1;game.last=tt;can.g.visible=can.ring.visible=false;if(--game.left<=0)canWave(game);
+      game.score+=tt-game.last<CAN_COMBO?2:1;game.last=tt;can.g.visible=can.ring.visible=false;canSpawn(2);
       var hud=document.getElementById('cans-hud');document.getElementById('cans-score').textContent=game.score;hud.classList.remove('bump');void hud.offsetWidth;hud.classList.add('bump');}}
   var left=Math.max(0,Math.ceil(game.t)),text=left+' s';if(text!==game.shown){game.shown=text;document.getElementById('cans-time').textContent=text;document.getElementById('cans-hud').classList.toggle('hurry',left<=CAN_HURRY);}
   if(game.t<=0)canEnd(true);}
