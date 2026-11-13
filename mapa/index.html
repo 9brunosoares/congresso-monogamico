@@ -58,6 +58,14 @@ button:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
 .speech-form input{grid-column:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:#322747;color:var(--paper);font:16px var(--body);user-select:text;-webkit-user-select:text}
 .speech-form .speech-send{grid-column:2}
 body.composing .hud{visibility:hidden}
+#cans-hud{position:fixed;z-index:5;left:50%;top:calc(70px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;gap:14px;align-items:baseline;padding:7px 16px;border:1px solid var(--brass);border-radius:14px;background:var(--glass);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none}
+#cans-hud b{font-family:var(--display);font-size:22px;color:var(--brass)}
+#cans-hud.bump b{animation:cans-bump .28s}
+#cans-go{position:fixed;z-index:9;left:0;right:0;top:34%;padding:0 18px;text-align:center;font-family:var(--display);font-weight:800;font-size:clamp(30px,9.5vw,58px);line-height:1.02;letter-spacing:-.01em;text-transform:uppercase;color:var(--brass);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:0 4px 0 var(--ink),0 10px 26px #000a;pointer-events:none;animation:cans-go .42s cubic-bezier(.2,1.5,.4,1) both}
+#cans-go small{display:block;margin-top:8px;font-family:var(--body);font-size:.34em;letter-spacing:.08em;color:var(--paper);-webkit-text-stroke:0;text-shadow:0 2px 6px #000c}
+@keyframes cans-go{from{transform:scale(2.2) rotate(-5deg);opacity:0}to{transform:scale(1) rotate(-2deg);opacity:1}}
+@keyframes cans-bump{50%{transform:scale(1.45)}}
+@media (prefers-reduced-motion:reduce){#cans-go,#cans-hud.bump b{animation:none}}
 .speech-send{background:var(--brass);color:var(--ink);border-color:var(--brass)}
 .speech-send:disabled{opacity:.6}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -77,6 +85,8 @@ body.composing .hud{visibility:hidden}
 <div class="hint l" id="hint-l" hidden><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#fff" stroke-width="3"/><circle cx="50" cy="50" r="17" fill="#fff"/><path d="M50 9l8 10H42zM50 91l8-10H42zM9 50l10-8v16zM91 50l-10-8v16z" fill="#fff"/></svg><span>andar</span></div>
 <div class="hint r" id="hint-r" hidden><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#fff" stroke-width="3"/><path d="M26 44a26 26 0 1 1 5 24" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M14 40l14 14 8-18z" fill="#fff"/><circle cx="50" cy="50" r="7" fill="#fff"/></svg><span>olhar</span></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="cans-hud" hidden><span id="cans-time"></span><span><b id="cans-score">0</b> pts</span></div>
+<div id="cans-go" role="status" aria-live="assertive" hidden></div>
 <div id="speech-left" class="speech-edge left"></div>
 <div id="speech-right" class="speech-edge right"></div>
 <div class="world-actions">
@@ -623,6 +633,48 @@ var lakeNoticeTrunk;
   scene.add(new T.Mesh(g,lam(0x2f6fd0,{side:T.DoubleSide})));})();
 /* cercas, escada, estrada, placas, capivaras e caiaque */
 var kayak=null,boat=false,boatArm=true,gateLock;
+/* Resgate das latinhas: 60 s remando na enseada. Só o recorde é compartilhado; o jogo roda no aparelho de quem rema. */
+var CAN_X0=-54,CAN_X1=-4,CAN_Z0=-118,CAN_Z1=-80,CAN_SECONDS=60,CAN_COMBO=3,cans=[],canBuoys,recordTex;
+var canGame=null,canRecord=null,canBest=0,canGoT=0;
+function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.height,q=7,i;function rd(){q=(q*1664525+1013904223)>>>0;return q/4294967296;}
+  var holder=canRecord?charById.get(canRecord.by):null,pts=canRecord?canRecord.pts:canBest,name=holder?holder.p.nick:canBest&&me?me.p.nick:'';
+  g.fillStyle='#8a6a44';g.fillRect(0,0,w,h);
+  for(i=0;i<26;i++){g.strokeStyle='rgba(60,38,18,'+(.08+rd()*.14)+')';g.lineWidth=1+rd()*3;g.beginPath();var y=rd()*h;g.moveTo(0,y);g.bezierCurveTo(w*.3,y+rd()*14-7,w*.7,y+rd()*14-7,w,y+rd()*10-5);g.stroke();}
+  g.fillStyle='#3a2a1c';[[20,18],[w-20,22],[22,h-20],[w-18,h-16]].forEach(function(p){g.beginPath();g.arc(p[0],p[1],6,0,6.2832);g.fill();});
+  // letra de pincel: cada letra sai um pouco torta
+  function paint(text,y,size,color){g.font='800 '+size+'px "Bricolage Grotesque", Figtree, system-ui, sans-serif';g.textBaseline='middle';g.textAlign='left';
+    var total=0,k;for(k=0;k<text.length;k++)total+=g.measureText(text[k]).width;var scale=Math.min(1,(w-56)/total),x=(w-total*scale)/2;
+    for(k=0;k<text.length;k++){var cw=g.measureText(text[k]).width*scale;g.save();g.translate(x,y+(rd()-.5)*7);g.rotate((rd()-.5)*.1);g.scale(scale,1);g.fillStyle=color;g.fillText(text[k],0,0);g.restore();x+=cw;}}
+  paint('RECORDE DAS LATINHAS',50,44,'#f4ecd8');
+  if(pts>0){paint(name.toUpperCase(),148,name.length>9?84:118,'#fff8e6');paint(pts+' PTS',248,68,'#f6cf52');}
+  else{paint('NINGUÉM AINDA',150,70,'#fff8e6');paint('SUBA NO CAIAQUE',240,40,'#f4ecd8');}
+  recordTex.needsUpdate=true;}
+function canPlace(can){var x,z,n=0;do{x=CAN_X0+3+Math.random()*(CAN_X1-CAN_X0-6);z=CAN_Z0+3+Math.random()*(CAN_Z1-CAN_Z0-6);}
+  while(++n<20&&(Math.hypot(x-me.pos.x,z-me.pos.z)<9||cans.some(function(o){return o!==can&&o.g.visible&&Math.hypot(o.x-x,o.z-z)<5;})));
+  can.x=x;can.z=z;can.g.visible=true;}
+function canBanner(html,seconds){var el=document.getElementById('cans-go');el.hidden=true;el.innerHTML=html;void el.offsetWidth;el.hidden=false;canGoT=seconds;}
+function canStart(){canGame={phase:0,t:1.6,score:0,last:-9,shown:''};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
+function canEnd(){if(!canGame)return;var game=canGame,top=canRecord?canRecord.pts:canBest;canGame=null;
+  cans.forEach(function(can){can.g.visible=false;});document.getElementById('cans-hud').hidden=true;
+  if(game.phase===0){document.getElementById('cans-go').hidden=true;canGoT=0;return;}
+  var record=game.score>top;
+  if(game.score>canBest){canBest=game.score;try{localStorage.setItem('congresso-mapa-latinhas-'+me.p.id,String(canBest));}catch(_){}}
+  if(record&&roomOnline)post('record',{pts:game.score});
+  canBanner(record?'Novo recorde!<small>'+game.score+' pontos</small>':'Fim de jogo!<small>'+game.score+(game.score===1?' ponto':' pontos')+'</small>',2.8);drawRecord();}
+function canFrame(dt){
+  if(canGoT>0&&(canGoT-=dt)<=0)document.getElementById('cans-go').hidden=true;
+  canBuoys.position.y=-2.4+Math.sin(tt*1.3)*.05;
+  if(!canGame)return;var game=canGame,k;
+  if(game.phase===0){if((game.t-=dt)>0)return;
+    game.phase=1;game.t=CAN_SECONDS;cans.forEach(canPlace);canBanner('Peguem suas latinhas!',1.4);document.getElementById('cans-hud').hidden=false;document.getElementById('cans-score').textContent='0';}
+  game.t-=dt;
+  for(k=0;k<cans.length;k++){var can=cans[k];
+    can.g.position.set(can.x,-2.26+Math.sin(tt*1.9+can.ph)*.05,can.z);can.g.rotation.set(can.tilt+Math.sin(tt*1.1+can.ph)*.12,tt*.4+can.ph,.3);
+    if(Math.hypot(can.x-kayak.position.x,can.z-kayak.position.z)<2||Math.hypot(can.x-me.pos.x,can.z-me.pos.z)<1.5){
+      game.score+=tt-game.last<CAN_COMBO?2:1;game.last=tt;canPlace(can);
+      var hud=document.getElementById('cans-hud');document.getElementById('cans-score').textContent=game.score;hud.classList.remove('bump');void hud.offsetWidth;hud.classList.add('bump');}}
+  var left=Math.max(0,Math.ceil(game.t)),text=left+' s';if(text!==game.shown){game.shown=text;document.getElementById('cans-time').textContent=text;}
+  if(game.t<=0)canEnd();}
 var gateLockAngle=.05,gateLockVelocity=0;
 function fence(x0,z0,x1,z1,st){var L=Math.hypot(x1-x0,z1-z0),n=Math.max(1,Math.round(L/(st||3))),h=1.1,i,ax=x0===x1;
   for(i=0;i<=n;i++){var px=x0+(x1-x0)*i/n,pz=z0+(z1-z0)*i/n,py=H(px,pz);box(.16,h,.16,WOOD,px,py+h/2,pz);
@@ -719,6 +771,19 @@ function pinLakeNotice(trunk){
   fence(-88,LAKE_FENCE_Z,-36.2,LAKE_FENCE_Z,5);fence(-33.8,LAKE_FENCE_Z,88,LAKE_FENCE_Z,5);
   [-36.2,-33.8].forEach(function(x){box(.22,1.6,.22,WOOD,x,H(x,LAKE_FENCE_Z)+.8,LAKE_FENCE_Z);});var lg=box(2.2,.9,.08,0x7a5c3e,-34.6,H(-35,LAKE_FENCE_Z)+.6,-46.6);lg.rotation.y=.9;
   pinLakeNotice(lakeNoticeTrunk);
+  /* resgate das latinhas: boias fixas marcam a enseada do jogo e a placa improvisada guarda o recorde */
+  canBuoys=new T.Group();canBuoys.position.y=-2.4;scene.add(canBuoys);
+  [[CAN_X0,CAN_Z0],[(CAN_X0+CAN_X1)/2,CAN_Z0],[CAN_X1,CAN_Z0],[CAN_X1,(CAN_Z0+CAN_Z1)/2],[CAN_X1,CAN_Z1],[(CAN_X0+CAN_X1)/2,CAN_Z1],[CAN_X0,CAN_Z1],[CAN_X0,(CAN_Z0+CAN_Z1)/2]].forEach(function(q,i){
+    ball(.5,i%2?0xf2efe6:0xe8612c,q[0],.12,q[1],canBuoys);ball(1,i%2?0xe8612c:0xf2efe6,q[0],.42,q[1],canBuoys,.3,.16,.3);rod(.03,.03,.5,0x2a2a2e,q[0],.8,q[1],canBuoys);});
+  (function(){var colors=[0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0,0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0,0xc4122f,0xe0b33c],tin=S(0xd8dbe0);
+    colors.forEach(function(color,i){var g=new T.Group(),body=new T.Mesh(new T.CylinderGeometry(.36,.36,.78,10),S(color)),top=new T.Mesh(new T.CylinderGeometry(.3,.36,.09,10),tin);
+      top.position.y=.43;g.add(body,top);g.visible=false;scene.add(g);cans.push({g:g,x:0,z:0,ph:i*1.7,tilt:.5+i%3*.25});});})();
+  (function(){var x=-25.2,z=-65.6,y=H(x,z);
+    var post=box(.14,2.3,.14,0x6b4a2e,x,y+1.15,z);post.rotation.z=.05;CIRC.push([x,z,.14]);
+    recordTex=textTex(function(){},512,300);
+    var plank=new T.Mesh(new T.BoxGeometry(2.3,1.35,.07),[M(0x8a6a44),M(0x8a6a44),M(0x8a6a44),M(0x8a6a44),new T.MeshLambertMaterial({map:recordTex}),M(0x7a5c3e)]);
+    plank.position.set(x+.06,y+1.95,z+.11);plank.rotation.z=-.07;scene.add(plank);
+    box(.5,.09,.05,0x6b4a2e,x-.7,y+1.2,z+.1).rotation.z=.5;drawRecord();})();
   /* caiaque duplo na margem */
   var ky=kayak=new T.Group();ky.position.set(-29,H(-29,-68.3)+.22,-68.3);ky.rotation.y=.35;scene.add(ky);ball(1,0xf0a51e,0,0,0,ky,2.3,.26,.42);ball(1,0x2a2a2a,-.8,.12,0,ky,.42,.14,.26);ball(1,0x2a2a2a,.8,.12,0,ky,.42,.14,.26);
   var pd=rod(.035,.035,2.6,0x333333,0,.36,.1,ky);pd.rotation.z=Math.PI/2;pd.rotation.y=.25;ball(1,0xd8d8d8,-1.3,.36,.42,ky,.26,.03,.14);ball(1,0xd8d8d8,1.3,.36,-.22,ky,.26,.03,.14);
@@ -1370,6 +1435,8 @@ addEventListener('message',function(event){
   var data=event.data;if(data?.channel!=='congresso-mapa')return;
   if(data.type==='start'&&!me){
     me=charById.get(data.avatar);if(!me){post('error');return;}
+    try{canBest=Math.max(0,parseInt(localStorage.getItem('congresso-mapa-latinhas-'+me.p.id),10)||0);}catch(_){}
+    drawRecord();
     chars.forEach(function(c){c.g.visible=true;});
     var saved=savedTravelPosition();
     me.pos.set(saved?.x??38,0,saved?.z??47);me.pz=me.pos.z;
@@ -1384,6 +1451,8 @@ addEventListener('message',function(event){
     if(peer&&peer!==me){setPeer(peer,data.pose);receivePressure(peer,data.pose);}
   }else if(data.type==='speech'){
     addBalloon(data.id,data.message);
+  }else if(data.type==='record'){
+    var r=data.record;canRecord=r&&charById.has(r.by)&&Number.isInteger(r.pts)&&r.pts>0?{by:r.by,pts:r.pts}:null;drawRecord();
   }else if(data.type==='ball'){
     ballReceive(data.ball,data.age);
   }else if(data.type==='sun'){
@@ -1437,7 +1506,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
     if(me.furniture){me.moving=false;}
     else if(me.st){me.moving=false;pressure=null;contactPeer=null;contactTime=0;}
     else if(boat){if(mag>.12){var bx=fx*iy+rx*ix,bz=fz*iy+rz*ix,bl=Math.hypot(bx,bz)||1;me.pos.x=Math.max(-110,Math.min(110,me.pos.x+bx/bl*6*mag*dt));me.pos.z=Math.max(-150,Math.min(-72,me.pos.z+bz/bl*6*mag*dt));
-        if(me.pos.z>-72.2&&bz>0){KX=Math.max(-84,Math.min(84,me.pos.x));dock();me.pos.set(KX+1.8,0,-66.4);boatArm=false;}
+        if(me.pos.z>-72.2&&bz>0){canEnd();KX=Math.max(-84,Math.min(84,me.pos.x));dock();me.pos.set(KX+1.8,0,-66.4);boatArm=false;}
         var tr=Math.atan2(bx,bz),dr=tr-me.g.rotation.y;while(dr>Math.PI)dr-=6.2832;while(dr<-Math.PI)dr+=6.2832;me.g.rotation.y+=dr*Math.min(1,dt*4);me.moving=true;}else me.moving=false;
       if(boat){var kr=me.g.rotation.y;kayak.position.set(me.pos.x+Math.sin(kr)*.8,-2.3+Math.sin(tt*1.6)*.03,me.pos.z+Math.cos(kr)*.8);kayak.rotation.set(0,kr-Math.PI/2,0);}}
     else{
@@ -1452,7 +1521,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
       }else{me.moving=false;contactPeer=null;contactTime=0;}
     }
     if(!boat){var kd=Math.hypot(me.pos.x-KX,me.pos.z-KZ);if(!boatArm&&kd>3.2)boatArm=true;
-      if(boatArm&&kd<1.5&&!me.st){boat=true;me.pos.set(KX,0,-74.5);me.g.rotation.y=Math.PI;yaw=0;}}}
+      if(boatArm&&kd<1.5&&!me.st){boat=true;me.pos.set(KX,0,-74.5);me.g.rotation.y=Math.PI;yaw=0;canStart();}}}
   hintL.hidden=!(touch&&me&&!joy.on);hintR.hidden=!(touch&&me&&!look.on);
   for(i=0;i<chars.length;i++){c=chars[i];
     if(c!==me){if(c.remote)drawPeer(c,dt);else if(me)restAvatar(c,dt);continue;}
@@ -1517,7 +1586,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
     var hs=Math.hypot(bv.x,bv.z);if(hs>.02){ballAxis.set(bv.z,0,-bv.x).normalize();ballMesh.rotateOnWorldAxis(ballAxis,hs*dt/BALL_R);}
     ballMesh.position.set(bp.x+bErr.x,bp.y+bErr.y+(ballWet?Math.sin(tt*2.2)*.025:0),bp.z+bErr.z);
     var lift=Math.max(0,bp.y-BALL_R-ballFloor),sc=.55/(1+lift*.7);ballBlob.visible=!ballWet;ballBlob.position.set(ballMesh.position.x,ballFloor+.05,ballMesh.position.z);ballBlob.scale.set(sc,sc,1);})();
-  fxT.value=tt;
+  fxT.value=tt;canFrame(dt);
   showerW.material.opacity=.38+Math.sin(tt*23)*.1;showerW.rotation.y=tt*5;
   for(i=0;i<capys.length;i++){var cp=capys[i];cp.g.position.y=cp.y+(cp.wet?Math.sin(tt*1.3+cp.ph)*.05:0);if(!cp.wet)cp.g.rotation.x=Math.sin(tt*.9+cp.ph)*.03;}
   flame.scale.set(1+Math.sin(tt*11)*.12,1+Math.sin(tt*7)*.2,1+Math.cos(tt*9)*.12);

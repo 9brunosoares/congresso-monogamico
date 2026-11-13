@@ -48,13 +48,14 @@ export function openTravelMap(avatar, onClose, { onReady } = {}) {
   async function joinRoom() {
     status.textContent = 'Conectando…';
     try {
-      const { joinTravelRoom } = await import('./mapa-sala.js?v=20261112g');
+      const { joinTravelRoom } = await import('./mapa-sala.js?v=20261113a');
       if (!active) return;
       room = joinTravelRoom(avatar, {
         onPeer: (id, pose) => send('peer', { id, pose }),
         onSpeech: (id, message) => send('speech', { id, message }),
         onSun: sunset => send('sun', { sunset }),
         onBall: (ball, age) => send('ball', { ball, age }),
+        onRecord: record => send('record', { record }),
         onStatus: online => {
           status.textContent = online ? 'Ao vivo' : 'Modo solo';
           send('online', { online });
@@ -84,6 +85,8 @@ export function openTravelMap(avatar, onClose, { onReady } = {}) {
     } else if (message.type === 'say' && ready) {
       void Promise.resolve(room?.say(message.to, message.text))
         .then(ok => send('say-result', { request: message.request, ok: !!ok }));
+    } else if (message.type === 'record' && ready) {
+      room?.record(message.pts);
     } else if (message.type === 'ball' && ready) {
       room?.kick(message.ball);
     } else if (message.type === 'toggle-sun' && ready) {
@@ -100,7 +103,7 @@ export function openTravelMap(avatar, onClose, { onReady } = {}) {
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
   window.addEventListener('message', receive);
   window.addEventListener('pagehide', close);
-  frame.src = './mapa/index.html?v=20261112h';
+  frame.src = './mapa/index.html?v=20261113a';
   document.body.append(dialog);
   dialog.showModal();
   return { close };

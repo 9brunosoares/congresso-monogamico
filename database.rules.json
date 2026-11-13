@@ -10,6 +10,15 @@
           ".validate": "newData.isBoolean()"
         }
       },
+      "recordeLatinhas": {
+        ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/)",
+        ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/) && newData.exists()",
+        ".validate": "newData.hasChildren(['by','pts','t']) && (!data.exists() || newData.child('pts').val() > data.child('pts').val())",
+        "by": { ".validate": "newData.isString() && auth.token.email === newData.val() + '@congresso.app'" },
+        "pts": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 999 && newData.val() % 1 === 0" },
+        "t": { ".validate": "newData.isNumber() && newData.val() >= now - 1000 && newData.val() <= now + 1000" },
+        "$other": { ".validate": false }
+      },
       "bola": {
         ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/)",
         ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password' && auth.token.email.matches(/^(bruno|ob|luan|igor|pig|pelado|gherardi|nanu|sadano|ibrahim|cadu|diogo|felipe)@congresso[.]app$/) && newData.exists()",

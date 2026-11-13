@@ -1,5 +1,12 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Chácara: resgate das latinhas no caiaque (13/11/2026, Claude)
+- Ao embarcar no caiaque começa uma rodada: faixa "Atenção, noias!", depois "Peguem suas latinhas!" e 60 s para recolher latinhas na enseada marcada por oito boias fixas (`CAN_X0..CAN_Z1` em `mapa/index.html`). Cada latinha vale 1 ponto, ou 2 se recolhida até 3 s depois da anterior. Atracar encerra a rodada com a pontuação feita.
+- O jogo roda só no aparelho de quem rema (`canStart`, `canFrame`, `canEnd`); os outros veem apenas o caiaque. Retomar a sessão já embarcado não inicia rodada.
+- A placa de madeira ao lado do caiaque (`drawRecord`) mostra o recorde compartilhado; sem ele, mostra a melhor marca do aparelho (`localStorage`, chave `congresso-mapa-latinhas-<id>`).
+- **Pendente de deploy:** a regra de `mapa/recordeLatinhas` está em `database.rules.json` e só vale depois de `firebase deploy --only database`. Ela aceita apenas marca maior que a atual, de 1 a 999, assinada pelo próprio autor. Sem o deploy nada quebra: o listener se encerra sozinho e a placa fica só com a marca local.
+- Para zerar o recorde, apague o nó `mapa/recordeLatinhas` pelo console do Firebase (a regra não permite baixar a marca pelo app).
+
 ## Chácara: conversa por balões mais fluida (12/11/2026, Claude)
 - A janela central virou uma barra no topo (`#speech-overlay`), sem escurecer a cena e sem esconder os balões. Fica no topo, e não no rodapé, para o teclado do iPhone não cobrir nem deslocar a cena. Ela continua aberta depois de enviar.
 - Duração do balão: `speechMs` em `mapa-sala.js` (4 s + 60 ms por caractere, teto de 10 s).
