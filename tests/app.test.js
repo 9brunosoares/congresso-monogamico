@@ -70,6 +70,7 @@ test('portão e mapa aparecem na home após a liberação de cada perfil',()=>{
  try{
  const {context,nodes}=ui();
  nodes['#meBtn']={focus(){}};
+ nodes['#simulateTrip']={focus(){}};
  const opened=[];
  context.openTravelMap=(id,onClose)=>{opened.push(id);return {close:onClose};};
  for(const id of ALL){
@@ -82,9 +83,17 @@ test('portão e mapa aparecem na home após a liberação de cada perfil',()=>{
   const home=vm.runInContext('viewInicio()',context);
   assert(home.includes('id="simulateTrip"'));
   vm.runInContext('simulateTrip();travelMap.close()',context);
+  vm.runInContext("discovery.record(S.me,'enter')",context);
+  const returned=vm.runInContext('viewInicio()',context);
+  assert.match(returned, /class="card official-card" id="simulateTrip"[^>]*>.*Chácara virtual/);
+  assert(!returned.includes('quer entrar na chácara?'));
+  assert(returned.indexOf('id="officialLinks"')<returned.indexOf('id="simulateTrip"'));
  }
  vm.runInContext('S.me=null;simulateTrip()',context);
  assert.deepEqual(opened,ALL);
+ Date.now=()=>DISCOVERY_END+1;
+ vm.runInContext("S.me='nanu';simulateTrip();travelMap.close()",context);
+ assert.equal(opened.at(-1),'nanu');
  }finally{Date.now=previous;}
 });
 

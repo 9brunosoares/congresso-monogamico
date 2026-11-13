@@ -201,6 +201,10 @@ function homeShortcuts(){
  if(!tripStarted())return mural?`<div class="home-actions">${mural}</div>${links}`:links;
  return `<div class="home-actions ${mural?'':'is-empty'}">${mural||links}${emergencyButton()}</div>${mural?links:''}`;
 }
+function homeChacara(){
+ if(!discovery.read(S.me).enteredAt)return '';
+ return `<button class="card official-card" id="simulateTrip" type="button" aria-haspopup="dialog">${resourceIcon('chacara')}<span class="grow"><strong>Chácara virtual</strong><small>Explore o mapa em 3D</small></span><span class="muted" aria-hidden="true">›</span></button>`;
+}
 function tripPost(post){
   const {id,author,reactions={}}=post,photo=S.tripPhotos?.[id],nick=esc(first(author));
   const likes=Object.values(reactions).filter(value=>value==='❤️').length;
@@ -241,6 +245,7 @@ function viewInicio(){
   </section>` : `<section class="card next"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2></section>`}
 
   ${homeShortcuts()}
+  ${homeChacara()}
 
   ${homeQueridometro()}
   ${homePortal()}
@@ -501,6 +506,7 @@ function sheetCloseScores(){
  sheet('<h3>Encerrar placar?</h3><p>A pontuação e a classificação ficarão congeladas. O restante do app continua funcionando.</p><div class="stack"><button class="btn block" id="scoreCloseOk" type="button">Encerrar placar</button><button class="btn ghost block" data-close type="button">Voltar</button></div>',s=>{s.querySelector('#scoreCloseOk').onclick=()=>act(s.querySelector('#scoreCloseOk'),async()=>{await backend.closeScores();s.remove();toast('Placar encerrado.');});});
 }
 function resourceIcon(kind){
+ if(kind==='chacara')return '<svg class="resource-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m2 11 6-5 6 5M4 10v10h8V10M7 20v-4h2v4M18.5 20v-3M18.5 4l-4 7h2l-3 6h10l-3-6h2z"/></svg>';
  const paths={links:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/>',album:'<rect x="3" y="5" width="18" height="15" rx="2"/><circle cx="8" cy="10" r="1"/><path d="m4 18 5-5 4 4 3-3 4 4"/>',music:'<path d="M9 18V5l11-2v13M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/>',map:'<path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z"/><circle cx="12" cy="10" r="2"/>',house:'<path d="m3 11 9-8 9 8M5 10v11h14V10M10 21v-7h4v7"/>',wifi:'<path d="M3 8a15 15 0 0 1 18 0M6 12a10 10 0 0 1 12 0M9 16a5 5 0 0 1 6 0M12 20h.01"/>'};
  return `<svg class="resource-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[kind]}</svg>`;
 }
@@ -718,8 +724,8 @@ function simulateTrip(){
  travelMap=openTravelMap(avatar,()=>{
   travelMap=null;
   if(S.me!==avatar)return;
-  render();$('#meBtn')?.focus({preventScroll:true});
-  if(firstVisit&&entered)toast('Volte à chácara pelo seu perfil.',5000);
+  render();($('#simulateTrip')||$('#meBtn'))?.focus({preventScroll:true});
+  if(firstVisit&&entered)toast('Volte pelo atalho Chácara virtual na Home.',5000);
  },{onReady(){
   entered=true;discovery.record(avatar,'enter');
   if(S.me===avatar)render();
