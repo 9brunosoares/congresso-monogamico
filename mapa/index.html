@@ -64,7 +64,7 @@ body.composing .hud{visibility:hidden}
 #cans-hud.hurry{border-color:var(--seal);background:#c4122fe0}
 #cans-hud.hurry #cans-time{display:inline-block;font-family:var(--display);font-size:22px;animation:cans-hurry .5s ease-in-out infinite}
 @keyframes cans-hurry{50%{transform:scale(1.35)}}
-#cans-go{position:fixed;z-index:9;left:0;right:0;top:34%;padding:0 18px;text-align:center;font-family:var(--display);font-weight:800;font-size:clamp(30px,9.5vw,58px);line-height:1.02;letter-spacing:-.01em;text-transform:uppercase;color:var(--brass);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:0 4px 0 var(--ink),0 10px 26px #000a;pointer-events:none;animation:cans-go .42s cubic-bezier(.2,1.5,.4,1) both}
+#cans-go{position:fixed;z-index:9;left:0;right:0;top:17%;padding:0 18px;text-align:center;font-family:var(--display);font-weight:800;font-size:clamp(30px,9.5vw,58px);line-height:1.02;letter-spacing:-.01em;text-transform:uppercase;color:var(--brass);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:0 4px 0 var(--ink),0 10px 26px #000a;pointer-events:none;animation:cans-go .42s cubic-bezier(.2,1.5,.4,1) both}
 #cans-go small{display:block;margin-top:8px;font-family:var(--body);font-size:.34em;letter-spacing:.08em;color:var(--paper);-webkit-text-stroke:0;text-shadow:0 2px 6px #000c}
 @keyframes cans-go{from{transform:scale(2.2) rotate(-5deg);opacity:0}to{transform:scale(1) rotate(-2deg);opacity:1}}
 @keyframes cans-bump{50%{transform:scale(1.45)}}
@@ -637,7 +637,7 @@ var lakeNoticeTrunk;
 /* cercas, escada, estrada, placas, capivaras e caiaque */
 var kayak=null,boat=false,boatArm=true,gateLock;
 /* Resgate das latinhas: 30 s remando pela represa. Só o recorde é compartilhado; o jogo roda no aparelho de quem rema. */
-var CAN_X0=-88,CAN_X1=30,CAN_Z0=-146,CAN_Z1=-80,CAN_SECONDS=30,CAN_HURRY=5,CAN_COMBO=4,CAN_GAP=17,cans=[],recordTex;
+var CAN_X0=-88,CAN_X1=30,CAN_Z0=-146,CAN_Z1=-80,CAN_SECONDS=30,CAN_HURRY=5,CAN_COMBO=4,CAN_GAP=11,CAN_COUNT=24,cans=[],recordTex;
 var canGame=null,canRecord=null,canBest=0,canGoT=0,CAN_TESTER='bruno'; // o Bruno testa o mapa: joga, mas não marca recorde
 function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.height,q=7,i;function rd(){q=(q*1664525+1013904223)>>>0;return q/4294967296;}
   var holder=canRecord?charById.get(canRecord.by):null,pts=canRecord?canRecord.pts:canBest,name=holder?holder.p.nick:canBest&&me?me.p.nick:'';
@@ -656,13 +656,15 @@ function canPlace(can){var x,z,n=0;do{x=CAN_X0+3+Math.random()*(CAN_X1-CAN_X0-6)
   can.x=x;can.z=z;can.g.visible=can.ring.visible=true;}
 function canBanner(html,seconds){var el=document.getElementById('cans-go');el.hidden=true;el.innerHTML=html;void el.offsetWidth;el.hidden=false;canGoT=seconds;}
 function canStart(){canGame={phase:0,t:1.6,score:0,last:-9,shown:''};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
-function canEnd(){if(!canGame)return;var game=canGame,top=canRecord?canRecord.pts:canBest;canGame=null;
+/* landed: o tempo acabou na água. O jogador desembarca ao lado da placa, de frente para a câmera, com a placa no quadro. */
+function canEnd(landed){if(!canGame)return;var game=canGame,top=canRecord?canRecord.pts:canBest;canGame=null;
   cans.forEach(function(can){can.g.visible=can.ring.visible=false;});document.getElementById('cans-hud').hidden=true;
   if(game.phase===0){document.getElementById('cans-go').hidden=true;canGoT=0;return;}
   var counts=me.p.id!==CAN_TESTER,record=counts&&game.score>top;
   if(counts&&game.score>canBest){canBest=game.score;try{localStorage.setItem('congresso-mapa-latinhas-'+me.p.id,String(canBest));}catch(_){}}
-  if(record&&roomOnline)post('record',{pts:game.score});
-  canBanner(record?'Novo recorde!<small>'+game.score+' pontos</small>':'Fim de jogo!<small>'+game.score+(game.score===1?' ponto':' pontos')+'</small>',2.8);drawRecord();}
+  if(record&&roomOnline){post('record',{pts:game.score});canRecord={by:me.p.id,pts:game.score};}
+  if(landed){KX=-29;dock();me.pos.set(-27,0,-64.2);me.pz=me.pos.z;me.g.rotation.y=0;yaw=0;pitch=.1;dist=9.5;boatArm=false;}
+  canBanner(record?'Novo recorde!<small>'+game.score+' pontos</small>':'Fim de jogo!<small>'+game.score+(game.score===1?' ponto':' pontos')+'</small>',landed?4.5:2.8);drawRecord();}
 function canFrame(dt){
   if(canGoT>0&&(canGoT-=dt)<=0)document.getElementById('cans-go').hidden=true;
   if(!canGame)return;var game=canGame,k;
@@ -676,7 +678,7 @@ function canFrame(dt){
       game.score+=tt-game.last<CAN_COMBO?2:1;game.last=tt;canPlace(can);
       var hud=document.getElementById('cans-hud');document.getElementById('cans-score').textContent=game.score;hud.classList.remove('bump');void hud.offsetWidth;hud.classList.add('bump');}}
   var left=Math.max(0,Math.ceil(game.t)),text=left+' s';if(text!==game.shown){game.shown=text;document.getElementById('cans-time').textContent=text;document.getElementById('cans-hud').classList.toggle('hurry',left<=CAN_HURRY);}
-  if(game.t<=0)canEnd();}
+  if(game.t<=0)canEnd(true);}
 var gateLockAngle=.05,gateLockVelocity=0;
 function fence(x0,z0,x1,z1,st){var L=Math.hypot(x1-x0,z1-z0),n=Math.max(1,Math.round(L/(st||3))),h=1.1,i,ax=x0===x1;
   for(i=0;i<=n;i++){var px=x0+(x1-x0)*i/n,pz=z0+(z1-z0)*i/n,py=H(px,pz);box(.16,h,.16,WOOD,px,py+h/2,pz);
@@ -774,7 +776,7 @@ function pinLakeNotice(trunk){
   [-36.2,-33.8].forEach(function(x){box(.22,1.6,.22,WOOD,x,H(x,LAKE_FENCE_Z)+.8,LAKE_FENCE_Z);});var lg=box(2.2,.9,.08,0x7a5c3e,-34.6,H(-35,LAKE_FENCE_Z)+.6,-46.6);lg.rotation.y=.9;
   pinLakeNotice(lakeNoticeTrunk);
   /* resgate das latinhas: sem marcação na água, o limite da área se descobre remando; a placa improvisada guarda o recorde */
-  (function(){var colors=[0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0,0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0,0xc4122f,0xe0b33c],tin=S(0xd8dbe0);
+  (function(){var palette=[0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0],colors=[],tin=S(0xd8dbe0);while(colors.length<CAN_COUNT)colors.push(palette[colors.length%palette.length]);
     var ripple=new T.RingGeometry(1.05,1.3,20),rippleM=new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.55,depthWrite:false});
     colors.forEach(function(color,i){var g=new T.Group(),body=new T.Mesh(new T.CylinderGeometry(.36,.36,.78,10),S(color)),top=new T.Mesh(new T.CylinderGeometry(.3,.36,.09,10),tin);
       top.position.y=.43;g.add(body,top);g.visible=false;scene.add(g);
