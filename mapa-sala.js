@@ -9,6 +9,7 @@ const ROOM = 'mapa/xvi';
 const SPEECH = 'mapa/falas';
 const SUNSET = 'mapa/ambiente/porDoSol';
 const BALL = 'mapa/bola';
+const CAN_RECORD = 'mapa/recordeLatinhas';
 const BALL_KEYS = ['x', 'y', 'z', 'vx', 'vy', 'vz'];
 // Um balão dura o tempo de leitura do texto: 4 s mais 60 ms por caractere, até 10 s.
 const speechMs = text => Math.min(10000, 4000 + 60 * String(text ?? '').length);
@@ -17,12 +18,13 @@ const BUMP_MS = 1000;
 const HEARTBEAT_MS = 20000;
 const STALE_MS = 55000;
 
-export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBall }) {
+export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBall, onRecord }) {
   const db = getDatabase(getApp(), DATABASE_URL);
   const room = ref(db, ROOM);
   const speech = ref(db, SPEECH);
   const sun = ref(db, SUNSET);
   const ball = ref(db, BALL);
+  const canRecord = ref(db, CAN_RECORD);
   const rows = new Map();
   const visiblePeers = new Map();
   const subscriptions = [];
@@ -117,6 +119,8 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
         const state = snapshot.val();
         if (state) onBall?.(state, Math.max(0, Date.now() + offset - (Number(state.t) || 0)));
       }, () => {}),
+      // O recorde das latinhas também é opcional: sem permissão, a placa mostra só a melhor marca do aparelho.
+      onValue(canRecord, snapshot => onRecord?.(snapshot.val()), () => {}),
       onValue(ref(db, '.info/serverTimeOffset'), snapshot => { offset = snapshot.val() ?? 0; }),
       onValue(ref(db, '.info/connected'), async snapshot => {
         const attempt = ++epoch;
@@ -185,6 +189,11 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
       } catch {
         return false;
       }
+    },
+    record(pts) {
+      // A regra do banco só aceita marca maior que a atual.
+      if (!session || !connected || !Number.isInteger(pts) || pts < 1 || pts > 999) return;
+      void set(canRecord, { by: avatar, pts, t: serverTimestamp() }).catch(() => {});
     },
     kick(state) {
       if (!session || !connected || !state || !BALL_KEYS.every(key => Number.isInteger(state[key]))) return;
