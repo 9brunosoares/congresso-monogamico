@@ -3,8 +3,9 @@
 ## Chácara: resgate das latinhas no caiaque (13/11/2026, Claude)
 - Ao embarcar no caiaque começa uma rodada: faixa "Atenção, noias!", depois "Peguem suas latinhas!" e 60 s para recolher latinhas na enseada marcada por oito boias fixas (`CAN_X0..CAN_Z1` em `mapa/index.html`). Cada latinha vale 1 ponto, ou 2 se recolhida até 3 s depois da anterior. Atracar encerra a rodada com a pontuação feita.
 - O jogo roda só no aparelho de quem rema (`canStart`, `canFrame`, `canEnd`); os outros veem apenas o caiaque. Retomar a sessão já embarcado não inicia rodada.
-- A placa de madeira ao lado do caiaque (`drawRecord`) mostra o recorde compartilhado; sem ele, mostra a melhor marca do aparelho (`localStorage`, chave `congresso-mapa-latinhas-<id>`).
-- **Pendente de deploy:** a regra de `mapa/recordeLatinhas` está em `database.rules.json` e só vale depois de `firebase deploy --only database`. Ela aceita apenas marca maior que a atual, de 1 a 999, assinada pelo próprio autor. Sem o deploy nada quebra: o listener se encerra sozinho e a placa fica só com a marca local.
+- A placa de madeira ao lado do caiaque (`drawRecord`) diz "Não jogue lixo na água" enquanto não há recorde. Depois mostra o recorde compartilhado; sem ele, a melhor marca do aparelho (`localStorage`, chave `congresso-mapa-latinhas-<id>`).
+- O usuário `bruno` testa o mapa e não conta para recorde: joga normalmente, mas não grava marca local, não envia recorde (`CAN_TESTER` no mapa, `record` em `mapa-sala.js`) e a regra do banco recusa `by` igual a `bruno`.
+- **Pendente de deploy:** a regra de `mapa/recordeLatinhas` está em `database.rules.json` e só vale depois de `firebase deploy --only database`. Ela aceita apenas marca maior que a atual, de 1 a 999, assinada pelo próprio autor, e recusa o usuário `bruno`. Se a regra já tinha sido publicada antes de 13/11 à noite, publique de novo para valer a exclusão do `bruno`. Sem o deploy nada quebra: o listener se encerra sozinho e a placa fica só com a marca local.
 - Para zerar o recorde, apague o nó `mapa/recordeLatinhas` pelo console do Firebase (a regra não permite baixar a marca pelo app).
 
 ## Chácara: conversa por balões mais fluida (12/11/2026, Claude)
