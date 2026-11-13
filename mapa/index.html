@@ -654,12 +654,15 @@ function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.h
   recordTex.needsUpdate=true;}
 /* Crescimento acelerado: começa com 1 latinha; cada coleta faz surgirem 2 nos primeiros 10 s, 3 dos 10 aos 20 s e 4 nos 10 s finais.
    Quando faltam CAN_HURRY s cai a chuva de latinhas: tantas quantas o jogador já recolheu (no mínimo CAN_RAIN).
-   As novas nascem em volta do caiaque, nem coladas nem longe, sempre dentro da área. */
-function canPlace(can){var x,z,n=0,a,r,far=CAN_FAR+cans.filter(function(o){return o.g.visible;}).length*.3;do{a=Math.random()*6.2832;r=CAN_NEAR+Math.random()*(far-CAN_NEAR);
+   As novas caem em volta do caiaque, nem coladas nem longe, sempre dentro da área. Elas chegam arremessadas da chácara:
+   voam em arco a partir da margem, só podem ser recolhidas depois de cair e fazem uma ondinha ao bater na água. */
+function canPlace(can,delay){var x,z,n=0,a,r,far=CAN_FAR+cans.filter(function(o){return o.g.visible;}).length*.3;do{a=Math.random()*6.2832;r=CAN_NEAR+Math.random()*(far-CAN_NEAR);
     x=Math.max(CAN_X0+3,Math.min(CAN_X1-3,me.pos.x+Math.cos(a)*r));z=Math.max(CAN_Z0+3,Math.min(CAN_Z1-3,me.pos.z+Math.sin(a)*r));}
   while(++n<60&&(Math.hypot(x-me.pos.x,z-me.pos.z)<CAN_NEAR-1||cans.some(function(o){return o!==can&&o.g.visible&&Math.hypot(o.x-x,o.z-z)<CAN_GAP;})));
-  can.x=x;can.z=z;can.g.visible=can.ring.visible=true;}
-function canSpawn(count){for(var k=0;k<cans.length&&count>0;k++)if(!cans[k].g.visible){canPlace(cans[k]);count--;}}
+  can.x=x;can.z=z;can.g.visible=true;can.ring.visible=false;can.splash=0;
+  var sx=-34+Math.random()*44,sz=-58,d=Math.hypot(x-sx,z-sz);
+  can.fly={t:-(delay||0),dur:.75+d*.007,sx:sx,sz:sz,top:9+d*.14,spin:6+Math.random()*6};can.g.position.set(sx,-50,sz);}
+function canSpawn(count,gap){for(var k=0,n=0;k<cans.length&&count>0;k++)if(!cans[k].g.visible){canPlace(cans[k],(n++)*(gap||.08));count--;}}
 function canBanner(html,seconds){var el=document.getElementById('cans-go');el.hidden=true;el.innerHTML=html;void el.offsetWidth;el.hidden=false;canGoT=seconds;}
 function canStart(){canFreeze=0;canGame={phase:0,t:1.6,score:0,last:-9,shown:'',picked:0,rain:false};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
 /* landed: o tempo acabou na água. O jogador desembarca ao lado da placa, de frente para a câmera, com a placa no quadro. */
@@ -677,11 +680,15 @@ function canFrame(dt){
   if(game.phase===0){if((game.t-=dt)>0)return;
     game.phase=1;game.t=CAN_SECONDS;canSpawn(1);canBanner('Peguem suas latinhas!',1.4);document.getElementById('cans-hud').hidden=false;document.getElementById('cans-hud').classList.remove('hurry');document.getElementById('cans-score').textContent='0';}
   game.t-=dt;
-  if(!game.rain&&game.t<=CAN_HURRY){game.rain=true;canSpawn(Math.max(CAN_RAIN,game.picked));canBanner('Chuva de latinhas!',1.2);}
+  if(!game.rain&&game.t<=CAN_HURRY){game.rain=true;canSpawn(Math.max(CAN_RAIN,game.picked),.05);}
   var rings=cans.filter(function(o){return o.g.visible;}).length<=CAN_RINGS;
   for(k=0;k<cans.length;k++){var can=cans[k];if(!can.g.visible)continue;
-    can.g.position.set(can.x,-2.26+Math.sin(tt*1.9+can.ph)*.05,can.z);can.g.rotation.set(can.tilt+Math.sin(tt*1.1+can.ph)*.12,tt*.4+can.ph,.3);
+    if(can.fly){var f=can.fly;f.t+=dt;if(f.t<0)continue;var u=f.t/f.dur;
+      if(u<1){can.g.position.set(f.sx+(can.x-f.sx)*u,-2.2+7*(1-u)+4*f.top*u*(1-u),f.sz+(can.z-f.sz)*u);can.g.rotation.set(f.t*f.spin,can.ph,f.t*f.spin*.6);continue;}
+      can.fly=null;can.splash=.45;}
+    can.g.position.set(can.x,-2.06+Math.sin(tt*1.9+can.ph)*.05,can.z);can.g.rotation.set(can.tilt+Math.sin(tt*1.1+can.ph)*.1,tt*.4+can.ph,.22);
     var pulse=1+.3*Math.sin(tt*2.4+can.ph);can.ring.visible=rings;can.ring.position.set(can.x,-2.37,can.z);can.ring.scale.set(pulse,pulse,1);
+    if(can.splash>0){can.splash-=dt;pulse=.5+(1-can.splash/.45)*2.3;can.ring.visible=can.splash>0||rings;can.ring.scale.set(pulse,pulse,1);}
     if(Math.hypot(can.x-kayak.position.x,can.z-kayak.position.z)<2||Math.hypot(can.x-me.pos.x,can.z-me.pos.z)<1.5){
       game.score+=tt-game.last<CAN_COMBO?2:1;game.last=tt;can.g.visible=can.ring.visible=false;game.picked++;canSpawn(2+Math.min(2,Math.floor((CAN_SECONDS-game.t)/10)));
       var hud=document.getElementById('cans-hud');document.getElementById('cans-score').textContent=game.score;hud.classList.remove('bump');void hud.offsetWidth;hud.classList.add('bump');}}
@@ -784,15 +791,26 @@ function pinLakeNotice(trunk){
   [-36.2,-33.8].forEach(function(x){box(.22,1.6,.22,WOOD,x,H(x,LAKE_FENCE_Z)+.8,LAKE_FENCE_Z);});var lg=box(2.2,.9,.08,0x7a5c3e,-34.6,H(-35,LAKE_FENCE_Z)+.6,-46.6);lg.rotation.y=.9;
   pinLakeNotice(lakeNoticeTrunk);
   /* resgate das latinhas: sem marcação na água, o limite da área se descobre remando; a placa improvisada guarda o recorde */
-  (function(){var palette=[0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0],tin=new T.Color(0xd8dbe0),canM=new T.MeshLambertMaterial({vertexColors:true});
-    // uma malha por latinha (corpo colorido e tampa prateada na mesma geometria), para o fim da rodada caber em poucas chamadas de desenho
-    var shapes=palette.map(function(hex){var g=new T.CylinderGeometry(.36,.36,.82,10),p=g.attributes.position,nr=g.attributes.normal,col=[],c=new T.Color(hex),k;
-      for(k=0;k<p.count;k++){var top=nr.getY(k)>.5||p.getY(k)>.3&&nr.getY(k)>.5,q=top?tin:c;col.push(q.r,q.g,q.b);}
-      g.setAttribute('color',new T.Float32BufferAttribute(col,3));return g;});
+  (function(){var palette=[0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0],canM=new T.MeshLambertMaterial({vertexColors:true});
+    // Cada latinha é uma malha só, com cor por vértice: corpo com rótulo, gargalo, tampa com lacre aberto e, em algumas, canudo.
+    function canShape(hex,straw){var pos=[],nor=[],col=[],c=new T.Color(),m=new T.Matrix4(),e=new T.Euler(),q=new T.Quaternion(),v=new T.Vector3(),one=new T.Vector3(1,1,1);
+      function add(g,color,x,y,z,rx,rz,sx,sz){g=g.toNonIndexed();m.compose(v.set(x,y,z),q.setFromEuler(e.set(rx||0,0,rz||0)),one.set(sx||1,1,sz||1));g.applyMatrix4(m);
+        var p=g.attributes.position.array,n=g.attributes.normal.array,k;c.set(color);for(k=0;k<p.length;k+=3){pos.push(p[k],p[k+1],p[k+2]);nor.push(n[k],n[k+1],n[k+2]);col.push(c.r,c.g,c.b);}g.dispose();}
+      add(new T.CylinderGeometry(.27,.27,.8,12,1,true),hex,0,0,0);                       // corpo
+      add(new T.CylinderGeometry(.276,.276,.2,12,1,true),hex===0xd8dbe0?0xc4122f:0xfbf7ea,0,-.02,0); // rótulo
+      add(new T.CylinderGeometry(.2,.27,.11,12,1,true),0xd8dbe0,0,.455,0);               // gargalo
+      add(new T.CylinderGeometry(.2,.2,.02,12),0xeceef2,0,.52,0);                        // tampa
+      add(new T.CylinderGeometry(.27,.2,.09,12),0xb9bdc7,0,-.445,0);                     // fundo
+      add(new T.CylinderGeometry(.075,.075,.012,8),0x15111f,0,.535,.075,0,0,1,1.35);     // boca aberta
+      add(new T.BoxGeometry(.085,.014,.15),0xf6f7fa,0,.565,-.05,-.55);                   // lacre levantado
+      if(straw){add(new T.CylinderGeometry(.026,.026,.5,6,1,true),0xfbf7ea,.03,.72,.11,0,-.12);add(new T.CylinderGeometry(.027,.027,.14,6,1,true),0xc4122f,.03,.8,.11,0,-.12);
+        add(new T.CylinderGeometry(.026,.026,.2,6),0xc4122f,.14,1,.11,0,-1.15);}         // canudo dobrado
+      var g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('normal',new T.Float32BufferAttribute(nor,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));return g;}
+    var shapes=[];palette.forEach(function(hex,k){shapes.push(canShape(hex,false));if(k<3)shapes.push(canShape(hex,true));});
     var ripple=new T.RingGeometry(1.05,1.3,20),rippleM=new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.55,depthWrite:false});
-    for(var i=0;i<CAN_COUNT;i++){var g=new T.Mesh(shapes[i%shapes.length],canM);g.visible=false;scene.add(g);
+    for(var i=0;i<CAN_COUNT;i++){var g=new T.Mesh(shapes[i%shapes.length],canM);g.scale.setScalar(1.2);g.visible=false;scene.add(g);
       // ondinha em volta da latinha: ajuda a enxergar de longe enquanto são poucas
-      var ring=new T.Mesh(ripple,rippleM);ring.rotation.x=-Math.PI/2;ring.visible=false;scene.add(ring);cans.push({g:g,ring:ring,x:0,z:0,ph:i*1.7,tilt:.5+i%3*.25});}})();
+      var ring=new T.Mesh(ripple,rippleM);ring.rotation.x=-Math.PI/2;ring.visible=false;scene.add(ring);cans.push({g:g,ring:ring,x:0,z:0,ph:i*1.7,tilt:.3+i%3*.16,fly:null,splash:0});}})();
   (function(){var x=-25.2,z=-65.6,y=H(x,z);
     var post=box(.14,2.3,.14,0x6b4a2e,x,y+1.15,z);post.rotation.z=.05;CIRC.push([x,z,.14]);
     recordTex=textTex(function(){},512,300);
