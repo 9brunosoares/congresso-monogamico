@@ -638,6 +638,7 @@ var lakeNoticeTrunk;
 var kayak=null,boat=false,boatArm=true,gateLock;
 /* Resgate das latinhas: 30 s remando pela represa. Só o recorde é compartilhado; o jogo roda no aparelho de quem rema. */
 var CAN_X0=-88,CAN_X1=30,CAN_Z0=-146,CAN_Z1=-80,CAN_SECONDS=30,CAN_HURRY=5,CAN_COMBO=4,CAN_GAP=11,CAN_COUNT=24,cans=[],recordTex;
+var CAN_SHOW=4.5,CAN_RELEASE=3,canFreeze=0;
 var canGame=null,canRecord=null,canBest=0,canGoT=0,CAN_TESTER='bruno'; // o Bruno testa o mapa: joga, mas não marca recorde
 function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.height,q=7,i;function rd(){q=(q*1664525+1013904223)>>>0;return q/4294967296;}
   var holder=canRecord?charById.get(canRecord.by):null,pts=canRecord?canRecord.pts:canBest,name=holder?holder.p.nick:canBest&&me?me.p.nick:'';
@@ -655,7 +656,7 @@ function canPlace(can){var x,z,n=0;do{x=CAN_X0+3+Math.random()*(CAN_X1-CAN_X0-6)
   while(++n<40&&(Math.hypot(x-me.pos.x,z-me.pos.z)<12||cans.some(function(o){return o!==can&&o.g.visible&&Math.hypot(o.x-x,o.z-z)<CAN_GAP;})));
   can.x=x;can.z=z;can.g.visible=can.ring.visible=true;}
 function canBanner(html,seconds){var el=document.getElementById('cans-go');el.hidden=true;el.innerHTML=html;void el.offsetWidth;el.hidden=false;canGoT=seconds;}
-function canStart(){canGame={phase:0,t:1.6,score:0,last:-9,shown:''};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
+function canStart(){canFreeze=0;canGame={phase:0,t:1.6,score:0,last:-9,shown:''};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
 /* landed: o tempo acabou na água. O jogador desembarca ao lado da placa, de frente para a câmera, com a placa no quadro. */
 function canEnd(landed){if(!canGame)return;var game=canGame,top=canRecord?canRecord.pts:canBest;canGame=null;
   cans.forEach(function(can){can.g.visible=can.ring.visible=false;});document.getElementById('cans-hud').hidden=true;
@@ -663,8 +664,8 @@ function canEnd(landed){if(!canGame)return;var game=canGame,top=canRecord?canRec
   var counts=me.p.id!==CAN_TESTER,record=counts&&game.score>top;
   if(counts&&game.score>canBest){canBest=game.score;try{localStorage.setItem('congresso-mapa-latinhas-'+me.p.id,String(canBest));}catch(_){}}
   if(record&&roomOnline){post('record',{pts:game.score});canRecord={by:me.p.id,pts:game.score};}
-  if(landed){KX=-29;dock();me.pos.set(-27,0,-64.2);me.pz=me.pos.z;me.g.rotation.y=0;yaw=0;pitch=.1;dist=9.5;boatArm=false;}
-  canBanner(record?'Novo recorde!<small>'+game.score+' pontos</small>':'Fim de jogo!<small>'+game.score+(game.score===1?' ponto':' pontos')+'</small>',landed?4.5:2.8);drawRecord();}
+  if(landed){KX=-29;dock();me.pos.set(-27,0,-64.2);me.pz=me.pos.z;me.g.rotation.y=0;yaw=0;pitch=.1;dist=9.5;boatArm=false;canFreeze=CAN_SHOW+CAN_RELEASE;}
+  canBanner(record?'Novo recorde!<small>'+game.score+' pontos</small>':'Fim de jogo!<small>'+game.score+(game.score===1?' ponto':' pontos')+'</small>',landed?CAN_SHOW:2.8);drawRecord();}
 function canFrame(dt){
   if(canGoT>0&&(canGoT-=dt)<=0)document.getElementById('cans-go').hidden=true;
   if(!canGame)return;var game=canGame,k;
@@ -1501,6 +1502,9 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
   var i,c;
 
   if(me){var ix=joy.x,iy=-joy.y;if(keys.a||keys.arrowleft)ix-=1;if(keys.d||keys.arrowright)ix+=1;if(keys.w||keys.arrowup)iy+=1;if(keys.s||keys.arrowdown)iy-=1;
+    /* Só depois do desembarque automático das latinhas: o andar fica travado enquanto a pontuação está na tela e, depois,
+       até o jogador soltar o controle (no máximo CAN_RELEASE s a mais), para ele não sair andando com o embalo da remada. */
+    if(canFreeze>0){canFreeze-=dt;if(canFreeze<=CAN_RELEASE&&!ix&&!iy)canFreeze=0;ix=iy=0;}
     var fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);var mag=Math.min(1,Math.hypot(ix,iy));
     var walking=mag>.12;
     if(me.furniture){
