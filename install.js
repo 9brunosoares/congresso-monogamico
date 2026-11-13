@@ -65,4 +65,4 @@ export function initializeInstallation(env,loadApp){
  });
  if(!open())show();
 }
-if(typeof window!=='undefined')initializeInstallation(window,()=>import('./app.js?v=20261113d'));
+if(typeof window!=='undefined')initializeInstallation(window,()=>import('./app.js?v=20261113e'));
