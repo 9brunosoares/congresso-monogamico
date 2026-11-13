@@ -192,7 +192,7 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
     },
     record(pts) {
       // A regra do banco só aceita marca maior que a atual.
-      if (!session || !connected || !Number.isInteger(pts) || pts < 1 || pts > 999) return;
+      if (!session || !connected || avatar === 'bruno' || !Number.isInteger(pts) || pts < 1 || pts > 999) return;
       void set(canRecord, { by: avatar, pts, t: serverTimestamp() }).catch(() => {});
     },
     kick(state) {

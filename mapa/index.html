@@ -635,7 +635,7 @@ var lakeNoticeTrunk;
 var kayak=null,boat=false,boatArm=true,gateLock;
 /* Resgate das latinhas: 60 s remando na enseada. Só o recorde é compartilhado; o jogo roda no aparelho de quem rema. */
 var CAN_X0=-54,CAN_X1=-4,CAN_Z0=-118,CAN_Z1=-80,CAN_SECONDS=60,CAN_COMBO=3,cans=[],canBuoys,recordTex;
-var canGame=null,canRecord=null,canBest=0,canGoT=0;
+var canGame=null,canRecord=null,canBest=0,canGoT=0,CAN_TESTER='bruno'; // o Bruno testa o mapa: joga, mas não marca recorde
 function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.height,q=7,i;function rd(){q=(q*1664525+1013904223)>>>0;return q/4294967296;}
   var holder=canRecord?charById.get(canRecord.by):null,pts=canRecord?canRecord.pts:canBest,name=holder?holder.p.nick:canBest&&me?me.p.nick:'';
   g.fillStyle='#8a6a44';g.fillRect(0,0,w,h);
@@ -645,9 +645,8 @@ function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.h
   function paint(text,y,size,color){g.font='800 '+size+'px "Bricolage Grotesque", Figtree, system-ui, sans-serif';g.textBaseline='middle';g.textAlign='left';
     var total=0,k;for(k=0;k<text.length;k++)total+=g.measureText(text[k]).width;var scale=Math.min(1,(w-56)/total),x=(w-total*scale)/2;
     for(k=0;k<text.length;k++){var cw=g.measureText(text[k]).width*scale;g.save();g.translate(x,y+(rd()-.5)*7);g.rotate((rd()-.5)*.1);g.scale(scale,1);g.fillStyle=color;g.fillText(text[k],0,0);g.restore();x+=cw;}}
-  paint('RECORDE DAS LATINHAS',50,44,'#f4ecd8');
-  if(pts>0){paint(name.toUpperCase(),148,name.length>9?84:118,'#fff8e6');paint(pts+' PTS',248,68,'#f6cf52');}
-  else{paint('NINGUÉM AINDA',150,70,'#fff8e6');paint('SUBA NO CAIAQUE',240,40,'#f4ecd8');}
+  if(pts>0){paint('RECORDE DAS LATINHAS',50,44,'#f4ecd8');paint(name.toUpperCase(),148,name.length>9?84:118,'#fff8e6');paint(pts+' PTS',248,68,'#f6cf52');}
+  else{paint('NÃO JOGUE',112,84,'#fff8e6');paint('LIXO NA ÁGUA',212,84,'#fff8e6');}
   recordTex.needsUpdate=true;}
 function canPlace(can){var x,z,n=0;do{x=CAN_X0+3+Math.random()*(CAN_X1-CAN_X0-6);z=CAN_Z0+3+Math.random()*(CAN_Z1-CAN_Z0-6);}
   while(++n<20&&(Math.hypot(x-me.pos.x,z-me.pos.z)<9||cans.some(function(o){return o!==can&&o.g.visible&&Math.hypot(o.x-x,o.z-z)<5;})));
@@ -657,8 +656,8 @@ function canStart(){canGame={phase:0,t:1.6,score:0,last:-9,shown:''};document.ge
 function canEnd(){if(!canGame)return;var game=canGame,top=canRecord?canRecord.pts:canBest;canGame=null;
   cans.forEach(function(can){can.g.visible=false;});document.getElementById('cans-hud').hidden=true;
   if(game.phase===0){document.getElementById('cans-go').hidden=true;canGoT=0;return;}
-  var record=game.score>top;
-  if(game.score>canBest){canBest=game.score;try{localStorage.setItem('congresso-mapa-latinhas-'+me.p.id,String(canBest));}catch(_){}}
+  var counts=me.p.id!==CAN_TESTER,record=counts&&game.score>top;
+  if(counts&&game.score>canBest){canBest=game.score;try{localStorage.setItem('congresso-mapa-latinhas-'+me.p.id,String(canBest));}catch(_){}}
   if(record&&roomOnline)post('record',{pts:game.score});
   canBanner(record?'Novo recorde!<small>'+game.score+' pontos</small>':'Fim de jogo!<small>'+game.score+(game.score===1?' ponto':' pontos')+'</small>',2.8);drawRecord();}
 function canFrame(dt){
@@ -1435,7 +1434,7 @@ addEventListener('message',function(event){
   var data=event.data;if(data?.channel!=='congresso-mapa')return;
   if(data.type==='start'&&!me){
     me=charById.get(data.avatar);if(!me){post('error');return;}
-    try{canBest=Math.max(0,parseInt(localStorage.getItem('congresso-mapa-latinhas-'+me.p.id),10)||0);}catch(_){}
+    try{canBest=me.p.id===CAN_TESTER?0:Math.max(0,parseInt(localStorage.getItem('congresso-mapa-latinhas-'+me.p.id),10)||0);}catch(_){}
     drawRecord();
     chars.forEach(function(c){c.g.visible=true;});
     var saved=savedTravelPosition();
@@ -1452,7 +1451,7 @@ addEventListener('message',function(event){
   }else if(data.type==='speech'){
     addBalloon(data.id,data.message);
   }else if(data.type==='record'){
-    var r=data.record;canRecord=r&&charById.has(r.by)&&Number.isInteger(r.pts)&&r.pts>0?{by:r.by,pts:r.pts}:null;drawRecord();
+    var r=data.record;canRecord=r&&r.by!==CAN_TESTER&&charById.has(r.by)&&Number.isInteger(r.pts)&&r.pts>0?{by:r.by,pts:r.pts}:null;drawRecord();
   }else if(data.type==='ball'){
     ballReceive(data.ball,data.age);
   }else if(data.type==='sun'){
