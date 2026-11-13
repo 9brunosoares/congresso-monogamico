@@ -8,7 +8,7 @@ import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261112a';
-import * as backend from './backend.js?v=20261112a';
+import * as backend from './backend.js?v=20261112i';
 import {openTravelMap} from './mapa-viagem.js?v=20261112h';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 /* ===================== DADOS ===================== */
@@ -98,24 +98,43 @@ function loader(){return '<span class="union-loader" aria-hidden="true"><span cl
 let loginPerson=null;
 function viewLogin(){
   let sel=loginPerson;
+  let resetPin=false;
   $('#root').innerHTML=`<div class="app"><form class="login" id="loginForm">
     <div class="badge"><div class="lanyard"><span>CREDENCIAL</span><span>XVI CONGRESSO</span></div><div class="body">
     <div class="eyebrow">Bem-vindo ao</div><h1><em>XVI</em> Congresso Monogâmico</h1>
     <p class="muted" style="margin:10px 0 0">Escolha sua foto e use seu PIN. No primeiro acesso, crie um PIN de 6 dígitos.</p></div></div>
     <div id="identityStep" ${sel?'hidden':''}><h2 style="margin-top:22px">Quem é você?</h2><div class="pick" id="pick">${PEOPLE.map(p=>`<button type="button" data-id="${p.id}" aria-pressed="false">${av(p.id)}<span>${esc(p.nick)}</span></button>`).join('')}</div>
-    </div><div id="pinStep" ${sel?'':'hidden'}>${sel?`<button class="link" type="button" id="backIdentity">← Voltar</button><h2>${av(sel)} ${esc(first(sel))}</h2>`:''}<label class="f">PIN de 6 dígitos<input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="current-password" required placeholder="••••••"></label>
-    <label style="display:flex;align-items:center;gap:8px;margin:16px 0"><input id="newAccount" type="checkbox">Primeiro acesso: criar meu PIN</label>
+    </div><div id="pinStep" ${sel?'':'hidden'}>${sel?`<button class="link" type="button" id="backIdentity">← Voltar</button><h2>${av(sel)} ${esc(first(sel))}</h2>`:''}
+    ${sel==='nanu'?'<div id="pinRecovery" hidden><label class="f">Código de recuperação<input id="recoveryCode" type="text" autocapitalize="none" spellcheck="false" autocomplete="off" maxlength="256"></label><p class="muted">Use o código que você recebeu no privado.</p></div>':''}
+    <label class="f"><span id="pinLabel">PIN de 6 dígitos</span><input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="current-password" required placeholder="••••••"></label>
+    <label id="firstAccess" style="display:flex;align-items:center;gap:8px;margin:16px 0"><input id="newAccount" type="checkbox">Primeiro acesso: criar meu PIN</label>
     <label class="f" id="confirmPin" style="display:none;margin-bottom:14px">Confirme seu PIN<input id="pinAgain" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" placeholder="••••••"></label>
     ${S.error?`<p role="alert">${esc(S.error)}</p>`:''}
     <button class="btn seal block" id="enter" type="submit">Entrar no congresso</button>
-    <p class="muted" style="font-size:12px;text-align:center">O celular mantém sua sessão. Esqueceu o PIN? Fale com um ADM.</p></div>
+    ${sel==='nanu'?'<button class="link" id="resetPin" type="button" style="margin-top:12px">Esqueci meu PIN</button>':'<p class="muted" style="font-size:12px;text-align:center">O celular mantém sua sessão. Esqueceu o PIN? Fale com um ADM.</p>'}</div>
   </form></div>`;
   $('#pick').onclick=e=>{const b=e.target.closest('button');if(!b)return;loginPerson=b.dataset.id;viewLogin();$('#pin')?.focus();};
   if($('#backIdentity'))$('#backIdentity').onclick=()=>{loginPerson=null;viewLogin();};
-  $('#newAccount').onchange=()=>{const create=$('#newAccount').checked;$('#confirmPin').style.display=create?'flex':'none';$('#pinAgain').required=create;$('#pin').autocomplete=create?'new-password':'current-password';$('#enter').textContent=create?'Criar PIN e entrar':'Entrar no congresso';};
+  function updatePinForm(){
+    const newPin=resetPin||$('#newAccount').checked;
+    $('#confirmPin').style.display=newPin?'flex':'none';$('#pinAgain').required=newPin;
+    $('#pin').autocomplete=newPin?'new-password':'current-password';
+    $('#pinLabel').textContent=newPin?'Novo PIN de 6 dígitos':'PIN de 6 dígitos';
+    $('#enter').textContent=newPin?'Criar PIN e entrar':'Entrar no congresso';
+  }
+  $('#newAccount').onchange=updatePinForm;
+  if(sel==='nanu')$('#resetPin').onclick=()=>{
+    if(busyActions.has('enter'))return;
+    resetPin=!resetPin;$('#pinRecovery').hidden=!resetPin;$('#firstAccess').hidden=resetPin;
+    $('#newAccount').checked=false;$('#recoveryCode').required=resetPin;
+    for(const id of ['recoveryCode','pin','pinAgain'])$('#'+id).value='';
+    $('#resetPin').textContent=resetPin?'Voltar ao login':'Esqueci meu PIN';
+    updatePinForm();$(resetPin?'#recoveryCode':'#pin').focus();
+  };
   $('#loginForm').onsubmit=e=>{e.preventDefault();const pin=$('#pin').value,create=$('#newAccount').checked;
     if(!sel){toast('Escolha sua foto primeiro.');return;}
-    if(create && pin!==$('#pinAgain').value){toast('Os dois PINs precisam ser iguais.');return;}
+    if((create||resetPin)&&pin!==$('#pinAgain').value){toast('Os dois PINs precisam ser iguais.');return;}
+    if(resetPin){const code=$('#recoveryCode').value;act($('#enter'),()=>backend.resetNanuPin(code,pin));return;}
     act($('#enter'),()=>backend.login(sel,pin,create));
   };
 }

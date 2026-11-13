@@ -32,7 +32,7 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
    });return ()=>{item.active=false};
   },
   runTransaction:()=>assert.fail('Perfil já vinculado não deve abrir transação'),
-  addDoc:()=>assert.fail('Teste não pode escrever'),setDoc:()=>assert.fail('Teste não pode escrever'),updateDoc(){},deleteDoc(){},serverTimestamp(){},writeBatch(){},increment(){},getDocFromServer(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){}
+  addDoc:()=>assert.fail('Teste não pode escrever'),setDoc:()=>assert.fail('Teste não pode escrever'),updateDoc(){},deleteDoc(){},serverTimestamp(){},writeBatch(){},increment(){},getDocFromServer(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){},verifyPasswordResetCode(){},confirmPasswordReset(){}
  };
  const active=()=>listeners.filter(x=>x.active),flush=()=>new Promise(resolve=>setImmediate(resolve));
  try{

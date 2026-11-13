@@ -26,7 +26,7 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   const revision=epoch,writes=[];await fn({get:async ref=>snap(ref),set:(ref,value)=>writes.push([ref.path,value]),delete:ref=>writes.push([ref.path,null]),update:(ref,value)=>writes.push([ref.path,{...records.get(ref.path),...value}])});
   if(epoch!==revision)continue;for(const [key,value] of writes){if(value===null)records.delete(key);else records.set(key,value);}epoch++;emit();return;
  }throw Error('Conflito persistente')},
- addDoc(){assert.fail('Financeiro deve usar transação')},setDoc(){},updateDoc(){},deleteDoc(){},writeBatch(){const writes=[];return {set:(ref,data)=>writes.push([ref.path,data]),commit:async()=>{for(const [key,value] of writes)records.set(key,value);epoch++;emit();}}},increment(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){}
+ addDoc(){assert.fail('Financeiro deve usar transação')},setDoc(){},updateDoc(){},deleteDoc(){},writeBatch(){const writes=[];return {set:(ref,data)=>writes.push([ref.path,data]),commit:async()=>{for(const [key,value] of writes)records.set(key,value);epoch++;emit();}}},increment(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){},verifyPasswordResetCode(){},confirmPasswordReset(){}
  };
  try{
   Date.now=()=>time;globalThis.setInterval=()=>0;globalThis.window={addEventListener(){}};globalThis.document={addEventListener(){}};globalThis.sessionStorage={getItem(){return null}};Object.defineProperty(navigator,'onLine',{configurable:true,value:true});

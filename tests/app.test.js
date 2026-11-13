@@ -311,6 +311,18 @@ test('saídas personalizadas mantêm a agenda comum e respeitam carros e períod
 test('PIN é uma segunda etapa e possui volta discreta',()=>{
  const {context,nodes}=ui();vm.runInContext("loginPerson='ob';viewLogin()",context);const html=nodes['#root'].innerHTML;
  assert(html.includes('id="identityStep" hidden'));assert(!html.includes('id="pinStep" hidden'));assert(html.includes('id="backIdentity"'));
+ assert(!html.includes('id="resetPin"'));
+ for(const key of ['#recoveryCode','#pin','#pinAgain','#pinRecovery','#firstAccess','#pinLabel','#confirmPin','#enter'])nodes[key]={style:{},focus(){}};
+ vm.runInContext("loginPerson='nanu';viewLogin()",context);
+ assert(nodes['#root'].innerHTML.includes('Esqueci meu PIN'));
+ nodes['#resetPin'].onclick();
+ assert.equal(nodes['#pinRecovery'].hidden,false);
+ assert.equal(nodes['#recoveryCode'].required,true);
+ assert.equal(nodes['#firstAccess'].hidden,true);
+ assert.equal(nodes['#pinAgain'].required,true);
+ nodes['#resetPin'].onclick();
+ assert.equal(nodes['#pinRecovery'].hidden,true);
+ assert.equal(nodes['#pinAgain'].required,false);
 });
 
 test('primeira votação inclui oito presentes, sem voto nem multa dos que chegam depois',()=>{

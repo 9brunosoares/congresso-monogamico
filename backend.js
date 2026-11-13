@@ -7,7 +7,7 @@ import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, verifyPasswordResetCode, confirmPasswordReset, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js?v=20261107c';
@@ -28,6 +28,8 @@ const errorText=e=>notice(({
  'auth/wrong-password':'PIN incorreto.',
  'auth/user-not-found':'Este apelido ainda não tem PIN. Use Primeiro acesso.',
  'auth/email-already-in-use':'Este apelido já tem PIN. Escolha Entrar.',
+ 'auth/invalid-action-code':'Código de recuperação inválido ou já usado.',
+ 'auth/expired-action-code':'O código expirou. Peça outro a um ADM.',
  'auth/too-many-requests':'Muitas tentativas. Aguarde um pouco e tente novamente.',
  'auth/network-request-failed':'Sem conexão. Confira sua internet.',
  'permission-denied':'Você não tem permissão para esta ação.',
@@ -225,6 +227,15 @@ export async function login(id,pin,create=false){
  if(!P[id])throw Error('Escolha sua foto primeiro.');validatePin(pin);
  const method=create?createUserWithEmailAndPassword:signInWithEmailAndPassword;
  await method(auth,`${id}@congresso.app`,pin);
+}
+export async function resetNanuPin(code,pin){
+ validatePin(pin);
+ code=code.trim();
+ if(!code)throw Error('Informe o código de recuperação.');
+ const email=await verifyPasswordResetCode(auth,code);
+ if(email!=='nanu@congresso.app')throw Error('O código de recuperação não pertence ao Nanu.');
+ await confirmPasswordReset(auth,code,pin);
+ await login('nanu',pin);
 }
 export const logout=()=>signOut(auth);
 function member(){if(quotaBlocked)throw Object.assign(Error(errorText({code:'resource-exhausted'})),{code:'resource-exhausted'});if(!state.me||!state.ready||!navigator.onLine)throw Error('Conecte-se à internet antes de enviar.');}
