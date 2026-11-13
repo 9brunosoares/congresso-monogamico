@@ -637,7 +637,7 @@ var lakeNoticeTrunk;
 /* cercas, escada, estrada, placas, capivaras e caiaque */
 var kayak=null,boat=false,boatArm=true,gateLock;
 /* Resgate das latinhas: 30 s remando pela represa. Só o recorde é compartilhado; o jogo roda no aparelho de quem rema. */
-var CAN_X0=-88,CAN_X1=30,CAN_Z0=-146,CAN_Z1=-80,CAN_SECONDS=30,CAN_HURRY=5,CAN_COMBO=1.5,CAN_GAP=5,CAN_COUNT=48,CAN_NEAR=8,CAN_FAR=18,cans=[],recordTex;
+var CAN_X0=-88,CAN_X1=30,CAN_Z0=-146,CAN_Z1=-80,CAN_SECONDS=30,CAN_HURRY=5,CAN_COMBO=1.5,CAN_GAP=5,CAN_COUNT=72,CAN_NEAR=8,CAN_FAR=18,CAN_RINGS=14,CAN_RAIN=8,cans=[],recordTex;
 var CAN_SHOW=4.5,CAN_LOCK=2,CAN_RELEASE=1,canFreeze=0;
 var canGame=null,canRecord=null,canBest=0,canGoT=0,CAN_TESTER='bruno'; // o Bruno testa o mapa: joga, mas não marca recorde
 function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.height,q=7,i;function rd(){q=(q*1664525+1013904223)>>>0;return q/4294967296;}
@@ -652,7 +652,8 @@ function drawRecord(){var c=recordTex.image,g=c.getContext('2d'),w=c.width,h=c.h
   if(pts>0){paint('RECORDE DAS LATINHAS',50,44,'#f4ecd8');paint(name.toUpperCase(),148,name.length>9?84:118,'#fff8e6');paint(pts+' PTS',248,68,'#f6cf52');}
   else{paint('NÃO JOGUE',112,84,'#fff8e6');paint('LIXO NA ÁGUA',212,84,'#fff8e6');}
   recordTex.needsUpdate=true;}
-/* Começa com 1 latinha; cada coleta faz surgirem 2, então sempre fica uma a mais na água.
+/* Crescimento acelerado: começa com 1 latinha; cada coleta faz surgirem 2 nos primeiros 10 s, 3 dos 10 aos 20 s e 4 nos 10 s finais.
+   Quando faltam CAN_HURRY s cai a chuva de latinhas: tantas quantas o jogador já recolheu (no mínimo CAN_RAIN).
    As novas nascem em volta do caiaque, nem coladas nem longe, sempre dentro da área. */
 function canPlace(can){var x,z,n=0,a,r,far=CAN_FAR+cans.filter(function(o){return o.g.visible;}).length*.3;do{a=Math.random()*6.2832;r=CAN_NEAR+Math.random()*(far-CAN_NEAR);
     x=Math.max(CAN_X0+3,Math.min(CAN_X1-3,me.pos.x+Math.cos(a)*r));z=Math.max(CAN_Z0+3,Math.min(CAN_Z1-3,me.pos.z+Math.sin(a)*r));}
@@ -660,7 +661,7 @@ function canPlace(can){var x,z,n=0,a,r,far=CAN_FAR+cans.filter(function(o){retur
   can.x=x;can.z=z;can.g.visible=can.ring.visible=true;}
 function canSpawn(count){for(var k=0;k<cans.length&&count>0;k++)if(!cans[k].g.visible){canPlace(cans[k]);count--;}}
 function canBanner(html,seconds){var el=document.getElementById('cans-go');el.hidden=true;el.innerHTML=html;void el.offsetWidth;el.hidden=false;canGoT=seconds;}
-function canStart(){canFreeze=0;canGame={phase:0,t:1.6,score:0,last:-9,shown:''};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
+function canStart(){canFreeze=0;canGame={phase:0,t:1.6,score:0,last:-9,shown:'',picked:0,rain:false};document.getElementById('cans-hud').hidden=true;canBanner('Atenção, noias!',1.6);}
 /* landed: o tempo acabou na água. O jogador desembarca ao lado da placa, de frente para a câmera, com a placa no quadro. */
 function canEnd(landed){if(!canGame)return;var game=canGame,top=canRecord?canRecord.pts:canBest;canGame=null;
   cans.forEach(function(can){can.g.visible=can.ring.visible=false;});document.getElementById('cans-hud').hidden=true;
@@ -676,11 +677,13 @@ function canFrame(dt){
   if(game.phase===0){if((game.t-=dt)>0)return;
     game.phase=1;game.t=CAN_SECONDS;canSpawn(1);canBanner('Peguem suas latinhas!',1.4);document.getElementById('cans-hud').hidden=false;document.getElementById('cans-hud').classList.remove('hurry');document.getElementById('cans-score').textContent='0';}
   game.t-=dt;
+  if(!game.rain&&game.t<=CAN_HURRY){game.rain=true;canSpawn(Math.max(CAN_RAIN,game.picked));canBanner('Chuva de latinhas!',1.2);}
+  var rings=cans.filter(function(o){return o.g.visible;}).length<=CAN_RINGS;
   for(k=0;k<cans.length;k++){var can=cans[k];if(!can.g.visible)continue;
     can.g.position.set(can.x,-2.26+Math.sin(tt*1.9+can.ph)*.05,can.z);can.g.rotation.set(can.tilt+Math.sin(tt*1.1+can.ph)*.12,tt*.4+can.ph,.3);
-    var pulse=1+.3*Math.sin(tt*2.4+can.ph);can.ring.position.set(can.x,-2.37,can.z);can.ring.scale.set(pulse,pulse,1);
+    var pulse=1+.3*Math.sin(tt*2.4+can.ph);can.ring.visible=rings;can.ring.position.set(can.x,-2.37,can.z);can.ring.scale.set(pulse,pulse,1);
     if(Math.hypot(can.x-kayak.position.x,can.z-kayak.position.z)<2||Math.hypot(can.x-me.pos.x,can.z-me.pos.z)<1.5){
-      game.score+=tt-game.last<CAN_COMBO?2:1;game.last=tt;can.g.visible=can.ring.visible=false;canSpawn(2);
+      game.score+=tt-game.last<CAN_COMBO?2:1;game.last=tt;can.g.visible=can.ring.visible=false;game.picked++;canSpawn(2+Math.min(2,Math.floor((CAN_SECONDS-game.t)/10)));
       var hud=document.getElementById('cans-hud');document.getElementById('cans-score').textContent=game.score;hud.classList.remove('bump');void hud.offsetWidth;hud.classList.add('bump');}}
   var left=Math.max(0,Math.ceil(game.t)),text=left+' s';if(text!==game.shown){game.shown=text;document.getElementById('cans-time').textContent=text;document.getElementById('cans-hud').classList.toggle('hurry',left<=CAN_HURRY);}
   if(game.t<=0)canEnd(true);}
@@ -781,12 +784,15 @@ function pinLakeNotice(trunk){
   [-36.2,-33.8].forEach(function(x){box(.22,1.6,.22,WOOD,x,H(x,LAKE_FENCE_Z)+.8,LAKE_FENCE_Z);});var lg=box(2.2,.9,.08,0x7a5c3e,-34.6,H(-35,LAKE_FENCE_Z)+.6,-46.6);lg.rotation.y=.9;
   pinLakeNotice(lakeNoticeTrunk);
   /* resgate das latinhas: sem marcação na água, o limite da área se descobre remando; a placa improvisada guarda o recorde */
-  (function(){var palette=[0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0],colors=[],tin=S(0xd8dbe0);while(colors.length<CAN_COUNT)colors.push(palette[colors.length%palette.length]);
+  (function(){var palette=[0xc4122f,0x1f8a4c,0xe0b33c,0x2b5fae,0xd8dbe0],tin=new T.Color(0xd8dbe0),canM=new T.MeshLambertMaterial({vertexColors:true});
+    // uma malha por latinha (corpo colorido e tampa prateada na mesma geometria), para o fim da rodada caber em poucas chamadas de desenho
+    var shapes=palette.map(function(hex){var g=new T.CylinderGeometry(.36,.36,.82,10),p=g.attributes.position,nr=g.attributes.normal,col=[],c=new T.Color(hex),k;
+      for(k=0;k<p.count;k++){var top=nr.getY(k)>.5||p.getY(k)>.3&&nr.getY(k)>.5,q=top?tin:c;col.push(q.r,q.g,q.b);}
+      g.setAttribute('color',new T.Float32BufferAttribute(col,3));return g;});
     var ripple=new T.RingGeometry(1.05,1.3,20),rippleM=new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.55,depthWrite:false});
-    colors.forEach(function(color,i){var g=new T.Group(),body=new T.Mesh(new T.CylinderGeometry(.36,.36,.78,10),S(color)),top=new T.Mesh(new T.CylinderGeometry(.3,.36,.09,10),tin);
-      top.position.y=.43;g.add(body,top);g.visible=false;scene.add(g);
-      // ondinha em volta da latinha: ajuda a enxergar de longe sem virar boia
-      var ring=new T.Mesh(ripple,rippleM);ring.rotation.x=-Math.PI/2;ring.visible=false;scene.add(ring);cans.push({g:g,ring:ring,x:0,z:0,ph:i*1.7,tilt:.5+i%3*.25});});})();
+    for(var i=0;i<CAN_COUNT;i++){var g=new T.Mesh(shapes[i%shapes.length],canM);g.visible=false;scene.add(g);
+      // ondinha em volta da latinha: ajuda a enxergar de longe enquanto são poucas
+      var ring=new T.Mesh(ripple,rippleM);ring.rotation.x=-Math.PI/2;ring.visible=false;scene.add(ring);cans.push({g:g,ring:ring,x:0,z:0,ph:i*1.7,tilt:.5+i%3*.25});}})();
   (function(){var x=-25.2,z=-65.6,y=H(x,z);
     var post=box(.14,2.3,.14,0x6b4a2e,x,y+1.15,z);post.rotation.z=.05;CIRC.push([x,z,.14]);
     recordTex=textTex(function(){},512,300);
