@@ -239,6 +239,28 @@ export async function resetNanuPin(code,pin){
 }
 export const logout=()=>signOut(auth);
 function member(){if(quotaBlocked)throw Object.assign(Error(errorText({code:'resource-exhausted'})),{code:'resource-exhausted'});if(!state.me||!state.ready||!navigator.onLine)throw Error('Conecte-se à internet antes de enviar.');}
+const pilotStart=Date.parse('2026-11-14T00:00:00-03:00');
+const pilotEnd=Date.parse('2026-11-28T00:00:00-03:00');
+const pilotAttempts=new Set();
+
+export async function recordPilotUsage(action){
+ const now=Date.now(),uid=auth.currentUser?.uid;
+ if(!uid||!sessionReady||!state.ready||quotaBlocked||now<pilotStart||now>=pilotEnd)return;
+ if(!['open','agenda','balance'].includes(action))return;
+ const day=dayKey(now);
+ const id=`${day}_${uid}_${action}`;
+ const key=`xvi-pilot-${uid}-${action}`;
+ if(pilotAttempts.has(id))return;
+ try{if(localStorage.getItem(key)===day)return;}catch{}
+ pilotAttempts.add(id);
+ try{
+  await setDoc(doc(db,'pilotUsage',id),{day,action});
+  try{localStorage.setItem(key,day);}catch{}
+ }catch(error){
+  // A mesma ação já pode ter sido gravada em outro aparelho.
+  if(!['permission-denied','resource-exhausted'].includes(error.code))pilotAttempts.delete(id);
+ }
+}
 function requireTripStart(){if(!tripStarted())throw Error('Disponível a partir de 18 de novembro.');}
 function admin(){member();if(!state.admin)throw Error('Esta ação é exclusiva dos ADMs.');}
 export function formatStamp(timestamp){return timestamp?.toDate?timestamp.toDate().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Agora';}

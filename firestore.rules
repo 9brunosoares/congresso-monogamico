@@ -33,6 +33,7 @@ rules_version = '2';
 // tripPosts/{diaSP_apelido}: author oficial, createdAt timestamp, reactions mapa apelido → emoji, caption opcional até140 caracteres.
 // tripPhotos/{diaSP_apelido}: dataUrl JPEG <=180000 caracteres e createdAt; exclusão/criação junto com tripPosts.
 // Uma publicação por autor e dia de 18 a 22/11; só membros leem e reagem às fotos dos outros.
+// pilotUsage/{diaSP_uid_acao}: {day,action}, recibo imutável de ação diária.
 // querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
 // Cada valor é um número inteiro0..3722304989 com oito totais em base16.
 // Cada dígito armazena o total de um emoji (ordem fixa no roster.js), máximo13.
@@ -320,6 +321,18 @@ service cloud.firestore {
   }
   function tripDay() { return string(int((request.time.toMillis() - 10800000) / 86400000)); }
   function tripMember() { return isKnownAccount() && isMember(); }
+  function validPilotUsage(d,id) {
+   let nowDay = int(tripDay());
+   // 14 a 27/11 em São Paulo, com um dia de tolerância para envios pendentes.
+   return only(d,['day','action']) && d.day is string && d.action in ['open','agenda','balance']
+    && d.day in [string(nowDay),string(nowDay - 1)]
+    && int(d.day) >= 20771 && int(d.day) <= 20784
+    && id == d.day + '_' + request.auth.uid + '_' + d.action;
+  }
+  match /pilotUsage/{id} {
+   allow create: if tripMember() && validPilotUsage(request.resource.data,id);
+   allow read, update, delete: if false;
+  }
   function newTripPost(d,id) {
    let day = tripDay();
    return validTripPost(d) && day in ['20775','20776','20777','20778','20779']

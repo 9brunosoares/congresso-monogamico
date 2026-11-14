@@ -118,6 +118,13 @@ function ui(){
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 
+test('piloto conta navegação deliberada para Agenda e Ver detalhes',()=>{
+ const {context}=ui(),actions=[];
+ context.backend.recordPilotUsage=action=>actions.push(action);
+ vm.runInContext("S={...S,me:'bruno',ready:true};render();go('contas');go('saldo');go('programa');render()",context);
+ assert.deepEqual(actions,['balance','agenda']);
+});
+
 test('mural discreto: só contagens positivas; opções aparecem ao abrir o seletor',()=>{
  const {context}=ui();
  vm.runInContext("S={...S,me:'bruno',caseReactions:{example:{bruno:'😂',ob:'😂',pig:'❤️'}},loaded:{'reactions-example':true}}",context);

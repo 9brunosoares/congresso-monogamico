@@ -7,9 +7,9 @@ import path from 'node:path';
 // Exercita o backend real com o SDK substituído por um contador de chamadas.
 // Não usa Firebase, não cria contas e não altera registros de produção.
 test('backend: carregamento por tela, cache de fotos, paginação, pausa e limite de cota',async()=>{
- const saved={DateNow:Date.now,setInterval:globalThis.setInterval,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,window:globalThis.window,document:globalThis.document,indexedDB:globalThis.indexedDB,sessionStorage:globalThis.sessionStorage};
+ const saved={DateNow:Date.now,setInterval:globalThis.setInterval,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,window:globalThis.window,document:globalThis.document,indexedDB:globalThis.indexedDB,sessionStorage:globalThis.sessionStorage,localStorage:globalThis.localStorage};
  const onlineDescriptor=Object.getOwnPropertyDescriptor(navigator,'onLine');
- const files=[],listeners=[],gets=[],handlers={},timers=new Map();let id=0,state,cacheSettings;
+ const files=[],listeners=[],gets=[],writes=[],handlers={},timers=new Map(),stored=new Map();let id=0,state,cacheSettings;
  const user={uid:'quota-test-uid',email:'bruno@congresso.app'},stamp=n=>({toMillis:()=>n});
  const row=(name,i)=>({id:name+i,createdAt:stamp(i),text:'Mensagem '+i,who:'ob',what:'Denúncia '+i,status:'ok',hasPhoto:true});
  const documents=Array.from({length:50},(_,i)=>row('chat',i)),cases=Array.from({length:12},(_,i)=>row('case',i));
@@ -32,13 +32,14 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
    });return ()=>{item.active=false};
   },
   runTransaction:()=>assert.fail('Perfil já vinculado não deve abrir transação'),
-  addDoc:()=>assert.fail('Teste não pode escrever'),setDoc:()=>assert.fail('Teste não pode escrever'),updateDoc(){},deleteDoc(){},serverTimestamp(){},writeBatch(){},increment(){},getDocFromServer(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){},verifyPasswordResetCode(){},confirmPasswordReset(){}
+  addDoc:()=>assert.fail('Teste não pode escrever'),setDoc:async(ref,data)=>{assert(ref.path.startsWith('pilotUsage/'));writes.push({path:ref.path,data})},updateDoc(){},deleteDoc(){},serverTimestamp(){},writeBatch(){},increment(){},getDocFromServer(){},signOut(){},signInWithEmailAndPassword(){},createUserWithEmailAndPassword(){},verifyPasswordResetCode(){},confirmPasswordReset(){}
  };
  const active=()=>listeners.filter(x=>x.active),flush=()=>new Promise(resolve=>setImmediate(resolve));
  try{
   Date.now=()=>Date.parse('2026-11-12T12:00:00-03:00');
   Object.defineProperty(navigator,'onLine',{value:true,configurable:true});
   globalThis.indexedDB={};globalThis.sessionStorage={getItem(){return null},setItem(){}};
+  globalThis.localStorage={getItem:key=>stored.get(key),setItem:(key,value)=>stored.set(key,value)};
   globalThis.window={addEventListener(name,fn){handlers[name]=fn}};
   globalThis.document={hidden:false,addEventListener(name,fn){handlers[name]=fn}};
   globalThis.setInterval=()=>0;
@@ -85,9 +86,20 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   globalThis.document.hidden=false;handlers.visibilitychange();await flush();assert(active().length>0);
   active()[0].fail({code:'resource-exhausted'});assert.equal(active().length,0);assert(state.error.includes('limite'));
   const afterQuota=listeners.length;api.setView('fofoca');assert.equal(listeners.length,afterQuota);
+  await api.recordPilotUsage('open');assert.equal(writes.length,0);
   api.retrySync();await flush();assert(active().length>0);assert.equal(state.error,'');
+  const readsBeforePilot=gets.length,listenersBeforePilot=listeners.length;
+  await Promise.all(['open','open','agenda','balance','chat'].map(action=>api.recordPilotUsage(action)));
+  assert.deepEqual(writes.map(write=>write.data),['open','agenda','balance'].map(action=>({day:'20776',action})));
+  assert.equal(writes[0].path,`pilotUsage/20776_${user.uid}_open`);
+  Date.now=()=>Date.parse('2026-11-20T03:00:00Z');
+  await api.recordPilotUsage('open');
+  assert.equal(writes.at(-1).data.day,'20777');assert.equal(writes.length,4);
+  Date.now=()=>Date.parse('2026-11-28T03:00:00Z');
+  await api.recordPilotUsage('open');assert.equal(writes.length,4);
+  assert.equal(gets.length,readsBeforePilot);assert.equal(listeners.length,listenersBeforePilot);
  }finally{
-  Date.now=saved.DateNow;for(const key of ['setInterval','setTimeout','clearTimeout','window','document','indexedDB','sessionStorage']){if(saved[key]===undefined)delete globalThis[key];else globalThis[key]=saved[key]}
+  Date.now=saved.DateNow;for(const key of ['setInterval','setTimeout','clearTimeout','window','document','indexedDB','sessionStorage','localStorage']){if(saved[key]===undefined)delete globalThis[key];else globalThis[key]=saved[key]}
   delete globalThis.__quotaFixture;await Promise.all(files.map(file=>fs.rm(file,{force:true})));
   if(onlineDescriptor)Object.defineProperty(navigator,'onLine',onlineDescriptor);else delete navigator.onLine;
  }

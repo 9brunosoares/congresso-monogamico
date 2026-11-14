@@ -252,6 +252,20 @@ const {context}=require('./firebase-context.cjs');
   }
  }
  for(const kind of ['tripPosts','tripPhotos'])cases.push(tripCase('get',prefix+'/tripTests/bruno/'+kind+'/20766_bruno','bruno',{},'DENY'));
+ const pilotTime='2026-11-14T03:00:00.000Z',pilotDay=dayKey(Date.parse(pilotTime));
+ const pilotData={day:pilotDay,action:'open'};
+ function pilotTest({method='create',data=pilotData,day=pilotDay,owner=uid,action='open',time=pilotTime,auth={uid,token:{email:'ob@congresso.app'}},profileUid=uid,expectation='ALLOW'}={}){
+  return {expectation,request:{method,auth,time,path:`${prefix}/pilotUsage/${day}_${owner}_${action}`,resource:{data}},
+   resource:{data:pilotData},functionMocks:[mock('get',prefix+'/people/ob',{data:{uid:profileUid}})]};
+ }
+ cases.push(pilotTest());
+ for(const action of ['agenda','balance'])cases.push(pilotTest({action,data:{day:pilotDay,action}}));
+ for(const method of ['update','get','list','delete'])cases.push(pilotTest({method,expectation:'DENY'}));
+ for(const invalid of [{auth:null},{profileUid:'other'},{owner:'other'},{day:'20770'},{action:'chat',data:{day:pilotDay,action:'chat'}},{data:{...pilotData,email:'ob@congresso.app'}},{data:{action:'open'}},{time:'2026-11-13T23:59:59-03:00'},{time:'2026-11-16T00:00:00-03:00'}]){
+  cases.push(pilotTest({...invalid,expectation:'DENY'}));
+ }
+ cases.push(pilotTest({time:'2026-11-15T00:00:00-03:00'}));
+ cases.push(pilotTest({time:'2026-11-28T00:00:00-03:00',day:'20785',data:{day:'20785',action:'open'},expectation:'DENY'}));
  const {Client}=require(path.join(c.root,'lib/apiv2.js')),api=require(path.join(c.root,'lib/api.js'));
  const client=new Client({urlPrefix:api.rulesOrigin(),apiVersion:'v1',auth:true});
  const report={issues:[],testResults:[]};

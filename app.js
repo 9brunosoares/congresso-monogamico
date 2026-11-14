@@ -8,7 +8,7 @@ import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
 import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261112a';
-import * as backend from './backend.js?v=20261112i';
+import * as backend from './backend.js?v=20261114a';
 import {openTravelMap} from './mapa-viagem.js?v=20261113j';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 /* ===================== DADOS ===================== */
@@ -731,7 +731,16 @@ function simulateTrip(){
   if(S.me===avatar)render();
  }});
 }
-function go(t){if(t==='fofoca'&&tab!=='fofoca')enterChat=true; if(t==="tribunal"&&!isAdm())return;if(t==='fofoca'&&tab!=='fofoca')chatColors.reset();reactionPicker=null;tab=t; try{localStorage.setItem("xvi-tab",t);}catch(e){} render(); if(t==='fofoca')scrollChat();else scrollTo({top:0}); }
+function go(t){
+ if(t==='tribunal'&&!isAdm())return;
+ if(t==='fofoca'&&tab!=='fofoca'){enterChat=true;chatColors.reset();}
+ reactionPicker=null;tab=t;
+ try{localStorage.setItem('xvi-tab',t);}catch{}
+ render();
+ if(t==='programa')void backend.recordPilotUsage?.('agenda');
+ if(t==='saldo')void backend.recordPilotUsage?.('balance');
+ if(t==='fofoca')scrollChat();else scrollTo({top:0});
+}
 
 function chatSeenKey(){return 'xvi-chat-seen-'+S.me;}
 function unreadChat(){try{return !!S.latestChat&&S.latestChat!==localStorage.getItem(chatSeenKey());}catch{return false;}}
@@ -765,6 +774,7 @@ function watchPhotos(){
 function selectAgendaDay(next){
  if(next===day)return;
  const y=scrollY;day=next;render();scrollTo(0,y);
+ void backend.recordPilotUsage?.('agenda');
  const strip=$('.days'),selected=$(`[data-day="${day}"]`);
  if(strip&&selected)strip.scrollTo({left:strip.scrollLeft+selected.getBoundingClientRect().left-strip.getBoundingClientRect().left-(strip.clientWidth-selected.offsetWidth)/2,behavior:'smooth'});
 }
@@ -848,13 +858,14 @@ document.addEventListener('visibilitychange',()=>{
  if(document.hidden){backgroundAt=Date.now();return;}
  // Uma volta após um minuto fora também conta como novo acesso no PWA do iOS.
  if(S.ready&&S.me&&backgroundAt&&Date.now()-backgroundAt>=60000){discovery.record(S.me,'open');render();}
- if(S.ready&&S.me)markResultSeen();
+ if(S.ready&&S.me){void backend.recordPilotUsage?.('open');markResultSeen();}
  backgroundAt=0;
 });
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me;S=data;if(previous!==S.me){travelMap?.close();loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){travelMap?.close();loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ if(S.ready&&S.me&&(!wasReady||previous!==S.me)&&!document.hidden)void backend.recordPilotUsage?.('open');
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);
  if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}
