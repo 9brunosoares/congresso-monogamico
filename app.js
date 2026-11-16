@@ -1,4 +1,4 @@
-import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261107c';
+import {departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261116a';
 import {prepareReportPhoto} from './report-photo.js';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261107c';
 import {PIX_TYPES} from './pix.js?v=20261107c';
@@ -7,8 +7,8 @@ import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
-import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261112a';
-import * as backend from './backend.js?v=20261114a';
+import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261116a';
+import * as backend from './backend.js?v=20261116a';
 import {openTravelMap} from './mapa-viagem.js?v=20261113j';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 /* ===================== DADOS ===================== */
@@ -146,10 +146,13 @@ function header(){
   </div>`;
 }
 
+function carOccupants(car){
+ return car.people.map(id=>first(id)+(car.owner&&id===car.driver?' (motorista)':'')).join(' · ');
+}
 function nextItem(){
   const t=now(),trip=departure(S.me);
   const personal=agendaFor(AGENDA,S.me);
-  if(trip)personal.push({d:trip.day,title:`Saída · carro de ${first(trip.driver)}`,place:trip.people.map(first).join(' · '),start:trip.start,end:trip.start,address:S.travelPlan?.address});
+  if(trip)personal.push({d:trip.day,title:`Saída · carro de ${first(trip.owner??trip.driver)}`,place:carOccupants(trip),start:trip.start,end:trip.start,address:S.travelPlan?.address});
   personal.sort((a,b)=>a.start-b.start);
   const cur = personal.find(a=>a.start<=t && t<a.end);
   const nxt = personal.find(a=>a.start>t);
@@ -269,7 +272,7 @@ function viewPrograma(){
   return `
   ${isAdm()?`<button class="link" id="fullAgenda" type="button">${agendaAdminMode?'Minha agenda':'Agenda completa'}</button>`:''}<div class="days" role="tablist">${visibleDays.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
   <section class="agenda-swipe" aria-label="Atividades do dia"><div class="sec-h"><h3>${DAYS.find(d=>d.d===day).wd}, ${day} de novembro</h3><span class="muted" style="font-size:13px">${items.length} ${items.length===1?'sessão':'sessões'}</span></div>
-  ${car?`<article class="card departure-card" style="margin-bottom:12px"><div class="eyebrow">Sua saída · ${trip.time}</div><h3>Carro de ${esc(first(car.driver))}</h3><p>${car.people.map(first).map(esc).join(' · ')}</p>${S.travelPlan?.address?`<p>${esc(S.travelPlan.address)}</p>`:''}${car.note?`<small class="muted">${esc(car.note)}</small>`:''}</article>`:''}
+  ${car?`<article class="card departure-card" style="margin-bottom:12px"><div class="eyebrow">Sua saída · ${trip.time}</div><h3>Carro de ${esc(first(car.owner??car.driver))}</h3><p>${esc(carOccupants(car))}</p>${S.travelPlan?.address?`<p>${esc(S.travelPlan.address)}</p>`:''}${car.note?`<small class="muted">${esc(car.note)}</small>`:''}</article>`:''}
   <div class="card" style="padding-block:4px">${items.map(a=>{
     const st = t>=a.end?"done":(t>=a.start?"now":"");
     return `<div class="slot ${st}"><time>${a.t}</time><div><h4>${esc(a.title)}</h4>${isAdm()?`<button class="link" data-edit-activity="${esc(a.id)}" type="button">Editar</button>`:''}

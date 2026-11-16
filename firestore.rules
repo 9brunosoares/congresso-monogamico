@@ -140,8 +140,8 @@ service cloud.firestore {
     && d.start is number && d.start > 0 && d.start < 4102444800000
     && d.end is number && d.end > d.start && d.end <= d.start + 86400000;
   }
-  // travelPlans/{driver}: address string<=300, authenticated members only.
-  match /travelPlans/{driver} { allow read: if isMember(); allow create,update: if isAdmin() && driver in ids() && only(request.resource.data,['address']) && text(request.resource.data.address,300); allow delete: if false; }
+  // travelPlans/{carId}: ponto de encontro do carro, independente de quem dirige.
+  match /travelPlans/{carId} { allow read: if isMember(); allow create,update: if isAdmin() && carId in ids() && only(request.resource.data,['address']) && text(request.resource.data.address,300); allow delete: if false; }
   match /agenda/{id} {
    allow read: if isMember();
    allow create, update: if isAdmin() && isValidAgenda(request.resource.data);
@@ -473,12 +473,12 @@ service cloud.firestore {
    let after=d.counts;
    let official=ids();
    let increments=[1,16,256,4096,65536,1048576,16777216,268435456];
-   return isToday(day) && votingOpen() && !(early && me in ['bruno','ibrahim','felipe','gherardi','luan']) && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= (early ? 8 : 13)
+   return isToday(day) && votingOpen() && !(early && me in ['bruno','ibrahim','igor','felipe','gherardi','luan']) && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= (early ? 7 : 13)
     && d.counts is map && after.keys().hasAll(official) && after.keys().hasOnly(official)
     && isValidTallyDelta(after['bruno']-before.get('bruno',0),('bruno'==me || early),increments)
     && isValidTallyDelta(after['ob']-before.get('ob',0),'ob'==me,increments)
     && isValidTallyDelta(after['luan']-before.get('luan',0),('luan'==me || early),increments)
-    && isValidTallyDelta(after['igor']-before.get('igor',0),'igor'==me,increments)
+    && isValidTallyDelta(after['igor']-before.get('igor',0),('igor'==me || early),increments)
     && isValidTallyDelta(after['pig']-before.get('pig',0),'pig'==me,increments)
     && isValidTallyDelta(after['pelado']-before.get('pelado',0),'pelado'==me,increments)
     && isValidTallyDelta(after['gherardi']-before.get('gherardi',0),('gherardi'==me || early),increments)
