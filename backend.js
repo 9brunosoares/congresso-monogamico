@@ -1,4 +1,4 @@
-import {departure,votePeople} from './travel.js?v=20261116a';
+import {carFor,votePeople} from './travel.js?v=20261117a';
 import {moneyToCents,settlementsOpen,canManagePayment,closingSnapshot,storedClosing,transferRows} from './finance.js?v=20261107c';
 import {normalizePix} from './pix.js?v=20261107c';
 import {normalizeOfficialLinks} from './official-links.js?v=20261107c';
@@ -10,7 +10,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js?v=20261107c';
-import { dayKey, tripStarted, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261116a';
+import { dayKey, tripStarted, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261117a';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.
@@ -85,7 +85,7 @@ function syncData(){
  listen('settings',doc(db,'settings','main'),snap=>{state.budget=snap.data()?.budget||0},true);
  listen('agenda',collection(db,'agenda'),snapshot=>{state.agenda=rows(snapshot).sort((a,b)=>a.start-b.start)},true);
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(3)),snap=>{state.hasMural=!snap.empty;state.muralPreview=[...new Set(snap.docs.map(d=>d.data().who))].filter(id=>ALL.includes(id))},true);
- const car=departure(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.owner??car.driver),snap=>{state.travelPlan=snap.data()||null});
+ const car=carFor(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
  const at=Date.now();
  if(['inicio','fotos'].includes(currentView)){

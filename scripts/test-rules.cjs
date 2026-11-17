@@ -198,13 +198,16 @@ const {context}=require('./firebase-context.cjs');
   }
  }
 
- const earlyTime=Date.parse('2026-11-19T10:00:00-03:00'),earlyKey=dayKey(earlyTime),earlyIds=['ob','pig','pelado','nanu','sadano','cadu','diogo'];
+ const earlyTime=Date.parse('2026-11-19T10:00:00-03:00'),earlyKey=dayKey(earlyTime),earlyIds=['ob','pig','nanu','sadano','cadu'];
  const early=applyBallot(undefined,Object.fromEntries(earlyIds.filter(id=>id!=='pig').map(id=>[id,EMOJIS[0]])),'pig',earlyTime);
  function earlyCase(id,expectation){const t=make(id,early);t.expectation=expectation;t.request.time=new Date(earlyTime).toISOString();t.request.path=t.request.path.replace('/'+key,'/'+earlyKey);for(const m of t.functionMocks)m.args[0].exactValue=m.args[0].exactValue.replace('/'+key,'/'+earlyKey);return t;}
- cases.push(earlyCase('pig','ALLOW'),earlyCase('igor','DENY'),earlyCase('bruno','DENY'),earlyCase('felipe','DENY'));
- for(const id of ['bruno','igor']){const absentTarget=earlyCase('pig','DENY');absentTarget.request.resource.data.counts[id]=1;cases.push(absentTarget);}
+ cases.push(earlyCase('pig','ALLOW'));
+ for(const id of ALL.filter(id=>!earlyIds.includes(id))){
+  cases.push(earlyCase(id,'DENY'));
+  const absentTarget=earlyCase('pig','DENY');absentTarget.request.resource.data.counts[id]=1;cases.push(absentTarget);
+ }
  const omittedPresent=earlyCase('pig','DENY');omittedPresent.request.resource.data.counts.ob=0;cases.push(omittedPresent);
- cases.push(make('igor',applyBallot(undefined,ballot('igor'),'igor',Date.parse(testTime))));
+ for(const id of ['igor','diogo','pelado'])cases.push(make(id,applyBallot(undefined,ballot(id),id,Date.parse(testTime))));
 
  const testDay='20764';
  function temporaryCase(time,method='create',expectation='ALLOW'){
