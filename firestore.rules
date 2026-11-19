@@ -34,6 +34,8 @@ rules_version = '2';
 // tripPhotos/{diaSP_apelido}: dataUrl JPEG <=180000 caracteres e createdAt; exclusão/criação junto com tripPosts.
 // Uma publicação por autor e dia de 18 a 22/11; só membros leem e reagem às fotos dos outros.
 // pilotUsage/{diaSP_uid_acao}: {day,action}, recibo imutável de ação diária.
+// mapRecords/latinhas: by oficial, pts int1..999, t timestamp do servidor.
+// points/lake_<pts>: bônus imutável de 15 pontos criado junto com o avanço da placa.
 // querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
 // Cada valor é um número inteiro0..3722304989 com oito totais em base16.
 // Cada dígito armazena o total de um emoji (ordem fixa no roster.js), máximo13.
@@ -154,6 +156,31 @@ service cloud.firestore {
   }
   function tripStarted() { return request.time >= timestamp.date(2026,11,18) + duration.value(3,'h'); }
   function scoringOpen() { return !exists(/databases/$(database)/documents/scoreClosures/main); }
+  function validLakeRecord(d) {
+   return only(d,['by','pts','t']) && d.by in ids() && d.by != 'bruno' && d.by == personId()
+    && d.pts is int && d.pts >= 1 && d.pts <= 999 && d.t is timestamp && d.t == request.time;
+  }
+  function lakeAdvanced(d) {
+   let path = /databases/$(database)/documents/mapRecords/latinhas;
+   return !exists(path) || d.pts > get(path).data.pts;
+  }
+  function lakePointMatches(d,r) {
+   return isValidPoint(d) && d.who == r.by && d.d == 15 && d.kind == 'jogo'
+    && d.why == 'Recorde da represa · ' + string(r.pts) + ' pontos' && d.createdAt == r.t;
+  }
+  function validLakePoint(id,d) {
+   let record = getAfter(/databases/$(database)/documents/mapRecords/latinhas).data;
+   return validLakeRecord(record) && lakeAdvanced(record)
+    && id == 'lake_' + string(record.pts) && lakePointMatches(d,record);
+  }
+  match /mapRecords/{id} {
+   allow read: if isMember();
+   allow create, update: if id == 'latinhas' && isMember() && tripStarted() && scoringOpen()
+    && validLakeRecord(request.resource.data) && lakeAdvanced(request.resource.data)
+    && !exists(/databases/$(database)/documents/points/$('lake_' + string(request.resource.data.pts)))
+    && lakePointMatches(getAfter(/databases/$(database)/documents/points/$('lake_' + string(request.resource.data.pts))).data,request.resource.data);
+   allow delete: if false;
+  }
   function directTaskPoint(id,d) {
    let taskId=id.split('task_')[1];
    let path=/databases/$(database)/documents/tasks/$(taskId);
@@ -171,9 +198,10 @@ service cloud.firestore {
   match /points/{id} {
    allow read: if isMember();
    allow create: if tripStarted() && isMember() && scoringOpen() && isValidPoint(request.resource.data) && fresh(request.resource.data)
-    && (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,request.resource.data)));
-   allow update: if tripStarted() && isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && sameCreation();
-   allow delete: if isAdmin() && scoringOpen();
+    && (id.matches('lake_[0-9]+') ? validLakePoint(id,request.resource.data)
+     : (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,request.resource.data))));
+   allow update: if !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && sameCreation();
+   allow delete: if !id.matches('lake_[0-9]+') && isAdmin() && scoringOpen();
   }
   function isValidExpense(d) {
    return only(d,['title','cat','amount','amountCents','by','payer','split','at','createdAt','status','version','updatedAt','updatedBy']) && text(d.title,120)

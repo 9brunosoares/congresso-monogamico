@@ -6,7 +6,7 @@ const {context}=require('./firebase-context.cjs');
  const testTime="2026-11-20T11:59:59-03:00";
  const key=dayKey(Date.parse(testTime)),uid='test-rule-uid',prefix='/databases/(default)/documents',base=prefix+'/querido/'+key;
  const source=fs.readFileSync('firestore.rules','utf8'),ballot=id=>Object.fromEntries(ALL.filter(x=>x!==id).map(x=>[x,EMOJIS[0]]));
- const first=applyBallot(undefined,ballot('bruno'),'bruno'),second=applyBallot(first,ballot('ob'),'ob');
+ const first=applyBallot(undefined,ballot('bruno'),'bruno',Date.parse(testTime)),second=applyBallot(first,ballot('ob'),'ob',Date.parse(testTime));
  const mock=(name,p,value)=>({function:name,args:[{exactValue:p}],result:{value}});
  function make(id,next,previous,marker=false){
   const auth={uid,token:{email:id+'@congresso.app'}},mocks=[mock('get',prefix+'/people/'+id,{data:{uid}}),mock('exists',base+'/voters/'+uid,false),mock('getAfter',base+'/voters/'+uid,{data:{voted:true}}),mock('getAfter',prefix+'/participation/'+key+'/people/'+id,{data:{voted:true}}),mock('exists',base,!!previous),mock('get',base,{data:previous||{voters:0}}),mock('getAfter',base,{data:next})];

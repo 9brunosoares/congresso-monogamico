@@ -22,7 +22,8 @@ test('dia da votação muda à meia-noite de São Paulo',()=>{
  const before=dayKey(Date.parse('2026-11-20T02:59:59Z')),after=dayKey(Date.parse('2026-11-20T03:00:00Z'));
  assert.equal(Number(after)-Number(before),1);assert.equal(dayKey(Date.parse('2026-11-20T23:59:00-03:00')),after);
 });
-test('votos somam um por alvo sem registrar autor nem voto próprio',()=>{
+test('votos somam um por alvo sem registrar autor nem voto próprio',t=>{
+ t.mock.method(Date,'now',()=>Date.parse('2026-11-20T10:00:00-03:00'));
  const ballot=Object.fromEntries(ALL.filter(id=>id!=='bruno').map(id=>[id,EMOJIS[0]]));
  const first=applyBallot(undefined,ballot,'bruno');assert.equal(first.voters,1);
  assert.equal(first.counts.bruno,0);
@@ -205,7 +206,8 @@ test('rateio entre 14 pessoas e acerto não perdem saldo',()=>{
  const result=vm.runInContext('({balance:balances(),transfers:settle()})',context);
  assert.equal(result.balance.bruno,120);assert(ALL.filter(id=>id!=='bruno').every(id=>result.balance[id]===-10));assert.equal(result.transfers.length,12);assert.equal(result.transfers.reduce((s,t)=>s+t.v,0),120);
 });
-test('14 votações completas não causam transporte entre os oito contadores',()=>{
+test('14 votações completas não causam transporte entre os oito contadores',t=>{
+ t.mock.method(Date,'now',()=>Date.parse('2026-11-20T10:00:00-03:00'));
  for(const emoji of EMOJIS){let state;for(const voter of ALL){state=applyBallot(state,Object.fromEntries(ALL.filter(id=>id!==voter).map(id=>[id,emoji])),voter);}assert.equal(state.voters,13);for(const id of ALL){const decoded=decodeTally(state.counts[id]);assert.equal(decoded[emoji],12);assert.equal(Object.values(decoded).reduce((a,b)=>a+b,0),12);}}
 });
 
@@ -318,7 +320,8 @@ test('links ficam compactos na home; modal oculta edição a membros e não exp�
  vm.runInContext('S.admin=true;sheetOfficialLinks()',context);assert(context.modal.includes('editOfficialLinks'));
 });
 
-test('saídas personalizadas mantêm a agenda comum e respeitam carros e períodos',()=>{
+test('saídas personalizadas mantêm a agenda comum e respeitam carros e períodos',t=>{
+ t.mock.method(Date,'now',()=>Date.parse('2026-11-17T12:00:00-03:00'));
  assert.deepEqual(departureFor('pig',18).people,['nanu','cadu','ob','pig']);assert.equal(departure('pig').time,'19:00');
  assert.equal(departureFor('diogo',18),null);assert.deepEqual(departureFor('diogo',19).people,['igor','diogo']);assert.equal(departure('igor').time,'20:00');
  assert.deepEqual(departureFor('pelado',19).people,['bruno','ibrahim','pelado']);assert.equal(departure('pelado').time,'20:00');

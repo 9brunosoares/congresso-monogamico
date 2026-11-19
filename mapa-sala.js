@@ -1,4 +1,5 @@
 import { getApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
+import { watchLakeRecord, submitLakeRecord } from './lake-record.js?v=20261119a';
 import {
   getDatabase, goOffline, goOnline, ref, push, set, remove, runTransaction, onDisconnect, serverTimestamp,
   onValue, onChildAdded, onChildChanged, onChildRemoved
@@ -9,7 +10,6 @@ const ROOM = 'mapa/xvi';
 const SPEECH = 'mapa/falas';
 const SUNSET = 'mapa/ambiente/porDoSol';
 const BALL = 'mapa/bola';
-const CAN_RECORD = 'mapa/recordeLatinhas';
 const BALL_KEYS = ['x', 'y', 'z', 'vx', 'vy', 'vz'];
 // Um balão dura o tempo de leitura do texto: 4 s mais 60 ms por caractere, até 10 s.
 const speechMs = text => Math.min(10000, 4000 + 60 * String(text ?? '').length);
@@ -24,7 +24,6 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
   const speech = ref(db, SPEECH);
   const sun = ref(db, SUNSET);
   const ball = ref(db, BALL);
-  const canRecord = ref(db, CAN_RECORD);
   const rows = new Map();
   const visiblePeers = new Map();
   const subscriptions = [];
@@ -119,8 +118,7 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
         const state = snapshot.val();
         if (state) onBall?.(state, Math.max(0, Date.now() + offset - (Number(state.t) || 0)));
       }, () => {}),
-      // O recorde das latinhas também é opcional: sem permissão, a placa mostra só a melhor marca do aparelho.
-      onValue(canRecord, snapshot => onRecord?.(snapshot.val()), () => {}),
+      watchLakeRecord(record => onRecord?.(record), () => onRecord?.(null)),
       onValue(ref(db, '.info/serverTimeOffset'), snapshot => { offset = snapshot.val() ?? 0; }),
       onValue(ref(db, '.info/connected'), async snapshot => {
         const attempt = ++epoch;
@@ -190,10 +188,13 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
         return false;
       }
     },
-    record(pts) {
-      // A regra do banco só aceita marca maior que a atual.
-      if (!session || !connected || avatar === 'bruno' || !Number.isInteger(pts) || pts < 1 || pts > 999) return;
-      void set(canRecord, { by: avatar, pts, t: serverTimestamp() }).catch(() => {});
+    async record(pts) {
+      if (!session || !connected) return { ok: false, message: 'Conecte-se para registrar a marca.' };
+      try {
+        return await submitLakeRecord(avatar, pts);
+      } catch {
+        return { ok: false, message: 'Não foi possível registrar a marca. Tente novamente.' };
+      }
     },
     kick(state) {
       if (!session || !connected || !state || !BALL_KEYS.every(key => Number.isInteger(state[key]))) return;
