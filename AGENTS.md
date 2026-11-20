@@ -1,5 +1,8 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Agenda: abertura no dia atual (20/11/2026)
+- Todo toque em Agenda, inclusive com a aba já aberta, seleciona o dia atual de São Paulo. Abrir o app com Agenda como última aba também começa no dia atual. Antes/depois da viagem usa o primeiro/último dia; a visibilidade conforme a saída de cada congressista continua aplicada.
+
 ## Queridômetro: isenção da penalidade de 19/11 (20/11/2026)
 - Bruno dispensou a multa de -5 por não preenchimento em 19/11 porque a COMORG não havia avisado os primeiros congressistas. `missedVotePoints` exclui esse dia do cálculo em todos os placares e históricos. A penalidade continua nos dias20,21 e22, após o prazo e conforme os comprovantes carregados.
 - Não lançar pontos positivos de compensação: as multas são derivadas da participação, e a isenção corrige o cálculo diretamente. Votos/resultados/participação de19 continuam registrados.

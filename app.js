@@ -83,7 +83,11 @@ function settle(){
 }
 
 /* ===================== TELAS ===================== */
-let tab = "inicio", day = 18, contasSeg = "despesas", qDraft = {};
+function currentAgendaDay(){
+ const today=Number(dayKey());
+ return (DAYS.find(item=>Number(dayKey(Date.parse(`2026-11-${item.d}T00:00:00-03:00`)))>=today)||DAYS.at(-1)).d;
+}
+let tab = "inicio", day = currentAgendaDay(), contasSeg = "despesas", qDraft = {};
 try{ tab = localStorage.getItem("xvi-tab") || "inicio";if(!["inicio","programa","placar","querido","contas","fofoca"].includes(tab))tab="inicio"; }catch(e){}
 
 const busyActions=new Set();
@@ -738,6 +742,7 @@ function simulateTrip(){
 }
 function go(t){
  if(t==='tribunal'&&!isAdm())return;
+ if(t==='programa')day=currentAgendaDay();
  if(t==='fofoca'&&tab!=='fofoca'){enterChat=true;chatColors.reset();}
  reactionPicker=null;tab=t;
  try{localStorage.setItem('xvi-tab',t);}catch{}
