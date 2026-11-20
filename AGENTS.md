@@ -1,5 +1,11 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Vídeo em loop para a TV (20/11/2026)
+- Pedido, fontes, schema e instruções para o Claude em `docs/TV-CONGRESSO.md`. Intercala Queridômetro encerrado, placar completo e casos aprovados do mural; sem foto, reconstituição ilustrada a lápis.
+- `node scripts/export-tv.cjs --out <pasta-privada>` exporta somente dados necessários, sem escrever no Firebase; reaproveita roster, elegibilidade, decodificação e cálculo real do placar. `scripts/tv/render_tv.py` compõe offline e recusa ilustração ausente/resultado inconsistente. Não alterar o mapa/app/regras para atualizar esse vídeo.
+- Primeira captura20/11 às18:01 SP, rodada20 com11 votantes/132 emojis,13 no ranking,2 casos publicados. MP4 Full HD/30fps,144s, silencioso, dissolve da última tela à primeira. Novas versões somente a pedido.
+- Pacote de dados e mídias para anexar ao Claude em `../TV-Congresso/entrega/Claude-TV-Congresso-2026-11-20.zip` (fora do repo público). Não commitar snapshots/fotos autenticadas, credenciais, PINs ou histórico do chat.
+
 ## Home: mural e feed primeiro (20/11/2026)
 - Ordem solicitada: Mural da Vergonha no topo (com a sirene ao lado durante a viagem), Nosso feed em seguida, e depois os demais blocos na ordem anterior: atividade atual/próxima, Links oficiais, Chácara virtual, Queridômetro e eventual portal de descoberta.
 - O mural continua aparecendo somente quando há condenação. Sem mural, o feed vem primeiro e a sirene permanece junto dos Links oficiais. Sem duplicar atalhos nem alterar dados, mapa ou regras do Firebase.
