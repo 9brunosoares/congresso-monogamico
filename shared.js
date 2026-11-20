@@ -1,5 +1,5 @@
 import {votePeople} from './travel.js?v=20261117a';
-import { ALL, EMOJIS } from './roster.js?v=20261107c';
+import { ALL, EMOJIS } from './roster.js?v=20261120e';
 export function validatePin(pin){if(!/^[0-9]{6}$/.test(pin))throw Error('Use um PIN de exatamente 6 dígitos.');}
 export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)/(24*60*60*1000)));}
 const tripStart=Date.parse('2026-11-18T00:00:00-03:00');

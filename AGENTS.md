@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Apelido Bru e revelação mantida (20/11/2026)
+- Bruno pediu trocar o nome exibido para **Bru**. `roster.js` é a fonte da interface e dos relatórios de contas; `mapa/index.html` também exibe Bru. ID interno `bruno`, login, foto, permissões e registros permanecem vinculados à mesma conta. No mapa mudou somente o apelido.
+- Bruno cancelou o pedido de ocultar os resultados e anunciar uma apresentação na sala. Essa alteração NÃO foi publicada. Preservar o fluxo original: resultados no app a partir de12h, Home com chamada de revelação e aba com totais/destaques. O quiz publicado continua funcionando.
+
 ## Quiz após Queridômetro (20/11/2026)
 - Bruno aprovou os prints do convite e da pergunta e autorizou a publicação. Não mudar o mapa.
 - Após o próximo envio bem-sucedido de votos, cada congressista recebe o convite “Quiz do dia”. O botão “Ok, me sinto pronto” abre a pergunta “Qual é o sobrenome do OB?”, campo e contador de5s. Ao zerar fecha e envia automaticamente a última resposta digitada dentro do prazo; Enter pode antecipar. Relógio monotônico, sem pausa ao trocar de aba. Cinco segundos começam no botão, e não no convite.

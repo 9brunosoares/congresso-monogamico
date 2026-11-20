@@ -1,7 +1,7 @@
 import { getApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import { getAuth } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
 import { getFirestore, doc, getDocFromServer, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
-import { votingKey } from './shared.js?v=20261120a';
+import { votingKey } from './shared.js?v=20261120e';
 import { quizAnswer, QUIZ_REASON } from './daily-quiz.js?v=20261120c';
 
 function session() {

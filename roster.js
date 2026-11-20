@@ -1,5 +1,5 @@
 export const PEOPLE = [
-  {id:"bruno", nick:"Bruno", admin:true, frame:[583,280,50,7,260]},
+  {id:"bruno", nick:"Bru", admin:true, frame:[583,280,50,7,260]},
   {id:"ob", nick:"OB"},
   {id:"luan", nick:"Luan"},
   {id:"igor", nick:"Igor", admin:true},

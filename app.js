@@ -1,18 +1,18 @@
 import {carFor,departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261117a';
 import {prepareReportPhoto} from './report-photo.js';
-import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261107c';
+import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261120e';
 import {PIX_TYPES} from './pix.js?v=20261107c';
 import {EMPTY_OFFICIAL_LINKS} from './official-links.js?v=20261107c';
 import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
-import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261107c';
-import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261120a';
-import * as backend from './backend.js?v=20261120a';
-import {openTravelMap} from './mapa-viagem.js?v=20261119a';
+import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261120e';
+import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261120e';
+import * as backend from './backend.js?v=20261120e';
+import {openTravelMap} from './mapa-viagem.js?v=20261120e';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 import {openDailyQuiz} from './daily-quiz.js?v=20261120c';
-import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261120c';
+import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261120e';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 let discoveryStorage;

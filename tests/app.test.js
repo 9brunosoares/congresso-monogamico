@@ -272,7 +272,7 @@ test('detalhes do saldo mostram somente os Pix do perfil e atualizam com pagamen
  vm.runInContext("go('saldo')",context);
  assert.equal(views.at(-1),'contas');
  let html=nodes['#root'].innerHTML;
- assert.match(html,/Você paga[^]*Bruno[^]*R\$ 40,00/);
+ assert.match(html,/Você paga[^]*Bru[^]*R\$ 40,00/);
  assert(html.includes('data-pix="bruno"'));
  for(const other of ['Igor','Pig','Luan','Você recebe'])assert(!html.includes(other));
 
