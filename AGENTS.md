@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Alerta pessoal do javali (20/11/2026)
+- Pedido do Bru: alerta com aparência de janela iOS, translúcido, somente para o ID `bruno`,5s após abrir/retomar o app com o perfil pronto. Mensagem sobre javali e Prefeitura de Vargem/SP; “antigos seguros” foi corrigido para “Abriguem-se em locais seguros”. Botão OK fecha.
+- `bru-alert.js` agenda sem reiniciar a cada snapshot. Ocultar o app ou trocar de conta cancela a espera; outra janela aberta adia para não cobrir o quiz. Ao exibir, grava `xvi-bru-javali-20261120-v1` no localStorage: uma vez por aparelho/navegador. Não consumir esse marcador no domínio de produção durante testes. Perfil diferente não recebe o alerta. Sem leituras/escritas do Firebase e sem mudança no mapa.
+
 ## Apelido Bru e revelação mantida (20/11/2026)
 - Bruno pediu trocar o nome exibido para **Bru**. `roster.js` é a fonte da interface e dos relatórios de contas; `mapa/index.html` também exibe Bru. ID interno `bruno`, login, foto, permissões e registros permanecem vinculados à mesma conta. No mapa mudou somente o apelido.
 - Bruno cancelou o pedido de ocultar os resultados e anunciar uma apresentação na sala. Essa alteração NÃO foi publicada. Preservar o fluxo original: resultados no app a partir de12h, Home com chamada de revelação e aba com totais/destaques. O quiz publicado continua funcionando.

@@ -13,13 +13,14 @@ import {openTravelMap} from './mapa-viagem.js?v=20261120e';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 import {openDailyQuiz} from './daily-quiz.js?v=20261120c';
 import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261120e';
+import {createBruAlert} from './bru-alert.js?v=20261120f';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 let discoveryStorage;
 try { discoveryStorage=localStorage; } catch {}
 const discovery=createDiscovery(discoveryStorage);
 const openedProfiles=new Set(),seenResults=new Set();
-let portalAppearedAt=0,backgroundAt=0;
+let portalAppearedAt=0,backgroundAt=0,bruAlert;
 
 // Viagem: quarta 18 à noite até domingo 22/11/2026 no começo da tarde.
 const DAYS = [
@@ -877,6 +878,7 @@ function homePhase(){const {cur,nxt}=nextItem();return `${cur?.start}:${nxt?.sta
 let votingPhase=votingPhaseAt(),currentHomePhase=homePhase();
 setInterval(()=>{tick();const phase=votingPhaseAt(),home=homePhase();if(phase!==votingPhase||home!==currentHomePhase){votingPhase=phase;currentHomePhase=home;backend.refreshTime?.();render();}},1000);
 document.addEventListener('visibilitychange',()=>{
+ bruAlert?.update({me:S.me,ready:S.ready,hidden:document.hidden});
  if(document.hidden){backgroundAt=Date.now();return;}
  // Uma volta após um minuto fora também conta como novo acesso no PWA do iOS.
  if(S.ready&&S.me&&backgroundAt&&Date.now()-backgroundAt>=60000){discovery.record(S.me,'open');render();}
@@ -891,4 +893,6 @@ backend.start(data=>{
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);
  if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}
+ bruAlert??=createBruAlert({storage:discoveryStorage});
+ bruAlert.update({me:S.me,ready:S.ready,hidden:document.hidden});
 }).catch(e=>{S.ready=true;S.error=backend.errorText(e);render();});

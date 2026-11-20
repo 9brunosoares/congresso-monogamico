@@ -159,7 +159,7 @@ test('seletor abre com toque ou pressão longa; rolagem cancela a pressão',()=>
 
 test('histórico unificado, exclusão por ADM e lançamento a partir de 18/11',()=>{
  const {context}=ui();
- vm.runInContext("S={...S,ready:true,me:'ob',admin:false,tasks:[{id:'task-example',who:'ob',d:5,why:'Lavar a louça',status:'ok'}],points:[{id:'task_task-example',who:'ob',d:5,why:'Lavar a louça',kind:'aux'}]}",context);
+ vm.runInContext("S={...S,ready:true,me:'ob',admin:false,attendanceReady:{},tasks:[{id:'task-example',who:'ob',d:5,why:'Lavar a louça',status:'ok'}],points:[{id:'task_task-example',who:'ob',d:5,why:'Lavar a louça',kind:'aux'}]}",context);
  let at=Date.parse('2026-11-18T03:00:00Z')-1;
  context.tripStarted=()=>tripStarted(at);
  let html=vm.runInContext('viewPlacar()',context);
