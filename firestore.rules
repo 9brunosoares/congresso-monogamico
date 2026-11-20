@@ -154,6 +154,20 @@ service cloud.firestore {
     && d.d is int && d.d != 0 && d.d >= -100 && d.d <= 100
     && text(d.why,200) && d.kind in ['aux','jogo','inf'] && text(d.at,40) && d.createdAt is timestamp;
   }
+  // points/inf_<id>: evento negativo com os seis campos usuais e by (autor).
+  function isValidInfraction(d) {
+   return only(d,['who','d','why','kind','at','createdAt','by']) && d.by in ids()
+    && d.kind == 'inf' && d.d < 0
+    && isValidPoint({'who':d.who,'d':d.d,'why':d.why,'kind':d.kind,'at':d.at,'createdAt':d.createdAt});
+  }
+  function presetInfraction(d) {
+   return (d.why == 'Lixo no chão' && d.d == -5) || (d.why == 'Louça suja pela casa' && d.d == -5)
+    || (d.why == 'Atraso na programação' && d.d == -3) || (d.why == 'Chamou o Bru pelo nome morto' && d.d == -3)
+    || (d.why == 'Infração da monogamia' && d.d == -15);
+  }
+  function directInfraction(d) {
+   return isValidInfraction(d) && d.by == personId() && (presetInfraction(d) || isAdmin());
+  }
   function tripStarted() { return request.time >= timestamp.date(2026,11,18) + duration.value(3,'h'); }
   function scoringOpen() { return !exists(/databases/$(database)/documents/scoreClosures/main); }
   // dailyQuizOB/{uid}: day e startedAt imutáveis; resposta normalizada e
@@ -224,6 +238,11 @@ service cloud.firestore {
     && isValidTask(task) && presetTask(task) && d.who == task.who && d.d == task.d
     && d.why == task.why && d.kind == 'aux' && d.at == task.at && d.createdAt == task.createdAt;
   }
+  function regularPointCreate(id,d) {
+   return isValidPoint(d) && (id.matches('quiz_ob_.*') ? validQuizPoint(id,d)
+    : id.matches('lake_[0-9]+') ? validLakePoint(id,d)
+    : (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,d))));
+  }
   match /scoreClosures/{id} {
    allow read: if isMember();
    allow create: if id == 'main' && tripStarted() && isAdmin() && only(request.resource.data,['closedAt','closedBy'])
@@ -232,11 +251,11 @@ service cloud.firestore {
   }
   match /points/{id} {
    allow read: if isMember();
-   allow create: if tripStarted() && isMember() && scoringOpen() && isValidPoint(request.resource.data) && fresh(request.resource.data)
-    && (id.matches('quiz_ob_.*') ? validQuizPoint(id,request.resource.data)
-     : id.matches('lake_[0-9]+') ? validLakePoint(id,request.resource.data)
-     : (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,request.resource.data))));
-   allow update: if !id.matches('quiz_ob_.*') && !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && isValidPoint(request.resource.data) && sameCreation();
+   allow create: if tripStarted() && isMember() && scoringOpen() && fresh(request.resource.data)
+    && (id.matches('inf_[a-zA-Z0-9_-]+') ? directInfraction(request.resource.data)
+     : regularPointCreate(id,request.resource.data));
+   allow update: if !id.matches('quiz_ob_.*') && !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && sameCreation()
+    && (id.matches('inf_[a-zA-Z0-9_-]+') ? isValidInfraction(request.resource.data) && request.resource.data.by == resource.data.by : isValidPoint(request.resource.data));
    allow delete: if !id.matches('quiz_ob_.*') && !id.matches('lake_[0-9]+') && isAdmin() && scoringOpen();
   }
   function isValidExpense(d) {
@@ -463,6 +482,7 @@ service cloud.firestore {
   }
   function presetTask(d) {
    return (d.why == 'Lavar a louça' && d.d == 5) || (d.why == 'Tirar o lixo' && d.d == 5)
+    || (d.why == 'Organizar a casa' && d.d == 5)
     || (d.why == 'Cozinhar uma refeição' && d.d == 10) || (d.why == 'Repor gelo ou bebida' && d.d == 3);
   }
   function taskPointsSaved(id,d) {

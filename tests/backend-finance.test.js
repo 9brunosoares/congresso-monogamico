@@ -56,13 +56,20 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   assert.equal(ledgerBalances(state.exps,state.payments).ob,-700);
   await api.cancelPayment(payment.path.split('/')[1],1);assert.equal(ledgerBalances(state.exps,state.payments).ob,-1000);
   await assert.rejects(api.submitTask({why:'Lavar a louça',d:5}),/18 de novembro/);
+  await assert.rejects(api.addInfraction({who:'igor',d:-3,why:'Chamou o Bru pelo nome morto'}),/18 de novembro/);
   time=Date.parse('2026-11-18T03:00:00Z');
   const task=await api.submitTask({why:'Lavar a louça',d:5});
   assert.equal(records.get(task.path).status,'ok');assert.equal(records.get('points/task_'+task.id).d,5);
+  const house=await api.submitTask({why:'Organizar a casa',d:5});assert.equal(records.get('points/task_'+house.id).d,5);
+  const infraction=await api.addInfraction({who:'igor',d:-3,why:'Chamou o Bru pelo nome morto'});
+  assert(infraction.id.startsWith('inf_'));assert.equal(records.get(infraction.path).d,-3);assert.equal(records.get(infraction.path).by,'ob');assert.equal(records.get(infraction.path).kind,'inf');
+  for(const data of [{who:'igor',d:-30,why:'Chamou o Bru pelo nome morto'},{who:'igor',d:5,why:'Lixo no chão'},{who:'igor',d:-5,why:'Sem look temático'},{who:'kirk',d:-3,why:'Chamou o Bru pelo nome morto'}])await assert.rejects(api.addInfraction(data),/tabela|válida|congressista/);
+  await assert.rejects(api.addPoints({who:'ob',d:5,why:'Livre',kind:'aux'}),/ADMs/);
   await assert.rejects(api.submitTask({why:'Lavar a louça',d:20}),/tabela/);
   await assert.rejects(api.deleteTask(task.id),/ADMs/);
   await auth('bruno');await api.deleteTask(task.id);assert(!records.has(task.path));assert(!records.has('points/task_'+task.id));
   await api.deleteTask(task.id);
+  await api.deleteTask(house.id);
   await assert.rejects(api.closeFinance(),/22\/11/);
   time=Date.parse('2026-11-22T03:00:00Z');await auth('ob');await assert.rejects(api.closeFinance(),/ADMs/);await auth('bruno');
   const original=sdk.getDocsFromServer;let race=true;sdk.getDocsFromServer=async ref=>{const result=snap(ref);if(race){race=false;const ctrl=records.get('financeControl/main');records.set('financeControl/main',{...ctrl,revision:ctrl.revision+1});epoch++;}return result};
@@ -78,6 +85,7 @@ test('backend financeiro completo: histórico, fechamento, trava concorrente e c
   assert(Object.values(ledgerBalances(state.exps,state.payments)).every(n=>n===0));assert.equal(records.get('payments/'+final.id).version,3);
   await api.addPoints({who:'ob',d:5,why:'Tarefa',kind:'aux'});await api.closeScores();assert(state.scoreClosing);
   await assert.rejects(api.addPoints({who:'ob',d:5,why:'Depois',kind:'aux'}),/encerrado/);
+  await assert.rejects(api.addInfraction({who:'igor',d:-3,why:'Chamou o Bru pelo nome morto'}),/encerrado/);
   await assert.rejects(api.closeScores(),/encerrado/);
   const pointsBefore=[...records.keys()].filter(k=>k.startsWith('points/')).length;
   records.set('cases/case-after',{who:'ob',by:'bruno',what:'Teste',status:'pend'});

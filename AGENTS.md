@@ -1,5 +1,12 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Tarefas e infrações diretas (20/11/2026)
+- Adicionada Organizar a casa (+5) à interface, validação do backend e pareamento tarefa/ponto nas regras. Substituída Sem look temático por Chamou o Bru pelo nome morto (-3); preservar lançamentos históricos antigos sem renomear/recalcular.
+- Qualquer membro pode escolher o congressista e registrar diretamente uma das cinco infrações da tabela. Não há etapa de falar com ADM nem aprovação. Somente ADMs mantêm valor personalizado e lançamentos positivos livres. Início da viagem e encerramento do placar continuam valendo.
+- `addInfraction` cria `points/inf_<id>` com os seis campos usuais e `by` (apelido do autor). Regras conferem autor, alvo, valor negativo e motivo/valor da tabela para não ADM; não liberam pontos positivos nem edição/exclusão por membros. ADMs podem corrigir/excluir com placar aberto, preservando autor/data na correção. Quiz, tarefas e recordes continuam com validações próprias e esquema anterior.
+- Bru pediu três ocorrências dessa nova infração para Igor, total -9. Script administrativo idempotente em `.private/igor-name-infractions.cjs` verifica ocorrências atuais, faz backup privado e completa até três sem alterar outros pontos. IDs reservados `inf_igor_nome_morto_20261120_1..3`; sem `--apply` é só conferência.
+- As três ocorrências foram registradas e verificadas em20/11; não lançar outras três ao retomar esta tarefa. Regras publicadas conferidas com o arquivo local. Validação:70 testes locais e485 cenários no serviço oficial (46 novos,327 regressão,50 represa,62 quiz), todos com dados simulados.
+
 ## Alerta do javali liberado aos 13 congressistas (20/11/2026)
 - Após testar a versão pessoal, Bru autorizou o mesmo alerta para todos os congressistas logados. Aparência de janela iOS, translúcido,5s após abrir/retomar o app com o perfil pronto. Mensagem sobre javali e Prefeitura de Vargem/SP; “antigos seguros” foi corrigido para “Abriguem-se em locais seguros”. Botão OK fecha.
 - `bru-alert.js` agenda sem reiniciar a cada snapshot. Ocultar o app ou trocar de conta cancela a espera; outra janela aberta adia para não cobrir o quiz. Exibição única por perfil/aparelho: Bru conserva o marcador `xvi-bru-javali-20261120-v1`; os demais usam o mesmo prefixo seguido de `:<id>`. Quem já viu não repete e não bloqueia outras contas no aparelho. Não consumir marcadores de produção durante testes. Sem leituras/escritas do Firebase e sem mudança no mapa.

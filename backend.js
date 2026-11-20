@@ -318,6 +318,21 @@ export async function setTripReaction(id,emoji){
  });}finally{if(version===generation){delete state.tripReactionPending[id];emit();}}
 }
 export async function addPoints(data){admin();requireTripStart();const ref=doc(collection(db,'points'));await runTransaction(db,async tx=>{const closed=await tx.get(doc(db,'scoreClosures','main'));if(closed.exists())throw Error('O placar já foi encerrado.');tx.set(ref,created(data));});return ref;}
+export async function addInfraction({who,d,why}){
+ member();requireTripStart();
+ const actor=state.me,version=generation;
+ const values={'Lixo no chão':-5,'Louça suja pela casa':-5,'Atraso na programação':-3,'Chamou o Bru pelo nome morto':-3,'Infração da monogamia':-15};
+ if(!ALL.includes(who))throw Error('Escolha um congressista.');
+ if(!Number.isInteger(d)||d>=0||d< -100||typeof why!=='string'||!why.trim()||why.length>200)throw Error('Escolha uma infração válida.');
+ if(!state.admin&&values[why]!==d)throw Error('Escolha uma infração e o valor da tabela.');
+ const ref=doc(db,'points','inf_'+doc(collection(db,'points')).id);
+ await runTransaction(db,async tx=>{
+  const closed=await tx.get(doc(db,'scoreClosures','main'));
+  if(version!==generation)throw Error('Sua sessão mudou. Tente novamente.');
+  if(closed.exists())throw Error('O placar já foi encerrado.');
+  tx.set(ref,created({who,d,why,kind:'inf',by:actor}));
+ });return ref;
+}
 export async function saveOfficialLinks(data,expectedVersion){
  admin();const values=normalizeOfficialLinks(data);
  await runTransaction(db,async tx=>{
@@ -396,7 +411,7 @@ export async function savePix(type,value){member();await setDoc(doc(db,'pixKeys'
 export async function removePix(){member();await deleteDoc(doc(db,'pixKeys',state.me));}
 export async function submitTask(data){
  member();requireTripStart();const ref=doc(collection(db,'tasks')),actor=state.me;
- const values={'Lavar a louça':5,'Tirar o lixo':5,'Cozinhar uma refeição':10,'Repor gelo ou bebida':3};
+ const values={'Lavar a louça':5,'Tirar o lixo':5,'Organizar a casa':5,'Cozinhar uma refeição':10,'Repor gelo ou bebida':3};
  if(values[data.why]!==data.d)throw Error('Escolha uma tarefa da tabela.');
  await runTransaction(db,async tx=>{
   const closed=await tx.get(doc(db,'scoreClosures','main'));

@@ -175,6 +175,17 @@ test('histórico unificado, exclusão por ADM e lançamento a partir de 18/11',(
  vm.runInContext("S.scoreClosing={closedAt:{toMillis:()=>Date.now()}}",context);assert(!vm.runInContext('viewPlacar()',context).includes('data-delete-task'));
 });
 
+test('membro registra infração da tabela direto e organizar a casa vale cinco pontos',()=>{
+ const {context}=ui();
+ vm.runInContext("S={...S,ready:true,me:'ob',admin:false};sheet=(html)=>globalThis.modal=html;sheetPoints(true)",context);
+ let html=context.modal;
+ assert(html.includes('Registrar infração')&&html.includes('id="spWho"'));
+ assert(!html.includes('disabled')&&!html.includes('id="spVal"'));
+ assert(html.includes('Chamou o Bru pelo nome morto (-3)'));assert(!html.includes('Sem look temático'));
+ vm.runInContext('sheetTask()',context);assert(context.modal.includes('Organizar a casa (+5)'));
+ vm.runInContext('S.admin=true;sheetPoints(true)',context);assert(context.modal.includes('id="spVal"'));
+});
+
 test('chat: só o autor vê apagar; mensagem riscada continua legível e ADM não recebe poder extra',()=>{
  const {context,html:styles}=ui();
  vm.runInContext("S={...S,me:'bruno',admin:true,chat:[{id:'own',text:'Minha mensagem',mine:true},{id:'other',text:'Mensagem de outro',mine:false},{id:'struck',text:'Ainda dá para ler',mine:true,struck:true}]}",context);

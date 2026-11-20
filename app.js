@@ -8,7 +8,7 @@ import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261120e';
 import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261120e';
-import * as backend from './backend.js?v=20261120e';
+import * as backend from './backend.js?v=20261120h';
 import {openTravelMap} from './mapa-viagem.js?v=20261120e';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 import {openDailyQuiz} from './daily-quiz.js?v=20261120c';
@@ -33,8 +33,8 @@ const DAYS = [
 const AGENDA = [];
 
 const RULES = {
-  plus:[["Lavar a louça",5],["Tirar o lixo",5],["Cozinhar uma refeição",10],["Repor gelo ou bebida",3],["Vencer jogo ou gincana","10 a 20"]],
-  minus:[["Lixo no chão",-5],["Louça suja pela casa",-5],["Atraso na programação",-3],["Sem look temático",-5],["Infração da monogamia",-15]],
+  plus:[["Lavar a louça",5],["Tirar o lixo",5],["Organizar a casa",5],["Cozinhar uma refeição",10],["Repor gelo ou bebida",3],["Vencer jogo ou gincana","10 a 20"]],
+  minus:[["Lixo no chão",-5],["Louça suja pela casa",-5],["Atraso na programação",-3],["Chamou o Bru pelo nome morto",-3],["Infração da monogamia",-15]],
 };
 
 const CATS = [
@@ -499,17 +499,19 @@ const personOpts = (sel)=>PEOPLE.map(p=>`<option value="${p.id}" ${p.id===sel?"s
 
 function sheetPoints(neg){
  if(!tripStarted())return toast('Disponível a partir de 18 de novembro.');
- if(!isAdm()){if(neg)return toast('Procure um adm.');return sheetTask();}
+ if(S.scoreClosing)return toast('O placar já foi encerrado.');
+ if(!isAdm()&&!neg)return sheetTask();
  const opts=(neg?RULES.minus:RULES.plus.concat([["Jogo: 1º lugar",20],["Jogo: 2º lugar",10],["Participação",5]])).filter(o=>typeof o[1]==='number');
  sheet(`<h3>${neg?'Registrar infração':'Lançar pontos'}</h3><div class="stack">
- <label class="f">Congressista<select id="spWho" ${isAdm()?'':'disabled'}>${personOpts(S.me)}</select></label>
+ <label class="f">Congressista<select id="spWho">${personOpts(S.me)}</select></label>
  <label class="f">Motivo<select id="spWhy">${opts.map(([n,v])=>`<option value="${v}">${n} (${v>0?'+':''}${v})</option>`).join('')}</select></label>
- <label class="f">Pontos<input id="spVal" type="number" min="-100" max="100" step="1" inputmode="numeric"></label>
+ ${isAdm()?`<label class="f">Pontos<input id="spVal" type="number" min="-100" max="${neg?-1:100}" step="1" inputmode="numeric"></label>`:''}
  <button class="btn seal block" id="spOk" type="button">Confirmar pontos</button><button class="btn ghost block" data-close type="button">Cancelar</button></div>`,s=>{
- const w=s.querySelector('#spWhy'),v=s.querySelector('#spVal');v.value=w.value;w.onchange=()=>v.value=w.value;
+ const w=s.querySelector('#spWhy'),v=s.querySelector('#spVal');if(v){v.value=w.value;w.onchange=()=>v.value=w.value;}
  s.querySelector('#spOk').onclick=()=>act(s.querySelector('#spOk'),async()=>{
-  const d=Number(v.value);if(!Number.isInteger(d)||!d||Math.abs(d)>100)throw Error('Use pontos inteiros entre −100 e 100, diferentes de zero.');
-  await backend.addPoints({who:s.querySelector('#spWho').value,d,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,''),kind:neg?'inf':'aux'});s.remove();toast('Pontos lançados');
+  const d=Number(v?.value??w.value);if(!Number.isInteger(d)||!d||Math.abs(d)>100||neg&&d>=0)throw Error(neg?'Use pontos negativos entre −100 e −1.':'Use pontos inteiros entre −100 e 100, diferentes de zero.');
+  const data={who:s.querySelector('#spWho').value,d,why:w.options[w.selectedIndex].text.replace(/ \(.*\)$/,'')};
+  if(neg)await backend.addInfraction(data);else await backend.addPoints({...data,kind:'aux'});s.remove();toast(neg?'Infração registrada':'Pontos lançados');
  });});
 }
 function sheetTask(){
