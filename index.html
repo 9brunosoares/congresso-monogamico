@@ -229,6 +229,23 @@ body:has(.travel-map[open]){overflow:hidden}
 .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
 .btn.block{width:100%}
 .btn.sm{padding:7px 12px;font-size:13px;border-radius:10px}
+.daily-quiz{width:calc(100% - 40px);max-width:380px;max-height:calc(100dvh - 40px);margin:auto;padding:28px 24px;border:1px solid var(--line);border-radius:24px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0005;overflow:auto}
+.daily-quiz::backdrop{background:#090610bb;backdrop-filter:blur(3px)}
+.daily-quiz h2{font-size:32px;line-height:1.12;letter-spacing:-.025em;text-wrap:balance}
+.quiz-watch{display:grid;place-items:center;width:54px;height:54px;margin-bottom:20px;border-radius:17px;color:var(--seal);background:color-mix(in srgb,var(--seal) 11%,var(--surface))}
+.quiz-watch svg{width:34px;height:34px}
+.quiz-intro p{font-size:17px;line-height:1.55;margin:16px 0 26px;color:var(--muted)}
+.quiz-intro strong{font-weight:700;color:var(--ink)}
+.quiz-prize,.quiz-intro .quiz-prize{color:var(--brass);font-weight:700;white-space:nowrap}
+.quiz-intro .btn{min-height:50px}
+.quiz-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px}
+.quiz-heading .quiz-prize{font-size:14px}
+.quiz-response{display:flex;align-items:stretch;gap:10px;margin-top:26px}
+.quiz-response input{width:0;min-width:0;flex:1;min-height:58px;padding:12px 14px;font-size:18px;background:var(--bg);border:1px solid var(--line);border-radius:14px;outline-offset:2px}
+.quiz-response input::placeholder{color:var(--muted)}
+.quiz-timer{display:flex;align-items:baseline;justify-content:center;gap:3px;min-width:64px;padding:10px 9px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);font-family:var(--f-mono);color:var(--ink)}
+.quiz-timer b{font-size:27px;line-height:1.3;font-weight:700}.quiz-timer>span{font-size:14px;color:var(--muted)}
+.quiz-timer.urgent{color:var(--seal);border-color:var(--seal)}
 .fab-row{display:flex;gap:8px;flex-wrap:wrap}
 
 /* abas */
@@ -403,7 +420,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 <div id="root"><div class="app login"><span class="union-loader" aria-hidden="true"><span class="jewel-ring ring-left"><i class="gem"></i></span> <span class="jewel-ring ring-right"><i class="gem"></i></span> <span class="lock"><i class="shackle"></i><i class="lock-body"><b class="keyhole"></b></i></span></span><h2>Carregando o congresso…</h2><p class="muted">Aguarde a conexão.</p></div></div>
 <noscript>Ative o JavaScript para abrir o congresso.</noscript>
 
-<script type="module" src="install.js?v=20261120b"></script>
+<script type="module" src="install.js?v=20261120c"></script>
 
 </body>
 </html>

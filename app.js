@@ -11,6 +11,8 @@ import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,vo
 import * as backend from './backend.js?v=20261120a';
 import {openTravelMap} from './mapa-viagem.js?v=20261119a';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
+import {openDailyQuiz} from './daily-quiz.js?v=20261120c';
+import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261120c';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 let discoveryStorage;
@@ -91,6 +93,16 @@ let tab = "inicio", day = currentAgendaDay(), contasSeg = "despesas", qDraft = {
 try{ tab = localStorage.getItem("xvi-tab") || "inicio";if(!["inicio","programa","placar","querido","contas","fofoca"].includes(tab))tab="inicio"; }catch(e){}
 
 const busyActions=new Set();
+let dailyQuiz;
+async function offerDailyQuiz(){
+ const owner=S.me;
+ try{
+  if(!await quizAvailable()||S.me!==owner)return;
+  dailyQuiz=openDailyQuiz({start:startQuiz,answer:answerQuiz,
+   onResult:result=>{if(result.won&&S.me===owner)toast('+5 pontos · Quiz do dia');},
+   onError:error=>{if(S.me===owner){backend.reportError?.(error);toast('Não foi possível registrar o quiz. Seus votos estão salvos.');}}});
+ }catch(error){backend.reportError?.(error);toast('Seus votos estão salvos. O quiz não carregou; confira sua conexão.');}
+}
 async function act(button,run){
   const key=button?.id;if(button?.disabled||(key&&busyActions.has(key)))return;
   if(key)busyActions.add(key);
@@ -845,7 +857,7 @@ document.addEventListener('click',e=>{
  const button=e.target.closest('button'),id=button?.id;
  if(id==='olderScores'){scoreHistoryLimit+=12;render();return;}
  ({fullAgenda:()=>{agendaAdminMode=!agendaAdminMode;render();},officialLinks:sheetOfficialLinks,closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
- qSend:()=>act(button,async()=>{await backend.vote({...qDraft});qDraft={};toast('Votos enviados, anonimamente');})})[id]?.();
+ qSend:()=>act(button,async()=>{const owner=S.me;await backend.vote({...qDraft});if(S.me!==owner)return;qDraft={};toast('Votos enviados, anonimamente');void offerDailyQuiz();})})[id]?.();
 });
 
 function tick(){
@@ -874,7 +886,7 @@ document.addEventListener('visibilitychange',()=>{
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){travelMap?.close();loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){travelMap?.close();dailyQuiz?.close();dailyQuiz=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
  if(S.ready&&S.me&&(!wasReady||previous!==S.me)&&!document.hidden)void backend.recordPilotUsage?.('open');
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);

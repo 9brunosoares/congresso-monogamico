@@ -1,5 +1,13 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Quiz após Queridômetro (20/11/2026)
+- Bruno aprovou os prints do convite e da pergunta e autorizou a publicação. Não mudar o mapa.
+- Após o próximo envio bem-sucedido de votos, cada congressista recebe o convite “Quiz do dia”. O botão “Ok, me sinto pronto” abre a pergunta “Qual é o sobrenome do OB?”, campo e contador de5s. Ao zerar fecha e envia automaticamente a última resposta digitada dentro do prazo; Enter pode antecipar. Relógio monotônico, sem pausa ao trocar de aba. Cinco segundos começam no botão, e não no convite.
+- Uma tentativa desse quiz por conta, persistida em `dailyQuizOB/{uid}`: `{day,startedAt}` e depois `{answer,answeredAt}`. Aceita Martinez, Martines e Pereira, sem diferenciar maiúsculas, espaços externos ou acentos; resposta incorreta é gravada como string vazia. Não armazenar votos individuais nem associar escolhas de emojis ao quiz.
+- Início exige comprovante próprio de votação naquele dia. Acerto grava a resposta e `points/quiz_ob_<uid>` (+5/kind jogo) na mesma transação. Regra recusa repetição, bônus sem acerto, outro titular e alteração/exclusão do bônus. Bruno pode participar deste quiz (exclusão de Bruno é só no recorde da represa). Placar encerrado bloqueia novas tentativas/bonificações.
+- `daily-quiz.js`: UI, limite local estrito de5s e normalização. `daily-quiz-data.js`: leituras pontuais e transações; sem listener adicional. Servidor permite7s desde o início confirmado, sendo2s de tolerância de transporte; a UI nunca aceita texto após5s. Voto continua salvo mesmo se quiz/rede falhar. Recarga ou nova aba não reinicia tentativa já iniciada.
+- Prévia local isolada em `.private/quiz-preview-server.cjs` (sem Firebase) e prints em `.private/quiz-prints/`. Verificação:64 testes locais,62 cenários de regras do quiz,327 de regressão e50 de recordes, sem dados de produção. Publicação deste quiz: somente regras de Firestore e front-end; não publicar Realtime Database/hosting/auth.
+
 ## Agenda: abertura no dia atual (20/11/2026)
 - Todo toque em Agenda, inclusive com a aba já aberta, seleciona o dia atual de São Paulo. Abrir o app com Agenda como última aba também começa no dia atual. Antes/depois da viagem usa o primeiro/último dia; a visibilidade conforme a saída de cada congressista continua aplicada.
 
