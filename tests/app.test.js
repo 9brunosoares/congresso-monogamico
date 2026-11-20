@@ -219,9 +219,11 @@ test('votação somente nas quatro manhãs e penalidade única após o prazo',()
  assert(!votingOpen(Date.parse('2026-11-23T10:00:00-03:00')));
  const d=VOTE_DAYS[0],attendance={[d.key]:{pig:true}};
  assert.equal(missedVotePoints(attendance,d.deadline-1).length,0);
- const penalties=missedVotePoints(attendance,d.deadline);
- assert.equal(penalties.length,4);assert(!penalties.some(p=>['igor','diogo','pelado','pig'].includes(p.who)));assert(penalties.every(p=>p.d===-5));
- assert.equal(missedVotePoints({},VOTE_DAYS[3].deadline).length,44);
+ assert.equal(missedVotePoints(attendance,d.deadline).length,0);
+ const next=VOTE_DAYS[1],penalties=missedVotePoints({[next.key]:{pig:true}},next.deadline);
+ assert.equal(penalties.length,12);assert(!penalties.some(p=>p.who==='pig'));assert(penalties.every(p=>p.d===-5));
+ const all=missedVotePoints({},VOTE_DAYS[3].deadline);
+ assert.equal(all.length,39);assert(!all.some(p=>p.id.startsWith(`missed_${d.key}_`)));
 });
 test('home mostra mural apenas após condenação; login sem selo ADM',()=>{
  const {context,nodes}=ui();context.tripStarted=()=>true;vm.runInContext('S.ready=true;viewLogin()',context);
@@ -305,8 +307,8 @@ test('resultado fica oculto mesmo com cache até meio-dia; domingo sem promessa 
 test('placar congelado não ganha multa de domingo; CPF padrão e novas categorias',()=>{
  const closeAt=Date.parse('2026-11-22T09:00:00-03:00'),later=Date.parse('2026-11-22T13:00:00-03:00');
  const before=scoringPoints([],{},undefined,{closedAt:{toMillis:()=>closeAt}},later);
- assert.equal(before.length,31);assert(!before.some(p=>p.id.includes(VOTE_DAYS.at(-1).key)));
- assert.equal(scoringPoints([],{},undefined,null,later).length,44);
+ assert.equal(before.length,26);assert(!before.some(p=>p.id.includes(VOTE_DAYS.at(-1).key)));
+ assert.equal(scoringPoints([],{},undefined,null,later).length,39);
  assert.equal(Object.keys(PIX_TYPES)[0],'cpf');
  const {context,nodes}=ui();vm.runInContext("S={...S,me:'bruno',admin:true,ready:true,scoreClosing:{closedAt:{toMillis:()=>Date.now()}}};tab='placar';render()",context);
  assert(!nodes['#root'].innerHTML.includes('id="givePts"'));assert(nodes['#root'].innerHTML.includes('Placar encerrado.'));
@@ -357,7 +359,7 @@ test('primeira votação inclui quatro viajantes de quarta e Sadano, ainda sem h
  let state;for(const voter of eligible)state=applyBallot(state,Object.fromEntries(eligible.filter(id=>id!==voter).map(id=>[id,EMOJIS[0]])),voter,at);
  assert.equal(state.voters,5);for(const id of eligible)assert.equal(decodeTally(state.counts[id])[EMOJIS[0]],4);
  for(const id of ALL.filter(id=>!eligible.includes(id))){assert.equal(state.counts[id],0);assert.throws(()=>applyBallot(undefined,{},id,at));}
- assert.equal(missedVotePoints({},VOTE_DAYS[0].deadline).length,5);assert.equal(votePeople(ALL,20).length,13);
+ assert.equal(missedVotePoints({},VOTE_DAYS[0].deadline).length,0);assert.equal(votePeople(ALL,20).length,13);
  assert.equal(agendaFor([{start:departure('luan').start-1},{start:departure('luan').start}],'luan').length,1);assert.equal(availableDay('luan'),20);assert.equal(departure('bruno').time,'20:00');assert.equal(departure('luan').time,'08:00');
 });
 

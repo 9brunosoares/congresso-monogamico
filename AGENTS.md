@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Queridômetro: isenção da penalidade de 19/11 (20/11/2026)
+- Bruno dispensou a multa de -5 por não preenchimento em 19/11 porque a COMORG não havia avisado os primeiros congressistas. `missedVotePoints` exclui esse dia do cálculo em todos os placares e históricos. A penalidade continua nos dias20,21 e22, após o prazo e conforme os comprovantes carregados.
+- Não lançar pontos positivos de compensação: as multas são derivadas da participação, e a isenção corrige o cálculo diretamente. Votos/resultados/participação de19 continuam registrados.
+
 ## Represa: recorde oficial e bônus no placar (19/11/2026)
 - Esta seção substitui as regras de recorde local/Realtime Database descritas abaixo. Início oficial em 18/11/2026 00h de São Paulo, igual ao restante do app. Bruno continua sendo o perfil de teste, excluído dos recordes.
 - `mapRecords/latinhas` no Firestore guarda `{by,pts,t}`. `lake-record.js` aceita somente avanço estrito entre1 e999, com data do servidor, e cria `points/lake_<pts>` com +15/kind jogo/quem bateu o recorde na MESMA transação. Empates, reenvios e concorrência não duplicam pontos. Recordes e bônus param quando o placar fecha. Cada superação, inclusive pelo mesmo autor, rende outro bônus.

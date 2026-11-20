@@ -10,7 +10,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
 import { ALL, P, EMOJIS } from './roster.js?v=20261107c';
-import { dayKey, tripStarted, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261117a';
+import { dayKey, tripStarted, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261120a';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.

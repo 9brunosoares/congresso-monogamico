@@ -45,5 +45,6 @@ export function scoringPoints(points=[],attendance={},ready,closure,at=Date.now(
 }
 export function notice(text){const value=String(text).trim().replace(/…$/,'');return /[.!?]$/.test(value)?value:value+'.';}
 export function missedVotePoints(attendance={},at=Date.now()){
- return VOTE_DAYS.filter(d=>at>=d.deadline).flatMap(d=>votePeople(ALL,d.day).filter(id=>!attendance[d.key]?.[id]).map(who=>({id:`missed_${d.key}_${who}`,who,d:-5,kind:'inf',why:'Queridômetro não preenchido até meio-dia',at:`${d.day}/11/2026, 12:00`,createdAt:{toMillis:()=>d.deadline}})));
+ // Isenção coletiva em 19/11: a organização ainda não havia avisado sobre o preenchimento.
+ return VOTE_DAYS.filter(d=>d.day!==19&&at>=d.deadline).flatMap(d=>votePeople(ALL,d.day).filter(id=>!attendance[d.key]?.[id]).map(who=>({id:`missed_${d.key}_${who}`,who,d:-5,kind:'inf',why:'Queridômetro não preenchido até meio-dia',at:`${d.day}/11/2026, 12:00`,createdAt:{toMillis:()=>d.deadline}})));
 }
