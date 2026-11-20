@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Home: mural e feed primeiro (20/11/2026)
+- Ordem solicitada: Mural da Vergonha no topo (com a sirene ao lado durante a viagem), Nosso feed em seguida, e depois os demais blocos na ordem anterior: atividade atual/próxima, Links oficiais, Chácara virtual, Queridômetro e eventual portal de descoberta.
+- O mural continua aparecendo somente quando há condenação. Sem mural, o feed vem primeiro e a sirene permanece junto dos Links oficiais. Sem duplicar atalhos nem alterar dados, mapa ou regras do Firebase.
+
 ## Tarefas e infrações diretas (20/11/2026)
 - Adicionada Organizar a casa (+5) à interface, validação do backend e pareamento tarefa/ponto nas regras. Substituída Sem look temático por Chamou o Bru pelo nome morto (-3); preservar lançamentos históricos antigos sem renomear/recalcular.
 - Qualquer membro pode escolher o congressista e registrar diretamente uma das cinco infrações da tabela. Não há etapa de falar com ADM nem aprovação. Somente ADMs mantêm valor personalizado e lançamentos positivos livres. Início da viagem e encerramento do placar continuam valendo.

@@ -212,11 +212,15 @@ function homePortal(){
  const elapsed=Date.now()-portalAppearedAt;
  return `<button class="travel-portal ${elapsed<1200?'is-appearing':''}" style="--portal-delay:-${Math.max(0,elapsed)}ms" id="simulateTrip" type="button" aria-haspopup="dialog"><img src="chacara-portal.svg" alt="" width="520" height="190"><span class="portal-invite">quer entrar na chácara? <span aria-hidden="true">↗</span></span></button>`;
 }
+function homeMural(){
+ const mural=muralTeaser();
+ return mural?`<div class="home-actions home-mural-first">${mural}${tripStarted()?emergencyButton():''}</div>`:'';
+}
 function homeShortcuts(){
  const mural=muralTeaser();
  const links=`<button class="card official-card" id="officialLinks" type="button" ${S.loaded?.officialLinks?'':'disabled'}>${resourceIcon('links')}<span class="grow"><strong>Links oficiais</strong><small>Casa · música · fotos · Wi-Fi</small></span><span class="muted" aria-hidden="true">›</span></button>`;
- if(!tripStarted())return mural?`<div class="home-actions">${mural}</div>${links}`:links;
- return `<div class="home-actions ${mural?'':'is-empty'}">${mural||links}${emergencyButton()}</div>${mural?links:''}`;
+ if(!tripStarted()||mural)return links;
+ return `<div class="home-actions is-empty">${links}${emergencyButton()}</div>`;
 }
 function homeChacara(){
  if(!discovery.read(S.me).enteredAt)return '';
@@ -243,12 +247,14 @@ function tripFeed(full=false){
     `<div class="stack">${(full?posts:posts.slice(0,2)).map(tripPost).join('')}</div>`:
     '<p class="muted trip-empty">A primeira foto ainda não chegou.</p>';
   return full?`<button class="link" data-go="inicio" type="button">← Início</button><h2 class="page-title">${title}</h2>${content}`:
-    `<section aria-labelledby="trip-title"><div class="sec-h trip-feed-head"><h3 id="trip-title">${title}</h3><div class="row">${ready&&posts.length?'<button class="link" type="button" data-go="fotos">Ver todas</button>':''}<button class="trip-add" id="addTripPhoto" type="button" aria-haspopup="dialog" aria-label="Publicar foto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div></div>${content}</section>`;
+    `<section class="home-feed" aria-labelledby="trip-title"><div class="sec-h trip-feed-head"><h3 id="trip-title">${title}</h3><div class="row">${ready&&posts.length?'<button class="link" type="button" data-go="fotos">Ver todas</button>':''}<button class="trip-add" id="addTripPhoto" type="button" aria-haspopup="dialog" aria-label="Publicar foto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div></div>${content}</section>`;
 }
 function viewInicio(){
   const {cur,nxt} = nextItem();
   const main=cur||nxt;
   return `
+  ${homeMural()}
+  ${tripFeed()}
   ${main ? `<section class="card next">
     <div class="sealmark" aria-hidden="true">XVI</div>
     <div class="eyebrow">${cur?`Agora · até ${fmtTime(cur.end)}`:`Próxima atividade · ${dayOf(nxt.start)?.wd||''} ${fmtTime(nxt.start)}`}</div>
@@ -267,7 +273,6 @@ function viewInicio(){
 
   ${homeQueridometro()}
   ${homePortal()}
-  ${tripFeed()}
   `;
 }
 
