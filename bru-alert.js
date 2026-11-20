@@ -1,3 +1,5 @@
+import { ALL } from './roster.js?v=20261120e';
+
 export const BRU_ALERT_KEY = 'xvi-bru-javali-20261120-v1';
 
 function showBruAlert() {
@@ -30,11 +32,14 @@ function showBruAlert() {
 export function createBruAlert({ storage, show = showBruAlert,
   blocked = () => !!document.querySelector('dialog[open], .scrim'),
   schedule = setTimeout, unschedule = clearTimeout } = {}) {
-  let state = {}, timer = null, shown = false, close;
+  let state = {}, timer = null, close;
+  const shown = new Set();
+  // Preserva o comprovante do Bru; os demais perfis têm um marcador próprio.
+  const storageKey = id => id === 'bruno' ? BRU_ALERT_KEY : `${BRU_ALERT_KEY}:${id}`;
   const seen = () => {
-    try { return shown || storage?.getItem(BRU_ALERT_KEY) === '1'; } catch { return shown; }
+    try { return shown.has(state.me) || storage?.getItem(storageKey(state.me)) === '1'; } catch { return shown.has(state.me); }
   };
-  const eligible = () => state.me === 'bruno' && state.ready && !state.hidden && !seen();
+  const eligible = () => ALL.includes(state.me) && state.ready && !state.hidden && !seen();
   const cancel = () => { if (timer !== null) unschedule(timer); timer = null; };
   const fire = () => {
     timer = null;
@@ -42,8 +47,8 @@ export function createBruAlert({ storage, show = showBruAlert,
     // Não interrompe o cronômetro do quiz nem outra janela já aberta.
     if (blocked()) { timer = schedule(fire, 250); return; }
     close = show();
-    shown = true;
-    try { storage?.setItem(BRU_ALERT_KEY, '1'); } catch {}
+    shown.add(state.me);
+    try { storage?.setItem(storageKey(state.me), '1'); } catch {}
   };
   return {
     update(next) {

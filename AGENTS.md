@@ -1,8 +1,8 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
-## Alerta pessoal do javali (20/11/2026)
-- Pedido do Bru: alerta com aparência de janela iOS, translúcido, somente para o ID `bruno`,5s após abrir/retomar o app com o perfil pronto. Mensagem sobre javali e Prefeitura de Vargem/SP; “antigos seguros” foi corrigido para “Abriguem-se em locais seguros”. Botão OK fecha.
-- `bru-alert.js` agenda sem reiniciar a cada snapshot. Ocultar o app ou trocar de conta cancela a espera; outra janela aberta adia para não cobrir o quiz. Ao exibir, grava `xvi-bru-javali-20261120-v1` no localStorage: uma vez por aparelho/navegador. Não consumir esse marcador no domínio de produção durante testes. Perfil diferente não recebe o alerta. Sem leituras/escritas do Firebase e sem mudança no mapa.
+## Alerta do javali liberado aos 13 congressistas (20/11/2026)
+- Após testar a versão pessoal, Bru autorizou o mesmo alerta para todos os congressistas logados. Aparência de janela iOS, translúcido,5s após abrir/retomar o app com o perfil pronto. Mensagem sobre javali e Prefeitura de Vargem/SP; “antigos seguros” foi corrigido para “Abriguem-se em locais seguros”. Botão OK fecha.
+- `bru-alert.js` agenda sem reiniciar a cada snapshot. Ocultar o app ou trocar de conta cancela a espera; outra janela aberta adia para não cobrir o quiz. Exibição única por perfil/aparelho: Bru conserva o marcador `xvi-bru-javali-20261120-v1`; os demais usam o mesmo prefixo seguido de `:<id>`. Quem já viu não repete e não bloqueia outras contas no aparelho. Não consumir marcadores de produção durante testes. Sem leituras/escritas do Firebase e sem mudança no mapa.
 
 ## Apelido Bru e revelação mantida (20/11/2026)
 - Bruno pediu trocar o nome exibido para **Bru**. `roster.js` é a fonte da interface e dos relatórios de contas; `mapa/index.html` também exibe Bru. ID interno `bruno`, login, foto, permissões e registros permanecem vinculados à mesma conta. No mapa mudou somente o apelido.

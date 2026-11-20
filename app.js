@@ -13,7 +13,7 @@ import {openTravelMap} from './mapa-viagem.js?v=20261120e';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 import {openDailyQuiz} from './daily-quiz.js?v=20261120c';
 import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261120e';
-import {createBruAlert} from './bru-alert.js?v=20261120f';
+import {createBruAlert} from './bru-alert.js?v=20261120g';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
 let discoveryStorage;
