@@ -10,7 +10,7 @@ export const QUIZ_REASON = 'Quiz do dia · Dark room da High';
 export function quizAnswer(value) {
   const answer = String(value ?? '').trim().toLocaleLowerCase('pt-BR')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
-  return answer === 'jardim do eden' ? answer : '';
+  return ['jardim do eden','eden'].includes(answer) ? 'jardim do eden' : '';
 }
 
 // Relógio monotônico: trocar de aba não pausa os cinco segundos.

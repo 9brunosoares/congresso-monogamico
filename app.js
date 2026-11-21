@@ -13,8 +13,8 @@ import {nanuAgendaAccess} from './nanu-poll-model.js?v=20261121b';
 import {igorAgendaAccess} from './igor-poll-model.js?v=20261121p';
 import {openTravelMap} from './mapa-viagem.js?v=20261121o';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
-import {openDailyQuiz,QUIZ_POINTS} from './daily-quiz.js?v=20261121a';
-import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261121a';
+import {openDailyQuiz,QUIZ_POINTS} from './daily-quiz.js?v=20261121q';
+import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261121q';
 import {createBruAlert} from './bru-alert.js?v=20261120g';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;

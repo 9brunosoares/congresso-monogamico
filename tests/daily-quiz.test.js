@@ -7,8 +7,8 @@ import { quizAnswer, quizSecondsLeft, QUIZ_POINTS, QUIZ_QUESTION } from '../dail
 import { votingKey } from '../shared.js';
 
 test('quiz High: resposta com e sem acento, maiúsculas, espaços e limite de cinco segundos', () => {
-  for (const value of ['Jardim do Éden', 'jardim do eden', ' JARDIM DO ÉDEN ', 'jardim  do   éden', 'Jardim do E\u0301den']) assert.equal(quizAnswer(value), 'jardim do eden');
-  for (const value of ['', 'Éden', 'Jardim Eden', 'Martinez', 'Martines', 'Pereira', null, '<script>']) assert.equal(quizAnswer(value), '');
+  for (const value of ['Jardim do Éden', 'jardim do eden', ' JARDIM DO ÉDEN ', 'jardim  do   éden', 'Jardim do E\u0301den', 'Éden', 'eden', ' EDEN ', 'E\u0301den']) assert.equal(quizAnswer(value), 'jardim do eden');
+  for (const value of ['', 'Jardim Eden', 'Martinez', 'Martines', 'Pereira', null, '<script>']) assert.equal(quizAnswer(value), '');
   assert.equal(QUIZ_POINTS,20);assert.equal(QUIZ_QUESTION,'Qual é o nome do dark room da High?');
   assert.equal(quizSecondsLeft(1000, 1000), 5);
   assert.equal(quizSecondsLeft(1000, 1999), 5);
@@ -73,16 +73,17 @@ test('quiz High: nova rodada independente, voto prévio, bônus20 atômico, conc
     assert(!('answeredAt' in records.get('dailyQuizEden/uid-ob')));
     failCommit = false;
     assert.equal((await api.answerQuiz({...token,round:'ob'},'Jardim do Éden')).won,false);
-    const answers = await Promise.all([api.answerQuiz(token, 'Jardim do Éden'), api.answerQuiz(token, 'jardim do eden')]);
+    const answers = await Promise.all([api.answerQuiz(token, 'Jardim do Éden'), api.answerQuiz(token, ' Éden ')]);
     assert.equal(answers.filter(result => result.won).length, 1);
     assert.equal(records.get('points/quiz_eden_uid-ob').d, 20);
     assert.equal(records.get('points/quiz_eden_uid-ob').createdAt, records.get('dailyQuizEden/uid-ob').answeredAt);
     assert.equal((await api.answerQuiz(token, 'jardim do eden')).won, false);
     assert.equal(await api.startQuiz(), null);
-    for (const [who, text] of [['igor', 'Jardim do Éden'], ['pig', 'jardim do eden'], ['bruno', ' JARDIM  DO ÉDEN ']]) {
+    for (const [who, text] of [['igor', 'EDEN'], ['pig', 'eden'], ['gherardi', 'Éden'], ['bruno', ' JARDIM  DO ÉDEN ']]) {
       login(who); const next = await api.startQuiz();
       assert.equal((await api.answerQuiz(next, text)).won, true);
       assert.equal(records.get(`points/quiz_eden_uid-${who}`).d, 20);
+      assert.equal(records.get(`dailyQuizEden/uid-${who}`).answer,'jardim do eden');
     }
     login('nanu'); const wrong = await api.startQuiz();
     assert.equal((await api.answerQuiz(wrong, 'Santos')).won, false);

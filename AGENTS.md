@@ -1,5 +1,10 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Quiz High: aceitar Éden e bônus autorizados (21/11/2026)
+- Bru confirmou que somente Éden também é uma resposta correta. `quizAnswer` aceita Éden/eden com ou sem acento, maiúsculas e espaços externos e continua gravando a forma canônica `jardim do eden`. Regras do Firestore, prazo, tentativa única e valor+20 permanecem iguais; não é necessário deploy de regras. Publicar front-end com versões atualizadas dos dois módulos do quiz.
+- Bônus reais já registrados e conferidos, sem duplicação: Cadu+10 por Encontrou o javali na vida real (`points/bonus_javali_real_20261121_cadu`); Nanu+20 e Gherardi+20 pela resposta Éden (`points/bonus_quiz_eden_20261121_nanu` e `points/bonus_quiz_eden_20261121_gherardi`). Não relançar. Bônus de Cadu é independente do prêmio do javali virtual e não altera seu dono.
+- Tentativas antigas erradas guardam `answer:''`, sem o texto digitado. Não é possível descobrir retrospectivamente quem mais respondeu Éden a partir desses comprovantes. Nanu/Gherardi foram corrigidos pela confirmação explícita de Bru; tentativas originais preservadas. Script administrativo idempotente e backups ficam em `.private/bonus-javali-real-eden-20261121.cjs` e `.private/bonus-javali-eden-backup-*.json`.
+
 ## Apresentação do Igor: palpites ao vivo e exportação (21/11/2026)
 - No mesmo card da Retrospectiva, na Agenda: Igor vê **Conduzir enquete do Igor**; os outros 12 congressistas recebem **Participar da enquete do Igor** quando ele libera a primeira pergunta. Igor apresenta, não vota e só avança após as 12 respostas. Independente da enquete do Nanu; preservar os registros dela. Nenhuma sessão ou voto de teste foi criado na produção.
 - `igor-poll-model.js` guarda as dez perguntas, sem resposta certa/errada e sem pontos. Pergunta1: Sim verde/Não vermelho. Pergunta3:1–30 anos, passo1, ou Nunca vai acabar (`never`). Pergunta4:5–100 anos, passo5, ou +100 anos (`over`). O botão especial, ao lado da barra, a desativa; tocar novamente restaura o valor anterior. O voto só é enviado no botão Enviar resposta.

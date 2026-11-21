@@ -2,7 +2,7 @@ import { getApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.j
 import { getAuth } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
 import { getFirestore, doc, getDocFromServer, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import { votingKey } from './shared.js?v=20261120j';
-import { quizAnswer, QUIZ_REASON, QUIZ_ROUND, QUIZ_COLLECTION, QUIZ_POINT_PREFIX, QUIZ_DAYS, QUIZ_POINTS } from './daily-quiz.js?v=20261121a';
+import { quizAnswer, QUIZ_REASON, QUIZ_ROUND, QUIZ_COLLECTION, QUIZ_POINT_PREFIX, QUIZ_DAYS, QUIZ_POINTS } from './daily-quiz.js?v=20261121q';
 
 function session() {
   const app = getApp(), user = getAuth(app).currentUser;
