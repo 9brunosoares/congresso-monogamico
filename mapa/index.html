@@ -1210,6 +1210,47 @@ function moveBoar(dt){
     if(sleeping){z.position.set(Math.sin(f*6+i)*.18+f*.3,.85+f*1.4,1.05);var sc=.24+f*.3;z.scale.set(sc,sc,1);z.material.opacity=f<.15?f/.15:1-(f-.15)/.85;}}
 }
 
+/* capivaras que subiram pelo portão: de longe parecem o javali; algumas até dormem com "z". Percurso pelo relógio, igual para todos. */
+var CAPYS=[
+  {x:31,z:30,k:'walk'},{x:40,z:6,k:'walk'},{x:20,z:21,k:'walk'},{x:8,z:-12,k:'walk'},
+  {x:27,z:12,k:'graze',a:2.2},{x:-8,z:28,k:'graze',a:-.8},
+  {x:36,z:27,k:'sleep',a:.9},{x:-14,z:12,k:'sleep',a:-2.4},{x:38,z:-27,k:'sleep',a:1.7}];
+(function(){
+  var mat=new T.MeshLambertMaterial({vertexColors:true}),B=0x7a5236,D=0x5a3a26,N=0x3b2a20;
+  function shape(lying){var pos=[],nor=[],col=[],c=new T.Color(),m=new T.Matrix4(),v=new T.Vector3(),q=new T.Quaternion(),one=new T.Vector3(1,1,1);
+    function add(w,h,d,color,x,y,z){var g=new T.BoxGeometry(w,h,d).toNonIndexed();g.applyMatrix4(m.compose(v.set(x,y,z),q,one));
+      var a=g.attributes.position.array,n=g.attributes.normal.array,k;c.set(color);for(k=0;k<a.length;k+=3){pos.push(a[k],a[k+1],a[k+2]);nor.push(n[k],n[k+1],n[k+2]);col.push(c.r,c.g,c.b);}g.dispose();}
+    var y=lying?-.3:0;
+    add(.66,.6,1.15,B,0,.66+y,0);add(.5,.5,.55,B,0,.78+y,.72);add(.42,.36,.24,D,0,.7+y,1.08);
+    add(.1,.1,.06,D,-.18,1.06+y,.6);add(.1,.1,.06,D,.18,1.06+y,.6);
+    add(.06,.06,.06,0x111111,-.2,.9+y,.9);add(.06,.06,.06,0x111111,.2,.9+y,.9);add(.2,.06,.04,N,0,.68+y,1.2);
+    if(!lying)[[-.2,.36],[.2,.36],[-.2,-.36],[.2,-.36]].forEach(function(l){add(.16,.38,.16,D,l[0],.19,l[1]);});
+    var g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('normal',new T.Float32BufferAttribute(nor,3));g.setAttribute('color',new T.Float32BufferAttribute(col,3));return g;}
+  var stand=shape(false),lie=shape(true),zt=boar.zs[0].material.map;
+  CAPYS.forEach(function(cp,i){
+    cp.g=new T.Group();cp.g.scale.setScalar(1.12);scene.add(cp.g);
+    cp.m=new T.Mesh(cp.k==='sleep'?lie:stand,mat);cp.g.add(cp.m);
+    var sh=new T.Mesh(blobG,blobM);sh.rotation.x=-Math.PI/2;sh.position.y=.04;sh.scale.set(1.1,1.6,1);cp.g.add(sh);
+    cp.seed=i*1.7;cp.pos=new T.Vector3(cp.x,0,cp.z);cp.armed=true;
+    cp.zs=cp.k==='sleep'?[0,1,2].map(function(){var z=new T.Sprite(new T.SpriteMaterial({map:zt,transparent:true,depthWrite:false}));cp.g.add(z);return z;}):[];
+    if(cp.k!=='walk'){cp.g.position.set(cp.x,H(cp.x,cp.z)+.04,cp.z);cp.g.rotation.y=cp.a;}
+  });
+})();
+function moveCapys(){
+  var now=Date.now()/1000,calm=reduceMotion.matches;
+  for(var i=0;i<CAPYS.length;i++){var cp=CAPYS[i];
+    if(cp.k==='walk'){
+      var a=now*.11+cp.seed,x=cp.x+Math.cos(a)*3,z=cp.z+Math.sin(a)*2.2;
+      cp.pos.set(x,0,z);cp.g.position.set(x,H(x,z)+.04+(calm?0:Math.abs(Math.sin(now*5+cp.seed))*.04),z);
+      cp.g.rotation.y=Math.atan2(-Math.sin(a)*3,Math.cos(a)*2.2);
+    }else if(cp.k==='graze'){cp.m.rotation.x=calm?0:Math.max(0,Math.sin(now*.7+cp.seed))*.22;}
+    else for(var j=0;j<3;j++){var zz=cp.zs[j],f=((now*.42+cp.seed+j/3)%1);
+      zz.position.set(Math.sin(f*6+j)*.18+f*.3,.85+f*1.4,1.05);var sc=.24+f*.3;zz.scale.set(sc,sc,1);zz.material.opacity=f<.15?f/.15:1-(f-.15)/.85;}
+    if(me&&!boat){var d=Math.hypot(me.pos.x-cp.pos.x,me.pos.z-cp.pos.z);
+      if(d>2.5)cp.armed=true;else if(d<.95&&cp.armed){cp.armed=false;toast('Era só uma capivara.');}}
+  }
+}
+
 /* ---------- entrada ---------- */
 var keys={},joy={on:false,id:-1,x:0,y:0,ox:0,oy:0},look={on:false,id:-1,x:0,y:0},yaw=0,pitch=.42,dist=9.5;
 var joyEl=document.getElementById('joy'),knob=joyEl.firstElementChild,cv=renderer.domElement;
@@ -1671,6 +1712,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
   }
   moveDog(dt);
   moveBoar(dt);
+  moveCapys();
   /* tubarão: passeio bobo guiado pelo relógio, para todos verem o mesmo percurso; é obstáculo de verdade */
   (function(){var st=Date.now()/1000,a=sharkAt(st),b=sharkAt(st+.25),calm=reduceMotion.matches;
     sharkC[0]=a[0];sharkC[1]=a[1];shark.position.set(a[0],calm?0:Math.abs(Math.sin(st*3.4))*.16,a[1]);
