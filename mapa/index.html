@@ -1130,7 +1130,7 @@ function moveDog(dt){
 }
 
 /* javali selvagem: dorme no gramado em frente à Capela; quem passar por cima ganha +20 (uma vez no total) e é seguido por ele */
-var BOAR_SPOT=[2,12.5],BOAR_TESTER='bruno',BOAR_DELAY=.7;
+var BOAR_SPOT=[-3.3,23.7],BOAR_TESTER='bruno',BOAR_DELAY=.7;
 var boar={g:new T.Group(),body:new T.Group(),pos:new T.Vector3(BOAR_SPOT[0],0,BOAR_SPOT[1]),ph:0,blocked:0,trail:[],nextSample:0,
   owner:null,known:false,pending:false,armed:true,local:false,wake:0};
 (function(){var g=boar.g,b=boar.body;g.scale.setScalar(1.15);var k=M(0x4a3a2e),d=M(0x2e241c),sn=M(0x8a6a5a),tu=M(0xf1ead8);scene.add(g);g.add(b);
@@ -1175,7 +1175,7 @@ function moveBoar(dt){
   if(boar.wake>0)boar.wake-=dt;
   if(sleeping){
     if(Math.hypot(boar.pos.x-BOAR_SPOT[0],boar.pos.z-BOAR_SPOT[1])>.01){boar.pos.set(BOAR_SPOT[0],0,BOAR_SPOT[1]);}
-    boar.g.rotation.y=-.6;boar.trail.length=0;boar.nextSample=0;boar.blocked=0;
+    boar.g.rotation.y=-1.9;boar.trail.length=0;boar.nextSample=0;boar.blocked=0;
   }else if(boar.wake<=0){
     if(tt>=boar.nextSample){boar.trail.push({x:leader.pos.x,z:leader.pos.z,t:tt});boar.nextSample=tt+.09;}
     while(boar.trail.length>1&&boar.trail[1].t<=tt-BOAR_DELAY)boar.trail.shift();
