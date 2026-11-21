@@ -5,7 +5,7 @@ import {normalizeOfficialLinks} from './official-links.js?v=20261107c';
 import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
-import {NANU_ROOM,NANU_TEST_MODE} from './nanu-poll-model.js?v=20261121r';
+import {NANU_ROOM,NANU_TEST_MODE} from './nanu-poll-model.js?v=20261121t';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, verifyPasswordResetCode, confirmPasswordReset, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";

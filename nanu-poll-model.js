@@ -3,7 +3,7 @@ import {ALL} from './roster.js?v=20261120j';
 export const NANU_HOST='nanu';
 export const NANU_VOTERS=ALL.filter(id=>id!==NANU_HOST);
 // Ensaio em dois aparelhos: Nanu apresenta, Bru responde. A sala oficial fica preservada.
-export const NANU_TEST_MODE=true;
+export const NANU_TEST_MODE=false;
 export const NANU_ROOM=NANU_TEST_MODE?'teste':'main';
 export const NANU_ACTIVE_VOTERS=NANU_TEST_MODE?['bruno']:NANU_VOTERS;
 export const NANU_QUESTIONS=[

@@ -1,5 +1,5 @@
-import {createNanuPollData} from './nanu-poll-data.js?v=20261121s';
-import {NANU_HOST,NANU_ACTIVE_VOTERS as NANU_VOTERS,NANU_TEST_MODE,nanuQuestion,cleanNanuText,nanuCloudWords,layoutNanuCloud} from './nanu-poll-model.js?v=20261121r';
+import {createNanuPollData} from './nanu-poll-data.js?v=20261121t';
+import {NANU_HOST,NANU_ACTIVE_VOTERS as NANU_VOTERS,NANU_TEST_MODE,nanuQuestion,cleanNanuText,nanuCloudWords,layoutNanuCloud} from './nanu-poll-model.js?v=20261121t';
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const failText=error=>error?.code==='permission-denied'?'Reabra a enquete para atualizar seu acesso.':error?.code==='unavailable'?'Confira sua conexão e tente novamente.':error?.message||'Não foi possível carregar a enquete.';

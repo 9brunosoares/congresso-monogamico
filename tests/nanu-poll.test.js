@@ -14,8 +14,8 @@ test('Nanu: onze perguntas, alternativas exatas e link restrito antes da libera�
  const activity={title:'Restrospectiva do meu an*'};
  assert(nanuAgendaAccess(activity,'nanu',null));assert(!nanuAgendaAccess(activity,'bruno',null));assert(!nanuAgendaAccess(activity,'igor',null));
  for(const id of NANU_VOTERS)assert(nanuAgendaAccess(activity,id,{question:1},{testMode:false}));
- assert.equal(NANU_TEST_MODE,true);assert.equal(NANU_ROOM,'teste');assert.deepEqual(NANU_ACTIVE_VOTERS,['bruno']);
- for(const id of NANU_VOTERS)assert.equal(nanuAgendaAccess(activity,id,{question:1}),id==='bruno');
+ assert.equal(NANU_TEST_MODE,false);assert.equal(NANU_ROOM,'main');assert.deepEqual(NANU_ACTIVE_VOTERS,NANU_VOTERS);
+ for(const id of NANU_VOTERS)assert.equal(nanuAgendaAccess(activity,id,{question:1},{testMode:true}),id==='bruno');
  assert(!nanuAgendaAccess(activity,'kirk',{question:1}));assert(!nanuAgendaAccess({title:'Almoço'},'nanu',{question:1}));
  assert(NANU_QUESTIONS.every(q=>Object.keys(q).sort().join(',')==='options,text'));
 });
@@ -94,8 +94,8 @@ test('Nanu: SDK real com doze clientes, voto atômico, reentrada, avanço e nuve
   await new Promise(r=>setImmediate(r));assert.equal(cloud.length,12);assert.deepEqual(records.get(roundPath(11)),{a:0,b:0,c:0,total:12});
   assert.equal(nanuCloudWords(cloud).find(w=>w.key==='exigente').count,6);
   await host.next(11);assert.equal(records.get('nanuLive/main').question,11);
-  selected='igor';assert.throws(()=>createNanuPollData(),/exclusivo/);
-  selected='nanu';const testHost=createNanuPollData();selected='bruno';const testVoter=createNanuPollData();
+  selected='igor';assert.throws(()=>createNanuPollData({room:'teste',voters:['bruno']}),/exclusivo/);
+  selected='nanu';const testHost=createNanuPollData({room:'teste',voters:['bruno']});selected='bruno';const testVoter=createNanuPollData({room:'teste',voters:['bruno']});
   await testHost.start();await assert.rejects(testHost.answer(1,'a'),/não participa/);
   for(let q=1;q<=10;q++){
    await assert.rejects(testHost.next(q),/todos/);await testVoter.answer(q,'a');

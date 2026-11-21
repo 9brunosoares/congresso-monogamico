@@ -1,7 +1,7 @@
 import {getApp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import {getAuth} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
 import {getFirestore,doc,collection,onSnapshot,getDocFromServer,runTransaction,writeBatch,increment,serverTimestamp} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
-import {NANU_HOST,NANU_ROOM,NANU_ACTIVE_VOTERS,EMPTY_NANU_ROUND,nanuQuestion,nanuChoiceValid,cleanNanuText} from './nanu-poll-model.js?v=20261121r';
+import {NANU_HOST,NANU_ROOM,NANU_ACTIVE_VOTERS,EMPTY_NANU_ROUND,nanuQuestion,nanuChoiceValid,cleanNanuText} from './nanu-poll-model.js?v=20261121t';
 
 export function createNanuPollData({room=NANU_ROOM,voters=NANU_ACTIVE_VOTERS}={}){
  const app=getApp(),auth=getAuth(app),user=auth.currentUser;

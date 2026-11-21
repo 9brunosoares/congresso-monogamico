@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Enquete oficial do Nanu liberada após ensaio (21/11/2026)
+- Bru confirmou o sucesso do teste e autorizou a apresentação oficial. `NANU_TEST_MODE=false`: sala `nanuLive/main`, Nanu controla e os outros12 congressistas votam. A sala oficial estava ausente; Nanu recebe Liberar primeira pergunta novamente. Preservar o ensaio concluído em `nanuLive/teste`, sem copiar seus votos ou apagar dados.
+- Conferido o mesmo bloqueio de leitura futura no Igor: já corrigido no adaptador publicado. Testes de ambos recusam leitura de rodada futura e percorrem todas as perguntas com avanço atômico. Nenhuma regra nova ou migração é necessária; publicar somente front-end com versões atualizadas dos módulos do Nanu.
+
 ## Correção do avanço nas enquetes (21/11/2026)
 - `next()` do Nanu e do Igor não lê mais o agregado da pergunta futura: essa leitura era negada pelas regras porque a pergunta ainda não estava aberta. A transação lê sessão e contagem atual e grava a próxima sessão/rodada juntas; as regras existentes continuam exigindo rodada nova e vazia, ordem e quórum. Nenhuma regra foi afrouxada.
 - Testes dos adaptadores agora simulam permission-denied ao ler pergunta futura e exercitam o avanço completo das salas oficial, ensaio e Igor. Preservar o voto de Bru já registrado na pergunta1 do ensaio; não reiniciar a sala nem avançar administrativamente por ele. Publicar somente front-end com versões novas dos adaptadores.

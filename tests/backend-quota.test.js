@@ -82,7 +82,7 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   Date.now=()=>Date.parse('2026-11-19T12:00:01-03:00');api.setView('inicio');await flush();
   assert.equal(active().filter(x=>x.ref.path.startsWith('participation/')).length,1);assert.equal(Object.keys(state.attendanceReady).length,1);
   api.setView('querido');await flush();assert(active().some(x=>/^querido\/[^/]+$/.test(x.ref.path)));
-  api.setView('programa');await flush();assert.equal(active().filter(x=>x.ref.path==='nanuLive/teste').length,1);
+  api.setView('programa');await flush();assert.equal(active().filter(x=>x.ref.path==='nanuLive/main').length,1);
   assert.equal(active().filter(x=>x.ref.path==='igorLive/main').length,1);
   const withNanu=listeners.length;for(let i=0;i<20;i++)api.refreshTime();assert.equal(listeners.length,withNanu);
   api.setView('querido');await flush();assert(!active().some(x=>x.ref.path.startsWith('nanuLive/')));
