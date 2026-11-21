@@ -15,6 +15,8 @@
 - Bru (perfil de teste): ao pisar, o javali segue só ele, só no aparelho dele e sem pontos (toast avisa). Isso não consome o prêmio.
 - Canal: iframe `boar-claim` → `mapa-viagem.js` → `mapa-sala.js` `boar()` → `boar-result`; estado `boar` `{known,boar}`. Sem leitura do Firestore o javali só dorme.
 - **Regras publicadas em21/11/2026**, junto com a enquete do Nanu, somente `firestore:rules`. Mapa/canal do Claude preservados sem alterações. Testes: `tests/boar.test.js` (local) e44 cenários de `scripts/test-boar-rules.cjs` no serviço oficial; simulação de documento já existente usa update, como no Firestore real. Para devolver o prêmio, apagar `mapRecords/javali` e `points/javali` pelo console.
+- Revalidação solicitada após PR#17/#18, em 21/11/2026, sobre a main `fc0e8ff`: **610 cenários aprovados** no serviço oficial, somente com documentos simulados — `test-boar-rules.cjs` (44), `test-rules.cjs` (337), `test-lake-record-rules.cjs` (50), `test-daily-quiz-rules.cjs` (133) e `test-infraction-rules.cjs` (46). Nenhuma mudança adicional nas regras foi necessária; mantida a correção anterior do mock de sobrescrita.
+- Deploy repetido com Firebase CLI 15.37.0, exclusivamente `firestore:rules`; conteúdo ativo conferido e idêntico ao arquivo validado. Executado via `pnpm dlx firebase-tools@latest`, pois `npx` não está disponível nesta sessão. Não foram criados `mapRecords/javali` ou `points/javali` na produção, nem alterados RTDB, Auth, mapa ou dados reais.
 
 
 ## Resultados atualizados para o Claude (21/11/2026 às 12:14)
