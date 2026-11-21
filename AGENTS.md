@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Correção do avanço nas enquetes (21/11/2026)
+- `next()` do Nanu e do Igor não lê mais o agregado da pergunta futura: essa leitura era negada pelas regras porque a pergunta ainda não estava aberta. A transação lê sessão e contagem atual e grava a próxima sessão/rodada juntas; as regras existentes continuam exigindo rodada nova e vazia, ordem e quórum. Nenhuma regra foi afrouxada.
+- Testes dos adaptadores agora simulam permission-denied ao ler pergunta futura e exercitam o avanço completo das salas oficial, ensaio e Igor. Preservar o voto de Bru já registrado na pergunta1 do ensaio; não reiniciar a sala nem avançar administrativamente por ele. Publicar somente front-end com versões novas dos adaptadores.
+
 ## Ensaio da enquete do Nanu em dois celulares (21/11/2026)
 - Bru emprestará o celular logado como Bru para Nanu testar a jornada de votante; Nanu usa o próprio celular, logado como Nanu, para conduzir. **Não é simulação local num só aparelho.** Duas contas sincronizadas, somente Bru vota; os outros congressistas não veem nem acessam o ensaio. Cada resposta de Bru já libera o avanço para Nanu. Cabeçalho Ensaio · Nanu e Bru.
 - `NANU_TEST_MODE=true` em `nanu-poll-model.js`: `NANU_ROOM='teste'`, `NANU_ACTIVE_VOTERS=['bruno']`. `NANU_VOTERS` conserva os12 votantes oficiais. API e listener da Agenda usam a sala ativa; participantes de fora não abrem consulta privada. Para voltar à apresentação oficial, mudar a flag para false e publicar os módulos/versões correspondentes; a sala `main` e seu quórum12 permanecem intactos.

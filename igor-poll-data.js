@@ -26,9 +26,9 @@ export function createIgorPollData(){
    host();return runTransaction(db,async tx=>{
     const current=await tx.get(sessionRef);if(!current.exists())throw Error('Libere a primeira pergunta.');
     const q=current.data().question;if(q!==expected||q===10)return current.data();
-    const previous=await tx.get(round(q)),next=await tx.get(round(q+1));
+    const previous=await tx.get(round(q));
     if(previous.data()?.total!==IGOR_VOTERS.length)throw Error('Aguarde todos responderem para avançar.');
-    if(next.exists())throw Error('A próxima pergunta já foi preparada. Reabra a enquete.');
+    // A próxima rodada ainda não pode ser lida. As regras validam sua criação atômica.
     tx.update(sessionRef,{question:q+1,updatedAt:serverTimestamp()});tx.set(round(q+1),igorEmptyRound(q+1));return {question:q+1};
    });
   },

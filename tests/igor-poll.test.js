@@ -34,6 +34,7 @@ test('Igor: doze clientes, envios simultâneos, barras, reentrada e persistênci
  const records=new Map(),watchers=new Set(),auths=new Map(),files=[];let selected='igor',revision=0,failCommit=false;
  const clone=v=>v===undefined?undefined:structuredClone(v);
  const snapshot=ref=>({exists:()=>records.has(ref.path),data:()=>clone(records.get(ref.path)),metadata:{hasPendingWrites:false}});
+ const readableSnapshot=ref=>{const parts=ref.path.split("/");if(parts[0]==="igorLive"&&parts[2]==="rounds"&&parts.length===4&&Number(parts[3])>records.get(parts.slice(0,2).join("/"))?.question)throw Object.assign(Error("Pergunta futura sem acesso"),{code:"permission-denied"});return snapshot(ref);};
  const emit=()=>queueMicrotask(()=>{for(const w of watchers)w.fn(snapshot(w.ref));});
  function commit(writes){
   if(failCommit)throw Error('Sem conexão');
@@ -53,7 +54,7 @@ test('Igor: doze clientes, envios simultâneos, barras, reentrada e persistênci
   onSnapshot:(ref,options,fn)=>{if(typeof options==='function')fn=options;const w={ref,fn};watchers.add(w);queueMicrotask(()=>{if(watchers.has(w))fn(snapshot(ref));});return()=>watchers.delete(w);},
   getDocFromServer:async ref=>snapshot(ref),serverTimestamp:()=>Date.now(),increment:n=>({_increment:n}),
   writeBatch:()=>{const writes=[];return {set:(r,d)=>writes.push([r.path,d,false]),update:(r,d)=>writes.push([r.path,d,true]),commit:async()=>commit(writes)};},
-  runTransaction:async(db,fn)=>{for(let tries=0;tries<20;tries++){const version=revision,writes=[];const result=await fn({get:async r=>snapshot(r),set:(r,d)=>writes.push([r.path,d,false]),update:(r,d)=>writes.push([r.path,d,true])});if(version!==revision)continue;commit(writes);return result;}throw Error('Conflito');}
+  runTransaction:async(db,fn)=>{for(let tries=0;tries<20;tries++){const version=revision,writes=[];const result=await fn({get:async r=>readableSnapshot(r),set:(r,d)=>writes.push([r.path,d,false]),update:(r,d)=>writes.push([r.path,d,true])});if(version!==revision)continue;commit(writes);return result;}throw Error('Conflito');}
  };
  for(const who of [IGOR_HOST,...IGOR_VOTERS])auths.set(who,{currentUser:{uid:'uid-'+who,email:who+'@congresso.app'}});
  globalThis.__igorSdk=sdk;

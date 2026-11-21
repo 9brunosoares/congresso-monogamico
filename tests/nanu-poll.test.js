@@ -41,6 +41,7 @@ test('Nanu: SDK real com doze clientes, voto atômico, reentrada, avanço e nuve
  const clone=v=>v===undefined?undefined:structuredClone(v);
  const snapshot=ref=>({exists:()=>records.has(ref.path),data:()=>clone(records.get(ref.path)),metadata:{hasPendingWrites:false}});
  const collectionSnapshot=ref=>({docs:[...records].filter(([p])=>p.startsWith(ref.path+'/')&&p.split('/').length===ref.path.split('/').length+1).map(([p,d])=>({id:p.split('/').at(-1),data:()=>clone(d)}))});
+ const readableSnapshot=ref=>{const parts=ref.path.split("/");if(parts[0]==="nanuLive"&&parts[2]==="rounds"&&parts.length===4&&Number(parts[3])>records.get(parts.slice(0,2).join("/"))?.question)throw Object.assign(Error("Pergunta futura sem acesso"),{code:"permission-denied"});return snapshot(ref);};
  const emit=()=>queueMicrotask(()=>{for(const w of watchers)w.fn(w.ref.collection?collectionSnapshot(w.ref):snapshot(w.ref));});
  function commit(writes){
   if(failCommit)throw Error('Sem conexão');
@@ -59,7 +60,7 @@ test('Nanu: SDK real com doze clientes, voto atômico, reentrada, avanço e nuve
   onSnapshot:(ref,options,fn)=>{if(typeof options==='function')fn=options;const w={ref,fn};watchers.add(w);queueMicrotask(()=>{if(watchers.has(w))fn(ref.collection?collectionSnapshot(ref):snapshot(ref));});return()=>watchers.delete(w);},
   getDocFromServer:async ref=>snapshot(ref),serverTimestamp:()=>Date.now(),increment:n=>({_increment:n}),
   writeBatch:()=>{const writes=[];return {set:(r,d)=>writes.push([r.path,d,false]),update:(r,d)=>writes.push([r.path,d,true]),commit:async()=>commit(writes)};},
-  runTransaction:async(db,fn)=>{for(let tries=0;tries<20;tries++){const version=revision,writes=[];const result=await fn({get:async r=>snapshot(r),set:(r,d)=>writes.push([r.path,d,false]),update:(r,d)=>writes.push([r.path,d,true])});if(version!==revision)continue;commit(writes);return result;}throw Error('Conflito');}
+  runTransaction:async(db,fn)=>{for(let tries=0;tries<20;tries++){const version=revision,writes=[];const result=await fn({get:async r=>readableSnapshot(r),set:(r,d)=>writes.push([r.path,d,false]),update:(r,d)=>writes.push([r.path,d,true])});if(version!==revision)continue;commit(writes);return result;}throw Error('Conflito');}
  };
  for(const who of [NANU_HOST,...NANU_VOTERS])auths.set(who,{currentUser:{uid:'uid-'+who,email:who+'@congresso.app'}});
  globalThis.__nanuSdk=sdk;

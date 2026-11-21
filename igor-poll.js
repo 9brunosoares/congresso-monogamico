@@ -1,4 +1,4 @@
-import {createIgorPollData} from './igor-poll-data.js?v=20261121p';
+import {createIgorPollData} from './igor-poll-data.js?v=20261121s';
 import {IGOR_HOST,IGOR_VOTERS,igorQuestion,igorOptions,igorPayload,igorOptionLabel} from './igor-poll-model.js?v=20261121p';
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

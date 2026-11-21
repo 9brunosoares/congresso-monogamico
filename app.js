@@ -103,7 +103,7 @@ async function showIgorPoll(){
  if(igorPoll||igorPollLoading)return;
  igorPollLoading=true;const owner=S.me;
  try{
-  const {openIgorPoll}=await import('./igor-poll.js?v=20261121p');
+  const {openIgorPoll}=await import('./igor-poll.js?v=20261121s');
   if(S.me!==owner)return;
   igorPoll=openIgorPoll({onClose(){igorPoll=null;$('#igorPollLink')?.focus({preventScroll:true});},onError:backend.reportError});
  }catch(error){backend.reportError(error);toast('Não foi possível abrir a enquete. Tente novamente.');}
@@ -113,7 +113,7 @@ async function showNanuPoll(){
  if(nanuPoll||nanuPollLoading)return;
  nanuPollLoading=true;const owner=S.me;
  try{
-  const {openNanuPoll}=await import('./nanu-poll.js?v=20261121r');
+  const {openNanuPoll}=await import('./nanu-poll.js?v=20261121s');
   if(S.me!==owner)return;
   nanuPoll=openNanuPoll({onClose(){nanuPoll=null;$('#nanuPollLink')?.focus({preventScroll:true});},onError:backend.reportError});
  }catch(error){backend.reportError(error);toast('Não foi possível abrir a enquete. Tente novamente.');}

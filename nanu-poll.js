@@ -1,4 +1,4 @@
-import {createNanuPollData} from './nanu-poll-data.js?v=20261121r';
+import {createNanuPollData} from './nanu-poll-data.js?v=20261121s';
 import {NANU_HOST,NANU_ACTIVE_VOTERS as NANU_VOTERS,NANU_TEST_MODE,nanuQuestion,cleanNanuText,nanuCloudWords,layoutNanuCloud} from './nanu-poll-model.js?v=20261121r';
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
