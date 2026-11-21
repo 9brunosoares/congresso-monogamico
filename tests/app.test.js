@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {ALL,PEOPLE,P,EMOJIS} from '../roster.js';
+import {QUIZ_POINTS} from '../daily-quiz.js';
 import {dayKey,tripStarted,validatePin,applyBallot,decodeTally,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice} from '../shared.js';
 
 test('PIN aceita exatamente seis algarismos',()=>{
@@ -140,6 +141,7 @@ function ui(){
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
  const nodes={},events={},timers=new Map();let timerId=0;const context={createDiscovery,DISCOVERY_OWNER,DISCOVERY_END,carFor,departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,tripStarted,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
+ context.QUIZ_POINTS=QUIZ_POINTS;
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
 }
 

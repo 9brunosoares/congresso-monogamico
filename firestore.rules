@@ -36,6 +36,10 @@ rules_version = '2';
 // pilotUsage/{diaSP_uid_acao}: {day,action}, recibo imutável de ação diária.
 // mapRecords/latinhas: by oficial, pts int1..999, t timestamp do servidor.
 // points/lake_<pts>: bônus imutável de 15 pontos criado junto com o avanço da placa.
+// dailyQuizOB/{uid}: rodada anterior, +5, início até20/11; preservar registros.
+// dailyQuizEden/{uid}: rodada High, +20, início em21 ou22/11 após comprovante de voto.
+// Ambas: day/startedAt imutáveis; answer/answeredAt gravados juntos, tentativa única.
+// points/quiz_ob_<uid> e points/quiz_eden_<uid>: bônus imutáveis e pareados à resposta.
 // querido/{diaSP}: {counts,voters}, com os 13 IDs no mapa counts.
 // Cada valor guarda nove totais em base16, como inteiro exato de até36bits.
 // Ordem fixa no roster.js; 🌱 é o nono dígito, sem alterar os oito anteriores.
@@ -199,12 +203,40 @@ service cloud.firestore {
   match /dailyQuizOB/{uid} {
    allow get: if isMember() && isOwner(uid);
    allow list,delete: if false;
-   allow create: if isMember() && isOwner(uid) && tripStarted() && scoringOpen() && validQuizStart(request.resource.data);
+   allow create: if isMember() && isOwner(uid) && tripStarted() && scoringOpen()
+    && request.resource.data.day in ['20776','20777'] && validQuizStart(request.resource.data);
    allow update: if isMember() && isOwner(uid) && scoringOpen() && validQuizAnswer(request.resource.data,resource.data)
     && (request.resource.data.answer == ''
       ? !existsAfter(/databases/$(database)/documents/points/$('quiz_ob_' + uid))
       : (!exists(/databases/$(database)/documents/points/$('quiz_ob_' + uid))
         && quizPointMatches(getAfter(/databases/$(database)/documents/points/$('quiz_ob_' + uid)).data)));
+  }
+  function validEdenQuizAnswer(d,before) {
+   return only(d,['day','startedAt','answer','answeredAt']) && !('answeredAt' in before)
+    && d.day in ['20778','20779'] && d.day == before.day && d.startedAt == before.startedAt && d.startedAt is timestamp
+    && d.answer in ['','jardim do eden'] && d.answeredAt is timestamp && d.answeredAt == request.time
+    && request.time >= d.startedAt && request.time <= d.startedAt + duration.value(7,'s');
+  }
+  function edenQuizPointMatches(d) {
+   return isValidPoint(d) && d.who == personId() && d.d == 20 && d.kind == 'jogo'
+    && d.why == 'Quiz do dia · Dark room da High' && d.createdAt == request.time;
+  }
+  function validEdenQuizPoint(id,d) {
+   let path = /databases/$(database)/documents/dailyQuizEden/$(request.auth.uid);
+   let answered = getAfter(path).data;
+   return id == 'quiz_eden_' + request.auth.uid && exists(path)
+    && validEdenQuizAnswer(answered,get(path).data) && answered.answer != '' && edenQuizPointMatches(d);
+  }
+  match /dailyQuizEden/{uid} {
+   allow get: if isMember() && isOwner(uid);
+   allow list,delete: if false;
+   allow create: if isMember() && isOwner(uid) && tripStarted() && scoringOpen()
+    && request.resource.data.day in ['20778','20779'] && validQuizStart(request.resource.data);
+   allow update: if isMember() && isOwner(uid) && scoringOpen() && validEdenQuizAnswer(request.resource.data,resource.data)
+    && (request.resource.data.answer == ''
+      ? !existsAfter(/databases/$(database)/documents/points/$('quiz_eden_' + uid))
+      : (!exists(/databases/$(database)/documents/points/$('quiz_eden_' + uid))
+        && edenQuizPointMatches(getAfter(/databases/$(database)/documents/points/$('quiz_eden_' + uid)).data)));
   }
   function validLakeRecord(d) {
    return only(d,['by','pts','t']) && d.by in ids() && d.by != 'bruno' && d.by == personId()
@@ -241,6 +273,7 @@ service cloud.firestore {
   }
   function regularPointCreate(id,d) {
    return isValidPoint(d) && (id.matches('quiz_ob_.*') ? validQuizPoint(id,d)
+    : id.matches('quiz_eden_.*') ? validEdenQuizPoint(id,d)
     : id.matches('lake_[0-9]+') ? validLakePoint(id,d)
     : (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,d))));
   }
@@ -255,9 +288,9 @@ service cloud.firestore {
    allow create: if tripStarted() && isMember() && scoringOpen() && fresh(request.resource.data)
     && (id.matches('inf_[a-zA-Z0-9_-]+') ? directInfraction(request.resource.data)
      : regularPointCreate(id,request.resource.data));
-   allow update: if !id.matches('quiz_ob_.*') && !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && sameCreation()
+   allow update: if !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && sameCreation()
     && (id.matches('inf_[a-zA-Z0-9_-]+') ? isValidInfraction(request.resource.data) && request.resource.data.by == resource.data.by : isValidPoint(request.resource.data));
-   allow delete: if !id.matches('quiz_ob_.*') && !id.matches('lake_[0-9]+') && isAdmin() && scoringOpen();
+   allow delete: if !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && isAdmin() && scoringOpen();
   }
   function isValidExpense(d) {
    return only(d,['title','cat','amount','amountCents','by','payer','split','at','createdAt','status','version','updatedAt','updatedBy']) && text(d.title,120)

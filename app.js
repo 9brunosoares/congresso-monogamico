@@ -11,8 +11,8 @@ import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,vo
 import * as backend from './backend.js?v=20261120j';
 import {openTravelMap} from './mapa-viagem.js?v=20261120e';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
-import {openDailyQuiz} from './daily-quiz.js?v=20261120c';
-import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261120e';
+import {openDailyQuiz,QUIZ_POINTS} from './daily-quiz.js?v=20261121a';
+import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261121a';
 import {createBruAlert} from './bru-alert.js?v=20261120g';
 /* ===================== DADOS ===================== */
 const first = id => P[id]?.nick||id;
@@ -100,7 +100,7 @@ async function offerDailyQuiz(){
  try{
   if(!await quizAvailable()||S.me!==owner)return;
   dailyQuiz=openDailyQuiz({start:startQuiz,answer:answerQuiz,
-   onResult:result=>{if(result.won&&S.me===owner)toast('+5 pontos · Quiz do dia');},
+   onResult:result=>{if(result.won&&S.me===owner)toast(`+${QUIZ_POINTS} pontos · Quiz do dia`);},
    onError:error=>{if(S.me===owner){backend.reportError?.(error);toast('Não foi possível registrar o quiz. Seus votos estão salvos.');}}});
  }catch(error){backend.reportError?.(error);toast('Seus votos estão salvos. O quiz não carregou; confira sua conexão.');}
 }

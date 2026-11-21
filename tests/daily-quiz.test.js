@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { quizAnswer, quizSecondsLeft } from '../daily-quiz.js';
+import { quizAnswer, quizSecondsLeft, QUIZ_POINTS, QUIZ_QUESTION } from '../daily-quiz.js';
 import { votingKey } from '../shared.js';
 
-test('quiz: três sobrenomes, maiúsculas, acentos e limite real de cinco segundos', () => {
-  for (const value of ['Martinez', ' MARTINES ', 'pereira', 'MARTÍNEZ']) assert(quizAnswer(value));
-  for (const value of ['', 'Martinez Pereira', 'Martins', null, '<script>']) assert.equal(quizAnswer(value), '');
+test('quiz High: resposta com e sem acento, maiúsculas, espaços e limite de cinco segundos', () => {
+  for (const value of ['Jardim do Éden', 'jardim do eden', ' JARDIM DO ÉDEN ', 'jardim  do   éden', 'Jardim do E\u0301den']) assert.equal(quizAnswer(value), 'jardim do eden');
+  for (const value of ['', 'Éden', 'Jardim Eden', 'Martinez', 'Martines', 'Pereira', null, '<script>']) assert.equal(quizAnswer(value), '');
+  assert.equal(QUIZ_POINTS,20);assert.equal(QUIZ_QUESTION,'Qual é o nome do dark room da High?');
   assert.equal(quizSecondsLeft(1000, 1000), 5);
   assert.equal(quizSecondsLeft(1000, 1999), 5);
   assert.equal(quizSecondsLeft(1000, 2000), 4);
@@ -17,7 +18,7 @@ test('quiz: três sobrenomes, maiúsculas, acentos e limite real de cinco segund
   assert.equal(quizSecondsLeft(1000, 90000), 0);
 });
 
-test('quiz: voto prévio, tentativa única, três respostas, bônus atômico, concorrência e troca de conta', async () => {
+test('quiz High: nova rodada independente, voto prévio, bônus20 atômico, concorrência e troca de conta', async () => {
   const records = new Map(), files = [];
   let revision = 0, failCommit = false, user = { uid: 'uid-ob', email: 'ob@congresso.app' };
   const time = Date.parse('2026-11-21T10:00:00-03:00'), savedNow = Date.now;
@@ -53,6 +54,12 @@ test('quiz: voto prévio, tentativa única, três respostas, bônus atômico, co
       .replace(/from '\.\//g, "from '../"));
     const api = await import(pathToFileURL(dataFile).href);
     const login = who => { user = { uid: 'uid-' + who, email: who + '@congresso.app' }; records.set(`querido/${votingKey()}/voters/${user.uid}`, { voted: true }); };
+    Date.now=()=>Date.parse('2026-11-20T10:00:00-03:00');
+    assert.equal(await api.quizAvailable(),false);assert.equal(await api.startQuiz(),null);
+    Date.now=()=>time;
+    const legacyAttempt={day:'20777',startedAt:time-86400000,answer:'martinez',answeredAt:time-86400000+1000};
+    const legacyPoint={who:'ob',d:5,kind:'jogo',why:'Quiz do dia · Sobrenome do OB',createdAt:legacyAttempt.answeredAt};
+    records.set('dailyQuizOB/uid-ob',{...legacyAttempt});records.set('points/quiz_ob_uid-ob',{...legacyPoint});
     assert.equal(await api.quizAvailable(), true);
     await assert.rejects(api.startQuiz(), /votos/);
     login('ob');
@@ -61,28 +68,31 @@ test('quiz: voto prévio, tentativa única, três respostas, bônus atômico, co
     assert.equal(await api.quizAvailable(), false);
     const token = starts.find(Boolean);
     failCommit = true;
-    await assert.rejects(api.answerQuiz(token, 'Martinez'), /conexão/);
-    assert(!records.has('points/quiz_ob_uid-ob'));
-    assert(!('answeredAt' in records.get('dailyQuizOB/uid-ob')));
+    await assert.rejects(api.answerQuiz(token, 'Jardim do Éden'), /conexão/);
+    assert(!records.has('points/quiz_eden_uid-ob'));
+    assert(!('answeredAt' in records.get('dailyQuizEden/uid-ob')));
     failCommit = false;
-    const answers = await Promise.all([api.answerQuiz(token, 'Martinez'), api.answerQuiz(token, 'Pereira')]);
+    assert.equal((await api.answerQuiz({...token,round:'ob'},'Jardim do Éden')).won,false);
+    const answers = await Promise.all([api.answerQuiz(token, 'Jardim do Éden'), api.answerQuiz(token, 'jardim do eden')]);
     assert.equal(answers.filter(result => result.won).length, 1);
-    assert.equal(records.get('points/quiz_ob_uid-ob').d, 5);
-    assert.equal(records.get('points/quiz_ob_uid-ob').createdAt, records.get('dailyQuizOB/uid-ob').answeredAt);
-    assert.equal((await api.answerQuiz(token, 'Martines')).won, false);
+    assert.equal(records.get('points/quiz_eden_uid-ob').d, 20);
+    assert.equal(records.get('points/quiz_eden_uid-ob').createdAt, records.get('dailyQuizEden/uid-ob').answeredAt);
+    assert.equal((await api.answerQuiz(token, 'jardim do eden')).won, false);
     assert.equal(await api.startQuiz(), null);
-    for (const [who, text] of [['igor', ' MARTINES '], ['pig', 'pereira'], ['bruno', 'Martínez']]) {
+    for (const [who, text] of [['igor', 'Jardim do Éden'], ['pig', 'jardim do eden'], ['bruno', ' JARDIM  DO ÉDEN ']]) {
       login(who); const next = await api.startQuiz();
       assert.equal((await api.answerQuiz(next, text)).won, true);
-      assert.equal(records.get(`points/quiz_ob_uid-${who}`).d, 5);
+      assert.equal(records.get(`points/quiz_eden_uid-${who}`).d, 20);
     }
     login('nanu'); const wrong = await api.startQuiz();
     assert.equal((await api.answerQuiz(wrong, 'Santos')).won, false);
-    assert.equal(records.get('dailyQuizOB/uid-nanu').answer, '');
-    assert(!records.has('points/quiz_ob_uid-nanu'));
-    assert.equal((await api.answerQuiz(wrong, 'Martinez')).won, false);
+    assert.equal(records.get('dailyQuizEden/uid-nanu').answer, '');
+    assert(!records.has('points/quiz_eden_uid-nanu'));
+    assert.equal((await api.answerQuiz(wrong, 'jardim do eden')).won, false);
     login('luan'); const switched = await api.startQuiz();
-    login('cadu'); assert.equal((await api.answerQuiz(switched, 'Martinez')).won, false);
+    login('cadu'); assert.equal((await api.answerQuiz(switched, 'jardim do eden')).won, false);
+    assert.deepEqual(records.get('dailyQuizOB/uid-ob'),legacyAttempt);
+    assert.deepEqual(records.get('points/quiz_ob_uid-ob'),legacyPoint);
     records.set('scoreClosures/main', { closedAt: time });
     assert.equal(await api.quizAvailable(), false);
     assert.equal(await api.startQuiz(), null);

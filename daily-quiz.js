@@ -1,10 +1,16 @@
 export const QUIZ_SECONDS = 5;
-export const QUIZ_REASON = 'Quiz do dia · Sobrenome do OB';
+export const QUIZ_ROUND = 'eden';
+export const QUIZ_COLLECTION = 'dailyQuizEden';
+export const QUIZ_POINT_PREFIX = 'quiz_eden_';
+export const QUIZ_DAYS = ['20778', '20779']; // 21 e22/11/2026, São Paulo.
+export const QUIZ_POINTS = 20;
+export const QUIZ_QUESTION = 'Qual é o nome do dark room da High?';
+export const QUIZ_REASON = 'Quiz do dia · Dark room da High';
 
 export function quizAnswer(value) {
   const answer = String(value ?? '').trim().toLocaleLowerCase('pt-BR')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return ['martinez', 'martines', 'pereira'].includes(answer) ? answer : '';
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+  return answer === 'jardim do eden' ? answer : '';
 }
 
 // Relógio monotônico: trocar de aba não pausa os cinco segundos.
@@ -19,7 +25,7 @@ export function openDailyQuiz({ start, answer, onResult, onError }) {
   dialog.innerHTML = `<div class="quiz-intro">
     <span class="quiz-watch" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="18" r="10"/><path d="M13 3h6M16 3v5M24 8l2-2M16 12v6l3 2"/></svg></span>
     <h2 id="daily-quiz-title">Quiz do dia</h2>
-    <p>Responda a próxima pergunta em até <strong>5 segundos</strong> e ganhe <strong class="quiz-prize">+5 pontos</strong> no placar geral!</p>
+    <p>Responda a próxima pergunta em até <strong>5 segundos</strong> e ganhe <strong class="quiz-prize">+${QUIZ_POINTS} pontos</strong> no placar geral!</p>
     <button class="btn seal block" type="button" data-quiz-ready>Ok, me sinto pronto</button>
   </div>`;
   let phase = 'intro', startedAt = 0, startPromise, interval, lastAnswer = '';
@@ -51,8 +57,8 @@ export function openDailyQuiz({ start, answer, onResult, onError }) {
     phase = 'question';
     startedAt = performance.now();
     dialog.innerHTML = `<form class="quiz-question" autocomplete="off">
-      <div class="quiz-heading"><span class="eyebrow">Quiz do dia</span><span class="quiz-prize">+5 pontos</span></div>
-      <h2 id="daily-quiz-title">Qual é o sobrenome do OB?</h2>
+      <div class="quiz-heading"><span class="eyebrow">Quiz do dia</span><span class="quiz-prize">+${QUIZ_POINTS} pontos</span></div>
+      <h2 id="daily-quiz-title">${QUIZ_QUESTION}</h2>
       <div class="quiz-response"><input aria-label="Sua resposta" placeholder="Sua resposta" maxlength="60" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="done"><span class="quiz-timer" role="timer" aria-label="5 segundos restantes"><b data-quiz-seconds>5</b><span>s</span></span></div>
     </form>`;
     // O foco pertence ao gesto do usuário para abrir o teclado no iPhone.

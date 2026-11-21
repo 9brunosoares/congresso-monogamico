@@ -1,5 +1,11 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Próximo quiz: dark room da High (21/11/2026)
+- Após o próximo envio do Queridômetro, pergunta “Qual é o nome do dark room da High?”, valendo+20, com os mesmos5s. Aceita “Jardim do Éden” com/sem acento, maiúsculas e espaços extras; persiste apenas `jardim do eden` no acerto, string vazia no erro. Erro/tempo esgotado não tira pontos.
+- Nova rodada, tentativa única por conta em `dailyQuizEden/{uid}` e bônus atômico/imutável `points/quiz_eden_<uid>`. Disponível nos preenchimentos de21 ou22/11 para quem ainda não fez essa pergunta. Ter feito o quiz anterior não bloqueia este. Não apagar/reiniciar os registros `dailyQuizOB` nem alterar os bônus+5 anteriores.
+- Rodada OB não aceita novos inícios após20/11, inclusive em versões antigas do app; respostas já iniciadas conservam a validação anterior. Novo quiz exige comprovante próprio de voto do mesmo dia, prazo do servidor7s com UI estrita de5s e placar aberto. Sem listeners extras, sem revelar escolhas do Queridômetro.
+- Ao atualizar, publicar somente firestore:rules e front-end; preservar mapa, Realtime Database, Auth e dados reais. Testar as duas rodadas com dados simulados.
+
 ## Queridômetro: emoji de planta (20/11/2026)
 - Adicionada 🌱 como nona opção, no fim de EMOJIS. Preservar a ordem dos oito emojis anteriores: não migrar nem regravar votos antigos. O nono contador usa16**8; nove dígitos em base16 cabem com precisão no número JS.
 - Seletor em duas linhas, com5 colunas e botões de44px para caber no celular. Resultados mostram 🌱 com o mesmo fluxo dos outros emojis; janela, participação, anonimato e penalidades permanecem iguais.
