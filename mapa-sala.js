@@ -1,5 +1,6 @@
 import { getApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import { watchLakeRecord, submitLakeRecord } from './lake-record.js?v=20261119a';
+import { watchBoar, claimBoar } from './boar.js?v=20261121m';
 import {
   getDatabase, goOffline, goOnline, ref, push, set, remove, runTransaction, onDisconnect, serverTimestamp,
   onValue, onChildAdded, onChildChanged, onChildRemoved
@@ -18,7 +19,7 @@ const BUMP_MS = 1000;
 const HEARTBEAT_MS = 20000;
 const STALE_MS = 55000;
 
-export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBall, onRecord }) {
+export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBall, onRecord, onBoar }) {
   const db = getDatabase(getApp(), DATABASE_URL);
   const room = ref(db, ROOM);
   const speech = ref(db, SPEECH);
@@ -119,6 +120,8 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
         if (state) onBall?.(state, Math.max(0, Date.now() + offset - (Number(state.t) || 0)));
       }, () => {}),
       watchLakeRecord(record => onRecord?.(record), () => onRecord?.(null)),
+      // Javali: estado único no Firestore; sem leitura, ele só dorme e não pode ser acordado.
+      watchBoar(boar => onBoar?.({ known: true, boar }), () => onBoar?.({ known: false, boar: null })),
       onValue(ref(db, '.info/serverTimeOffset'), snapshot => { offset = snapshot.val() ?? 0; }),
       onValue(ref(db, '.info/connected'), async snapshot => {
         const attempt = ++epoch;
@@ -194,6 +197,14 @@ export function joinTravelRoom(avatar, { onPeer, onStatus, onSpeech, onSun, onBa
         return await submitLakeRecord(avatar, pts);
       } catch {
         return { ok: false, message: 'Não foi possível registrar a marca. Tente novamente.' };
+      }
+    },
+    async boar() {
+      if (!session || !connected) return { ok: false, message: 'Conecte-se para acordar o javali.' };
+      try {
+        return await claimBoar(avatar);
+      } catch {
+        return { ok: false, message: 'O javali resmungou e voltou a dormir. Tente de novo.' };
       }
     },
     kick(state) {

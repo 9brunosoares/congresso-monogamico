@@ -1,5 +1,13 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Chácara: javali selvagem dormindo, +20 e segue quem o acordou (21/11/2026, Claude)
+- Pedido do Bruno: javali dormindo no gramado em frente à Capela, à esquerda da quadra e perto do Comedouro (`BOAR_SPOT=[2,12.5]` em `mapa/index.html`). Deitado de barriga, respiração lenta e três "z" subindo. Quem passa por cima (raio 0,95 m, a pé) acorda o javali, ganha +20 no placar geral e passa a ser seguido por ele com a mesma lógica da cachorra do Pig (rastro com atraso de 0,7 s, para a 2,4 m, alcança se ficar a mais de 12 m ou travado).
+- Prêmio único no total: só o primeiro ganha. `boar.js` faz uma transação que cria `mapRecords/javali` `{by,t}` e `points/javali` (+20, kind jogo, motivo "Acordou o javali da chácara") juntos; reenvio e concorrência não duplicam. Placar encerrado bloqueia. Regras: criação única, autor = conta logada, bônus imutável (nem ADM edita/apaga), `bruno` recusado.
+- Todos veem o javali seguindo o dono (estado pelo listener do Firestore, posição pelo avatar remoto). Com o dono fora do mapa, o javali volta a dormir no lugar original e não pode ser acordado de novo: quem pisa vê "Esse javali já tem dono: X."
+- Bru (perfil de teste): ao pisar, o javali segue só ele, só no aparelho dele e sem pontos (toast avisa). Isso não consome o prêmio.
+- Canal: iframe `boar-claim` → `mapa-viagem.js` → `mapa-sala.js` `boar()` → `boar-result`; estado `boar` `{known,boar}`. Sem leitura do Firestore o javali só dorme.
+- **Pendente de deploy:** `firebase deploy --only firestore:rules`. Antes disso a gravação é recusada e o mapa mostra "O javali resmungou e voltou a dormir. Tente de novo." (pode tentar de novo depois do deploy). Testes: `tests/boar.test.js` (local) e `scripts/test-boar-rules.cjs` (cenários simulados no serviço oficial). Para devolver o prêmio, apagar `mapRecords/javali` e `points/javali` pelo console.
+
 ## Resultados atualizados para o Claude (21/11/2026 às 12:14)
 - `docs/TV-CONGRESSO.md` agora contém as tabelas reais do placar e do Queridômetro de21/11; usar a seção Resultados atuais, preservando a entrega inicial como histórico. CapturaUTC `2026-11-21T15:14:57.856Z`.
 - Rodada encerrada com12 votantes/144 emojis,13 no ranking e3 casos publicados. Pontos do Quiz dos Especialistas, bônus já ganhos na High e+3 da chave de Sadano já estão contabilizados: não relançar.

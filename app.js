@@ -9,7 +9,7 @@ import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261120j';
 import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261120j';
 import * as backend from './backend.js?v=20261120j';
-import {openTravelMap} from './mapa-viagem.js?v=20261120e';
+import {openTravelMap} from './mapa-viagem.js?v=20261121m';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 import {openDailyQuiz,QUIZ_POINTS} from './daily-quiz.js?v=20261121a';
 import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261121a';

@@ -1129,6 +1129,87 @@ function moveDog(dt){
   for(var k=0;k<4;k++)dog.legs[k].rotation.x=walking?Math.sin(dog.ph+(k%3?0:Math.PI))*.6:0;
 }
 
+/* javali selvagem: dorme no gramado em frente à Capela; quem passar por cima ganha +20 (uma vez no total) e é seguido por ele */
+var BOAR_SPOT=[2,12.5],BOAR_TESTER='bruno',BOAR_DELAY=.7;
+var boar={g:new T.Group(),body:new T.Group(),pos:new T.Vector3(BOAR_SPOT[0],0,BOAR_SPOT[1]),ph:0,blocked:0,trail:[],nextSample:0,
+  owner:null,known:false,pending:false,armed:true,local:false,wake:0};
+(function(){var g=boar.g,b=boar.body;g.scale.setScalar(1.15);var k=M(0x4a3a2e),d=M(0x2e241c),sn=M(0x8a6a5a),tu=M(0xf1ead8);scene.add(g);g.add(b);
+  box(.62,.56,1.25,k,0,.62,0,b);box(.5,.5,.5,k,0,.66,.78,b);box(.3,.26,.28,sn,0,.56,1.1,b);box(.22,.14,.04,0x3a2a24,0,.58,1.25,b);
+  box(.06,.22,.06,tu,-.17,.68,1.16,b).rotation.x=-.5;box(.06,.22,.06,tu,.17,.68,1.16,b).rotation.x=-.5;
+  box(.12,.18,.06,d,-.2,.98,.66,b);box(.12,.18,.06,d,.2,.98,.66,b);
+  box(.14,.12,1.3,d,0,.95,-.05,b);box(.06,.06,.1,0x111111,-.18,.76,.98,b);box(.06,.06,.1,0x111111,.18,.76,.98,b);
+  boar.tail=box(.05,.05,.3,d,0,.72,-.72,b);
+  boar.legs=[[-.2,.38],[.2,.38],[-.2,-.38],[.2,-.38]].map(function(q){return box(.14,.4,.14,d,q[0],.2,q[1],b);});
+  var sh=new T.Mesh(blobG,blobM);sh.rotation.x=-Math.PI/2;sh.position.y=.04;sh.scale.set(1.1,1.7,1);g.add(sh);
+  var zt=textTex(function(x,w,h){x.font='bold 52px sans-serif';x.textAlign='center';x.textBaseline='middle';x.lineWidth=8;x.strokeStyle='rgba(20,30,60,.75)';x.strokeText('z',w/2,h/2);x.fillStyle='#fff';x.fillText('z',w/2,h/2);},64,64);
+  boar.zs=[0,1,2].map(function(i){var z=new T.Sprite(new T.SpriteMaterial({map:zt,transparent:true,depthWrite:false}));g.add(z);return z;});})();
+function boarLeader(){
+  if(boar.owner){var c=charById.get(boar.owner);return c&&(c===me||c.remote)?c:null;}
+  return boar.local&&me?me:null;
+}
+function boarSleeping(){return !boarLeader();}
+function boarClaimed(owner){
+  var was=boar.owner;boar.owner=owner;boar.local=false;
+  if(owner&&owner!==was){boar.wake=1.2;boar.trail.length=0;}
+}
+function boarTouch(){
+  if(!me||boat||me.st!==0||boar.local||boar.pending||!boarSleeping())return;
+  var d=Math.hypot(me.pos.x-boar.pos.x,me.pos.z-boar.pos.z);
+  if(d>2.2)boar.armed=true;
+  if(d>.95||!boar.armed)return;
+  boar.armed=false;
+  if(boar.owner){var o=charById.get(boar.owner);toast('Esse javali já tem dono: '+(o?o.p.nick:boar.owner)+'.');return;}
+  if(me.p.id===BOAR_TESTER){boar.local=true;boar.wake=1.2;boar.trail.length=0;toast('Javali de teste: segue só você e não vale ponto.',3200);return;}
+  if(!boar.known||!roomOnline){toast('O javali está num sono pesado. Conecte-se para acordá-lo.');return;}
+  boar.pending=true;post('boar-claim',{});
+}
+function boarResult(r){
+  boar.pending=false;r=r||{};
+  if(r.ok&&r.won){boarClaimed(me.p.id);canBanner('Você acordou o javali!<small>+20 no placar · agora ele te segue</small>',3.2);}
+  else if(r.ok&&r.boar)boarClaimed(r.boar.by);
+  else if(r.message)toast(r.message);
+}
+function moveBoar(dt){
+  boarTouch();
+  var leader=boarLeader(),walking=false,sleeping=!leader;
+  if(boar.wake>0)boar.wake-=dt;
+  if(sleeping){
+    if(Math.hypot(boar.pos.x-BOAR_SPOT[0],boar.pos.z-BOAR_SPOT[1])>.01){boar.pos.set(BOAR_SPOT[0],0,BOAR_SPOT[1]);}
+    boar.g.rotation.y=-.6;boar.trail.length=0;boar.nextSample=0;boar.blocked=0;
+  }else if(boar.wake<=0){
+    if(tt>=boar.nextSample){boar.trail.push({x:leader.pos.x,z:leader.pos.z,t:tt});boar.nextSample=tt+.09;}
+    while(boar.trail.length>1&&boar.trail[1].t<=tt-BOAR_DELAY)boar.trail.shift();
+    var target=boar.trail[0],x=target.x,z=target.z,stop=2.4;
+    var dx=x-boar.pos.x,dz=z-boar.pos.z,distance=Math.hypot(dx,dz);
+    if(tt-target.t>=BOAR_DELAY&&(distance>12||boar.blocked>1)){
+      var spot=new T.Vector3();
+      for(var [ox,oz] of [[1.6,0],[-1.6,0],[0,1.6],[0,-1.6]]){spot.set(x+ox,0,z+oz);collide(spot,.5);
+        var gap=Math.hypot(spot.x-x,spot.z-z);if(gap>.7&&gap<2.6&&dogCanStand(spot)){boar.pos.copy(spot);break;}}
+      boar.blocked=0;dx=x-boar.pos.x;dz=z-boar.pos.z;distance=Math.hypot(dx,dz);
+    }
+    if(tt-target.t>=BOAR_DELAY&&distance>stop+.02){
+      var bx=boar.pos.x,bz=boar.pos.z,adv=Math.min(distance-stop,dt*(distance>3.5?7.2:3.8));
+      boar.pos.x+=dx/distance*adv;boar.pos.z+=dz/distance*adv;collide(boar.pos,.5);
+      if(!dogCanStand(boar.pos))boar.pos.set(bx,0,bz);
+      walking=Math.hypot(x-boar.pos.x,z-boar.pos.z)<distance-.005;
+      boar.blocked=walking?0:boar.blocked+dt;
+      var turn=Math.atan2(dx,dz)-boar.g.rotation.y;while(turn>Math.PI)turn-=6.2832;while(turn<-Math.PI)turn+=6.2832;boar.g.rotation.y+=turn*Math.min(1,dt*8);
+    }else boar.blocked=0;
+  }
+  boar.ph+=dt*(walking?13:2);
+  var ground=H(boar.pos.x,boar.pos.z),calm=reduceMotion.matches;
+  boar.g.position.set(boar.pos.x,ground+.04,boar.pos.z);
+  /* dormindo: deitado de lado, respiração lenta e três "z" subindo */
+  var lie=sleeping?1:boar.wake>0?Math.min(1,Math.max(0,(boar.wake-.4)/.8)):0;
+  boar.body.position.y=-.34*lie;boar.body.rotation.x=.08*lie;
+  for(var j=0;j<4;j++){boar.legs[j].scale.y=1-.85*lie;boar.legs[j].position.y=.2-.17*lie;}
+  var breath=sleeping&&!calm?1+Math.sin(tt*1.6)*.05:1;boar.body.scale.set(breath,breath,1);
+  boar.tail.rotation.y=walking?Math.sin(tt*14)*.7:0;
+  for(var i=0;i<4;i++)boar.legs[i].rotation.x=walking?Math.sin(boar.ph+(i%3?0:Math.PI))*.65:0;
+  for(i=0;i<3;i++){var z=boar.zs[i],f=((tt*.45+i/3)%1);z.visible=sleeping;
+    if(sleeping){z.position.set(Math.sin(f*6+i)*.18+f*.3,.85+f*1.4,1.05);var sc=.24+f*.3;z.scale.set(sc,sc,1);z.material.opacity=f<.15?f/.15:1-(f-.15)/.85;}}
+}
+
 /* ---------- entrada ---------- */
 var keys={},joy={on:false,id:-1,x:0,y:0,ox:0,oy:0},look={on:false,id:-1,x:0,y:0},yaw=0,pitch=.42,dist=9.5;
 var joyEl=document.getElementById('joy'),knob=joyEl.firstElementChild,cv=renderer.domElement;
@@ -1494,6 +1575,10 @@ addEventListener('message',function(event){
     }else if(data.message){
       canRetry=data.retryable===false?null:data.pts;var retry=document.getElementById('record-retry');retry.textContent='Registrar marca de '+data.pts+' pontos';retry.hidden=canRetry===null;toast(data.message);
     }
+  }else if(data.type==='boar'){
+    boar.known=data.known===true;var b=data.boar;boarClaimed(b&&b.by!==BOAR_TESTER&&charById.has(b.by)?b.by:null);
+  }else if(data.type==='boar-result'){
+    boarResult(data);
   }else if(data.type==='ball'){
     ballReceive(data.ball,data.age);
   }else if(data.type==='sun'){
@@ -1585,6 +1670,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
     if(c.furniture)applyRestPose(c,c.furniture.pose);
   }
   moveDog(dt);
+  moveBoar(dt);
   /* tubarão: passeio bobo guiado pelo relógio, para todos verem o mesmo percurso; é obstáculo de verdade */
   (function(){var st=Date.now()/1000,a=sharkAt(st),b=sharkAt(st+.25),calm=reduceMotion.matches;
     sharkC[0]=a[0];sharkC[1]=a[1];shark.position.set(a[0],calm?0:Math.abs(Math.sin(st*3.4))*.16,a[1]);

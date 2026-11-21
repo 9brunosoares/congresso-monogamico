@@ -36,6 +36,8 @@ rules_version = '2';
 // pilotUsage/{diaSP_uid_acao}: {day,action}, recibo imutável de ação diária.
 // mapRecords/latinhas: by oficial, pts int1..999, t timestamp do servidor.
 // points/lake_<pts>: bônus imutável de 15 pontos criado junto com o avanço da placa.
+// mapRecords/javali: {by,t}, criado uma única vez por quem acorda o javali (exceto bruno).
+// points/javali: bônus imutável de 20 pontos criado junto com mapRecords/javali.
 // dailyQuizOB/{uid}: rodada anterior, +5, início até20/11; preservar registros.
 // dailyQuizEden/{uid}: rodada High, +20, início em21 ou22/11 após comprovante de voto.
 // Ambas: day/startedAt imutáveis; answer/answeredAt gravados juntos, tentativa única.
@@ -255,8 +257,25 @@ service cloud.firestore {
    return validLakeRecord(record) && lakeAdvanced(record)
     && id == 'lake_' + string(record.pts) && lakePointMatches(d,record);
   }
+  function validBoar(d) {
+   return only(d,['by','t']) && d.by in ids() && d.by != 'bruno' && d.by == personId()
+    && d.t is timestamp && d.t == request.time;
+  }
+  function boarPointMatches(d,r) {
+   return isValidPoint(d) && d.who == r.by && d.d == 20 && d.kind == 'jogo'
+    && d.why == 'Acordou o javali da chácara' && d.createdAt == r.t;
+  }
+  function validBoarPoint(d) {
+   let path = /databases/$(database)/documents/mapRecords/javali;
+   return !exists(path) && validBoar(getAfter(path).data) && boarPointMatches(d,getAfter(path).data);
+  }
   match /mapRecords/{id} {
    allow read: if isMember();
+   allow create: if id == 'javali' && isMember() && tripStarted() && scoringOpen()
+    && validBoar(request.resource.data)
+    && !exists(/databases/$(database)/documents/mapRecords/javali)
+    && !exists(/databases/$(database)/documents/points/javali)
+    && boarPointMatches(getAfter(/databases/$(database)/documents/points/javali).data,request.resource.data);
    allow create, update: if id == 'latinhas' && isMember() && tripStarted() && scoringOpen()
     && validLakeRecord(request.resource.data) && lakeAdvanced(request.resource.data)
     && !exists(/databases/$(database)/documents/points/$('lake_' + string(request.resource.data.pts)))
@@ -275,6 +294,7 @@ service cloud.firestore {
    return isValidPoint(d) && (id.matches('quiz_ob_.*') ? validQuizPoint(id,d)
     : id.matches('quiz_eden_.*') ? validEdenQuizPoint(id,d)
     : id.matches('lake_[0-9]+') ? validLakePoint(id,d)
+    : id == 'javali' ? validBoarPoint(d)
     : (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,d))));
   }
   match /scoreClosures/{id} {
@@ -288,9 +308,9 @@ service cloud.firestore {
    allow create: if tripStarted() && isMember() && scoringOpen() && fresh(request.resource.data)
     && (id.matches('inf_[a-zA-Z0-9_-]+') ? directInfraction(request.resource.data)
      : regularPointCreate(id,request.resource.data));
-   allow update: if !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && sameCreation()
+   allow update: if id != 'javali' && !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && sameCreation()
     && (id.matches('inf_[a-zA-Z0-9_-]+') ? isValidInfraction(request.resource.data) && request.resource.data.by == resource.data.by : isValidPoint(request.resource.data));
-   allow delete: if !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && isAdmin() && scoringOpen();
+   allow delete: if id != 'javali' && !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && isAdmin() && scoringOpen();
   }
   function isValidExpense(d) {
    return only(d,['title','cat','amount','amountCents','by','payer','split','at','createdAt','status','version','updatedAt','updatedBy']) && text(d.title,120)
