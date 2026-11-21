@@ -1,0 +1,78 @@
+{
+  "retrievedAt": "2026-11-21T17:25:43.486Z",
+  "purpose": "Identificação dos álbuns nas alternativas da enquete do Igor; imagens promocionais obtidas da Apple Music.",
+  "albums": [
+    {
+      "artist": "Phoebe Bridgers",
+      "title": "Lost Weekend",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/aa/9e/a6/aa9ea64a-bbf2-470e-b447-fa407b4645fa/66852.jpg/100x100bb.jpg",
+      "url": "https://music.apple.com/us/album/lost-weekend/6781051268?uo=4",
+      "imageSource": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/aa/9e/a6/aa9ea64a-bbf2-470e-b447-fa407b4645fa/66852.jpg/300x300bb.jpg",
+      "file": "album-1.jpg",
+      "bytes": 8467
+    },
+    {
+      "artist": "Olivia Dean",
+      "title": "The Art of Loving",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/08/e2/21/08e22164-7c0b-1522-818f-e0e74f62dc49/25UMGIM69703.rgb.jpg/100x100bb.jpg",
+      "url": "https://music.apple.com/us/album/the-art-of-loving/1817609404?uo=4",
+      "imageSource": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/08/e2/21/08e22164-7c0b-1522-818f-e0e74f62dc49/25UMGIM69703.rgb.jpg/300x300bb.jpg",
+      "file": "album-2.jpg",
+      "bytes": 23168
+    },
+    {
+      "artist": "Ella Langley",
+      "title": "Dandelion",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a1/ba/64/a1ba6484-f462-1b88-ddff-d4c014d5f265/196874018361.jpg/100x100bb.jpg",
+      "url": "https://music.apple.com/us/album/dandelion/1869436835?uo=4",
+      "imageSource": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a1/ba/64/a1ba6484-f462-1b88-ddff-d4c014d5f265/196874018361.jpg/300x300bb.jpg",
+      "file": "album-3.jpg",
+      "bytes": 35347
+    },
+    {
+      "artist": "Bruno Mars",
+      "title": "The Romantic",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/ed/46/bf/ed46bf4e-7cb9-965a-54f3-03059977fe6c/075679589293.jpg/100x100bb.jpg",
+      "url": "https://music.apple.com/us/album/the-romantic/1866732792?uo=4",
+      "imageSource": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/ed/46/bf/ed46bf4e-7cb9-965a-54f3-03059977fe6c/075679589293.jpg/300x300bb.jpg",
+      "file": "album-4.jpg",
+      "bytes": 40312
+    },
+    {
+      "artist": "RAYE",
+      "title": "THIS MUSIC MAY CONTAIN HOPE.",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/50/05/10/5005106d-bb8a-32db-1172-f18405cf4a46/820200038890.jpg/100x100bb.jpg",
+      "url": "https://music.apple.com/us/album/this-music-may-contain-hope/1871085677?uo=4",
+      "imageSource": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/50/05/10/5005106d-bb8a-32db-1172-f18405cf4a46/820200038890.jpg/300x300bb.jpg",
+      "file": "album-5.jpg",
+      "bytes": 20679
+    },
+    {
+      "artist": "Olivia Rodrigo",
+      "title": "you seem pretty sad for a girl so in love",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/b9/92/51/b9925128-dac6-2cef-5674-d5ebbe1a4e83/26UMGIM75556.rgb.jpg/100x100bb.jpg",
+      "url": "https://music.apple.com/us/album/you-seem-pretty-sad-for-a-girl-so-in-love/6779097512?uo=4",
+      "imageSource": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/b9/92/51/b9925128-dac6-2cef-5674-d5ebbe1a4e83/26UMGIM75556.rgb.jpg/300x300bb.jpg",
+      "file": "album-6.jpg",
+      "bytes": 18291
+    },
+    {
+      "artist": "ROSALÍA",
+      "title": "LUX",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/95/ae/80/95ae8046-a6b9-e493-0def-5ae33d63f43a/196873722672.jpg/100x100bb.jpg",
+      "url": "https://music.apple.com/us/album/lux/1848167516?uo=4",
+      "imageSource": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/95/ae/80/95ae8046-a6b9-e493-0def-5ae33d63f43a/196873722672.jpg/300x300bb.jpg",
+      "file": "album-7.jpg",
+      "bytes": 17127
+    },
+    {
+      "artist": "Taylor Swift",
+      "title": "The Life of a Showgirl",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/30/0c/5a/300c5a57-d3be-a170-f880-f63380ca6312/25UM1IM19577.rgb.jpg/100x100bb.jpg",
+      "url": "https://music.apple.com/us/album/the-life-of-a-showgirl/1842897453?uo=4",
+      "imageSource": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/30/0c/5a/300c5a57-d3be-a170-f880-f63380ca6312/25UM1IM19577.rgb.jpg/300x300bb.jpg",
+      "file": "album-8.jpg",
+      "bytes": 39408
+    }
+  ]
+}

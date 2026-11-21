@@ -8,8 +8,9 @@ import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261120j';
 import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261120j';
-import * as backend from './backend.js?v=20261121b';
+import * as backend from './backend.js?v=20261121p';
 import {nanuAgendaAccess} from './nanu-poll-model.js?v=20261121b';
+import {igorAgendaAccess} from './igor-poll-model.js?v=20261121p';
 import {openTravelMap} from './mapa-viagem.js?v=20261121o';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 import {openDailyQuiz,QUIZ_POINTS} from './daily-quiz.js?v=20261121a';
@@ -97,6 +98,17 @@ try{ tab = localStorage.getItem("xvi-tab") || "inicio";if(!["inicio","programa",
 const busyActions=new Set();
 let dailyQuiz;
 let nanuPoll,nanuPollLoading=false;
+let igorPoll,igorPollLoading=false;
+async function showIgorPoll(){
+ if(igorPoll||igorPollLoading)return;
+ igorPollLoading=true;const owner=S.me;
+ try{
+  const {openIgorPoll}=await import('./igor-poll.js?v=20261121p');
+  if(S.me!==owner)return;
+  igorPoll=openIgorPoll({onClose(){igorPoll=null;$('#igorPollLink')?.focus({preventScroll:true});},onError:backend.reportError});
+ }catch(error){backend.reportError(error);toast('Não foi possível abrir a enquete. Tente novamente.');}
+ finally{igorPollLoading=false;}
+}
 async function showNanuPoll(){
  if(nanuPoll||nanuPollLoading)return;
  nanuPollLoading=true;const owner=S.me;
@@ -316,6 +328,7 @@ function viewPrograma(){
       <div class="meta">${st==="now"?'<span class="tag live">Agora</span>':""}${a.place?`<span class="tag">${esc(a.place)}</span>`:""}${a.pts?`<span class="pts">até ${a.pts} pts</span>`:""}${a.prep?`<span class="tag prepn">Preparação</span>`:""}</div>
       ${a.prep?`<div class="note"><b style="color:var(--ink)">Leve/prepare:</b> ${esc(a.prep)}</div>`:""}
       ${nanuAgendaAccess(a,S.me,S.nanuSession)?`<button id="nanuPollLink" class="link nanu-agenda-link" type="button">${S.me==='nanu'?'Conduzir enquete do Nanu':'Participar da enquete do Nanu'} ↗</button>`:''}
+      ${igorAgendaAccess(a,S.me,S.igorSession)?`<button id="igorPollLink" class="link nanu-agenda-link" type="button">${S.me==='igor'?'Conduzir enquete do Igor':'Participar da enquete do Igor'} ↗</button>`:''}
     </div></div>`}).join("")}</div>
   </section>${isAdm()?`<button class="btn ghost block" style="margin-top:12px" id="addAct" type="button">Adicionar sessão (ADM)</button>`:""}`;
 }
@@ -864,6 +877,7 @@ document.addEventListener('click',e=>{
  if(e.target.closest('#addTripPhoto')){sheetTripPhoto();return;}
  if(e.target.closest('#simulateTrip')){simulateTrip();return;}
  if(e.target.closest('#nanuPollLink')){void showNanuPoll();return;}
+ if(e.target.closest('#igorPollLink')){void showIgorPoll();return;}
  const edit=e.target.closest('[data-edit-activity]');if(edit){sheetActivity(AGENDA.find(a=>a.id===edit.dataset.editActivity));return;}
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
  const d=e.target.closest('[data-day]');if(d){selectAgendaDay(+d.dataset.day);return;}
@@ -909,7 +923,7 @@ document.addEventListener('visibilitychange',()=>{
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
  if(S.ready&&S.me&&(!wasReady||previous!==S.me)&&!document.hidden)void backend.recordPilotUsage?.('open');
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);

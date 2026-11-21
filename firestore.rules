@@ -46,6 +46,8 @@ rules_version = '2';
 // nanuLive/main/rounds/{1..11}: a,b,c,total int0..12; agregados, sem gabarito.
 // rounds/{q}/answers/{apelido}: choice a|b|c ou text1..140, createdAt. Só os12 convidados votam.
 // Um voto imutável por convidado/pergunta, pareado ao incremento do agregado.
+// igorLive/main e rounds/{1..10}: enquete permanente, conduzida só por Igor, com12 votantes.
+// Agregados {counts:{opcao:total},total}; comprovante {choice,createdAt} imutável.
 // querido/{diaSP}: {counts,voters}, com os 13 IDs no mapa counts.
 // Cada valor guarda nove totais em base16, como inteiro exato de até36bits.
 // Ordem fixa no roster.js; 🌱 é o nono dígito, sem alterar os oito anteriores.
@@ -722,6 +724,66 @@ service cloud.firestore {
      allow list: if id == 'main' && q == '11' && isMember() && nanuCanCloud();
      allow create: if id == 'main' && nanuCanAnswer(q,voter) && !exists(nanuAnswerPath(q,voter))
       && nanuVoteDelta(q,getAfter(nanuRoundPath(q)).data,get(nanuRoundPath(q)).data,request.resource.data);
+     allow update,delete: if false;
+    }
+   }
+  }
+  function igorHost() { return isMember() && personId() == 'igor'; }
+  function igorRoundId(q) { return q in ['1','2','3','4','5','6','7','8','9','10']; }
+  function igorSessionPath() { return /databases/$(database)/documents/igorLive/main; }
+  function igorRoundPath(q) { return /databases/$(database)/documents/igorLive/main/rounds/$(q); }
+  function igorAnswerPath(q,id) { return /databases/$(database)/documents/igorLive/main/rounds/$(q)/answers/$(id); }
+  function igorCounts(q) {
+   return q == '3' ? {'y1':0,'y2':0,'y3':0,'y4':0,'y5':0,'y6':0,'y7':0,'y8':0,'y9':0,'y10':0,'y11':0,'y12':0,'y13':0,'y14':0,'y15':0,'y16':0,'y17':0,'y18':0,'y19':0,'y20':0,'y21':0,'y22':0,'y23':0,'y24':0,'y25':0,'y26':0,'y27':0,'y28':0,'y29':0,'y30':0,'never':0}
+    : q == '4' ? {'y5':0,'y10':0,'y15':0,'y20':0,'y25':0,'y30':0,'y35':0,'y40':0,'y45':0,'y50':0,'y55':0,'y60':0,'y65':0,'y70':0,'y75':0,'y80':0,'y85':0,'y90':0,'y95':0,'y100':0,'over':0}
+    : q == '7' ? {'a':0,'b':0,'c':0,'d':0,'e':0,'f':0,'g':0,'h':0}
+    : q == '9' ? {'a':0,'b':0,'c':0,'d':0,'e':0,'f':0,'g':0,'h':0,'i':0} : {'a':0,'b':0};
+  }
+  function emptyIgorRound(q,d) { return d == {'counts':igorCounts(q),'total':0}; }
+  function validIgorSession(d) {
+   return only(d,['question','startedAt','updatedAt']) && d.question is int && d.question >= 1 && d.question <= 10
+    && d.startedAt is timestamp && d.updatedAt is timestamp && d.updatedAt == request.time;
+  }
+  function igorCurrent(q) { return igorRoundId(q) && exists(igorSessionPath()) && get(igorSessionPath()).data.question == int(q); }
+  function igorOpened(q) { return igorRoundId(q) && exists(igorSessionPath()) && get(igorSessionPath()).data.question >= int(q); }
+  function validIgorAnswer(q,d) {
+   return fresh(d) && only(d,['choice','createdAt']) && d.choice is string && d.choice in igorCounts(q);
+  }
+  function igorVoteDelta(q,d,before,answer) {
+   return only(d,['counts','total']) && d.counts is map && d.total is int && d.total >= 1 && d.total <= 12
+    && validIgorAnswer(q,answer) && d.total == before.total+1
+    && d.counts.keys() == before.counts.keys() && answer.choice in before.counts
+    && d.counts.diff(before.counts).affectedKeys().hasOnly([answer.choice])
+    && d.counts[answer.choice] is int && d.counts[answer.choice] == before.counts[answer.choice]+1;
+  }
+  function igorCanAnswer(q,id) { return isMember() && personId() != 'igor' && id == personId() && igorCurrent(q); }
+  function igorOpening(q) {
+   let path=igorSessionPath();let next=getAfter(path).data;
+   return igorRoundId(q) && next.question == int(q) && next.updatedAt == request.time
+    && (!exists(path) ? q == '1' : get(path).data.question == int(q)-1);
+  }
+  match /igorLive/{id} {
+   allow get: if id == 'main' && isMember();
+   allow list,delete: if false;
+   allow create: if id == 'main' && igorHost() && tripStarted() && validIgorSession(request.resource.data)
+    && request.resource.data.question == 1 && request.resource.data.startedAt == request.time
+    && emptyIgorRound('1',getAfter(igorRoundPath('1')).data);
+   allow update: if id == 'main' && igorHost() && validIgorSession(request.resource.data)
+    && request.resource.data.startedAt == resource.data.startedAt && request.resource.data.question == resource.data.question+1
+    && get(igorRoundPath(string(resource.data.question))).data.total == 12
+    && !exists(igorRoundPath(string(request.resource.data.question)))
+    && emptyIgorRound(string(request.resource.data.question),getAfter(igorRoundPath(string(request.resource.data.question))).data);
+   match /rounds/{q} {
+    allow get: if id == 'main' && isMember() && igorOpened(q) && (igorHost() || exists(igorAnswerPath(q,personId())));
+    allow list,delete: if false;
+    allow create: if id == 'main' && igorHost() && igorOpening(q) && emptyIgorRound(q,request.resource.data);
+    allow update: if id == 'main' && igorCanAnswer(q,personId()) && !exists(igorAnswerPath(q,personId()))
+     && igorVoteDelta(q,request.resource.data,resource.data,getAfter(igorAnswerPath(q,personId())).data);
+    match /answers/{voter} {
+     allow get: if id == 'main' && isMember() && igorRoundId(q) && (voter == personId() || (igorHost() && igorOpened(q)));
+     allow list: if id == 'main' && igorHost() && igorOpened(q);
+     allow create: if id == 'main' && igorCanAnswer(q,voter) && !exists(igorAnswerPath(q,voter))
+      && igorVoteDelta(q,getAfter(igorRoundPath(q)).data,get(igorRoundPath(q)).data,request.resource.data);
      allow update,delete: if false;
     }
    }
