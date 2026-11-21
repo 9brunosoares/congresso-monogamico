@@ -813,7 +813,6 @@ service cloud.firestore {
     && emptyIgorRound('1',getAfter(igorRoundPath('1')).data);
    allow update: if id == 'main' && igorHost() && validIgorSession(request.resource.data)
     && request.resource.data.startedAt == resource.data.startedAt && request.resource.data.question == resource.data.question+1
-    && get(igorRoundPath(string(resource.data.question))).data.total == 12
     && !exists(igorRoundPath(string(request.resource.data.question)))
     && emptyIgorRound(string(request.resource.data.question),getAfter(igorRoundPath(string(request.resource.data.question))).data);
    match /rounds/{q} {

@@ -34,7 +34,7 @@ const {context}=require('./firebase-context.cjs');
   for(const o of igorOptions(q))for(const target of ['answer','round'])add('opção válida '+q+o.id+target,vote({q:String(q),choice:o.id,target}));
   if(q<10){
    add('avanço após12 q'+q,hostAction({kind:'next',q}));
-   add('não avança com11 q'+q,hostAction({kind:'next',q,total:11,expectation:'DENY'}));
+   for(const total of [0,1,11])add('Igor avança com '+total+' respostas q'+q,hostAction({kind:'next',q,total}));
    add('sem pular q'+q,hostAction({kind:'next',q,step:2,expectation:'DENY'}));
    add('agregado seguinte q'+(q+1),hostAction({kind:'round-create',q:q+1}));
   }

@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Igor pode avançar com respostas pendentes (21/11/2026)
+- Pedido de Bru durante a apresentação: Igor pode liberar a próxima pergunta sem esperar as12 respostas, inclusive com zero votos. UI, transação e regra de `igorLive/main` deixam de exigir quórum. Mantidos controle exclusivo de Igor, ordem sequencial, criação atômica da próxima rodada vazia, proibição de sobrescrever rodadas e imutabilidade dos votos. Ao avançar, a pergunta anterior não recebe novos votos; resultados já gravados são preservados. Não alterar o quórum do Nanu.
+- Validação:79 testes locais aprovados e332 cenários específicos de regras com dados simulados, incluindo avanço com0/1/11 votos e recusa de voto em pergunta encerrada. Nenhuma sessão ou resposta real alterada para testar. Versão do front-end20261121u.
+
 ## Enquete oficial do Nanu liberada após ensaio (21/11/2026)
 - Bru confirmou o sucesso do teste e autorizou a apresentação oficial. `NANU_TEST_MODE=false`: sala `nanuLive/main`, Nanu controla e os outros12 congressistas votam. A sala oficial estava ausente; Nanu recebe Liberar primeira pergunta novamente. Preservar o ensaio concluído em `nanuLive/teste`, sem copiar seus votos ou apagar dados.
 - Conferido o mesmo bloqueio de leitura futura no Igor: já corrigido no adaptador publicado. Testes de ambos recusam leitura de rodada futura e percorrem todas as perguntas com avanço atômico. Nenhuma regra nova ou migração é necessária; publicar somente front-end com versões atualizadas dos módulos do Nanu.

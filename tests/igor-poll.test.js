@@ -67,7 +67,6 @@ test('Igor: doze clientes, envios simultâneos, barras, reentrada e persistênci
   await assert.rejects(clients[0].start(),/Igor/);await host.start();await host.start();
   const round=q=>'igorLive/main/rounds/'+q;let count,session;
   const stops=[host.watchSession(s=>session=s),clients[0].watchRound(1,r=>count=r.total)];
-  await assert.rejects(host.next(1),/todos/);
   failCommit=true;await assert.rejects(clients[0].answer(1,'a'),/conexão/);failCommit=false;assert.equal(records.get(round(1)).total,0);
   const answers=[];
   for(let q=1;q<=10;q++){
@@ -83,6 +82,15 @@ test('Igor: doze clientes, envios simultâneos, barras, reentrada e persistênci
   const exported=buildIgorExport(session,answers);assert.equal(exported.snapshot.questions.reduce((n,q)=>n+q.total,0),120);
   selected=clients[0].who;const reopened=createIgorPollData();await reopened.answer(10,'b');assert.equal(records.get(round(10)).total,12);
   assert(![...records.keys()].some(k=>k.startsWith('points/')||k.startsWith('nanuLive/')));
+  // Ensaio isolado: Igor avança sem votos e depois com somente uma resposta.
+  records.clear();await host.start();await host.next(1);
+  assert.equal(records.get('igorLive/main').question,2);
+  assert.equal(records.get(round(1)).total,0);
+  await clients[0].answer(2,'a');await Promise.all([host.next(2),host.next(2)]);
+  assert.equal(records.get('igorLive/main').question,3);
+  assert.equal(records.get(round(2)).total,1);
+  assert.equal(records.get(round(2)+'/answers/'+clients[0].who).choice,'a');
+  await assert.rejects(clients[0].next(3),/Igor/);
   auths.get(clients[0].who).currentUser=null;await assert.rejects(reopened.answer(10,'a'),/conta mudou/);
   for(const stop of stops)stop();assert.equal(watchers.size,0);
  }finally{delete globalThis.__igorSdk;await Promise.all(files.map(f=>fs.rm(f,{force:true})));}

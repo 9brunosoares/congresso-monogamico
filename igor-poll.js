@@ -1,4 +1,4 @@
-import {createIgorPollData} from './igor-poll-data.js?v=20261121s';
+import {createIgorPollData} from './igor-poll-data.js?v=20261121u';
 import {IGOR_HOST,IGOR_VOTERS,igorQuestion,igorOptions,igorPayload,igorOptionLabel} from './igor-poll-model.js?v=20261121p';
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -63,7 +63,7 @@ export function openIgorPoll({onClose,onError}={}){
   let content;
   if(host||state.mine&&state.confirmed){
    content=results(question)+`<p class="nanu-progress num" aria-live="polite">${state.round?.total??0} de ${IGOR_VOTERS.length} respostas</p>`;
-   if(host&&q<10)content+=`<button class="btn seal block" data-igor-next type="button" ${state.busy||state.round?.total!==IGOR_VOTERS.length?'disabled':''}>Próxima pergunta</button>${state.round?.total!==IGOR_VOTERS.length?'<p class="muted nanu-wait">Aguardando todos responderem.</p>':''}`;
+   if(host&&q<10)content+=`<button class="btn seal block" data-igor-next type="button" ${state.busy?'disabled':''}>Próxima pergunta</button><p class="muted nanu-wait">Você pode avançar mesmo com respostas pendentes. Ao avançar, esta pergunta será encerrada.</p>`;
    else if(q<10)content+='<p class="muted nanu-wait">O Igor libera a próxima pergunta.</p>';
    else if(state.round?.total===IGOR_VOTERS.length)content+='<p class="muted nanu-wait">Enquete concluída.</p>';
   }else if(state.mine===undefined||state.mine&&!state.confirmed)content='<p class="muted" role="status">'+(state.mine?'Enviando resposta…':'Carregando sua participação…')+'</p>';

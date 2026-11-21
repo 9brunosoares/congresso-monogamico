@@ -103,7 +103,7 @@ async function showIgorPoll(){
  if(igorPoll||igorPollLoading)return;
  igorPollLoading=true;const owner=S.me;
  try{
-  const {openIgorPoll}=await import('./igor-poll.js?v=20261121s');
+  const {openIgorPoll}=await import('./igor-poll.js?v=20261121u');
   if(S.me!==owner)return;
   igorPoll=openIgorPoll({onClose(){igorPoll=null;$('#igorPollLink')?.focus({preventScroll:true});},onError:backend.reportError});
  }catch(error){backend.reportError(error);toast('Não foi possível abrir a enquete. Tente novamente.');}
