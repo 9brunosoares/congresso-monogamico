@@ -14,8 +14,10 @@ const { context } = require('./firebase-context.cjs');
                     missingPoint = false, missingBoar = false, expectation = 'ALLOW' } = {}) {
    const boar = { by: actor, t: time, ...boarPatch };
    const point = { who: actor, d: 20, kind: 'jogo', why: 'Acordou o javali da chácara', at: '21/11, 15:00', createdAt: time, ...pointPatch };
+   // No Firestore, gravar sobre documento existente avalia update, nunca create.
+   const actualMethod = method === 'create' && (target === 'boar' ? existsBoar : existsPoint) ? 'update' : method;
    return { expectation, request: { auth: { uid, token: { email: actor + '@congresso.app' } }, time,
-    path: target === 'boar' ? boarPath : pointPath, method,
+    path: target === 'boar' ? boarPath : pointPath, method: actualMethod,
     resource: { data: target === 'boar' ? boar : point } },
     resource: { data: target === 'boar' ? boar : point },
     functionMocks: [mock('get', root + '/people/' + actor, { data: { uid } }),

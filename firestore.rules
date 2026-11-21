@@ -42,6 +42,10 @@ rules_version = '2';
 // dailyQuizEden/{uid}: rodada High, +20, início em21 ou22/11 após comprovante de voto.
 // Ambas: day/startedAt imutáveis; answer/answeredAt gravados juntos, tentativa única.
 // points/quiz_ob_<uid> e points/quiz_eden_<uid>: bônus imutáveis e pareados à resposta.
+// nanuLive/main: question int1..11, startedAt/updatedAt timestamps; só Nanu inicia/avança.
+// nanuLive/main/rounds/{1..11}: a,b,c,total int0..12; agregados, sem gabarito.
+// rounds/{q}/answers/{apelido}: choice a|b|c ou text1..140, createdAt. Só os12 convidados votam.
+// Um voto imutável por convidado/pergunta, pareado ao incremento do agregado.
 // querido/{diaSP}: {counts,voters}, com os 13 IDs no mapa counts.
 // Cada valor guarda nove totais em base16, como inteiro exato de até36bits.
 // Ordem fixa no roster.js; 🌱 é o nono dígito, sem alterar os oito anteriores.
@@ -659,6 +663,68 @@ service cloud.firestore {
     && getAfter(/databases/$(database)/documents/querido/$(day)/voters/$(request.auth.uid)).data == {'voted':true}
     && getAfter(/databases/$(database)/documents/querido/$(day)).data.voters == previousVoters(day) + 1;
    allow update, delete: if false;
+  }
+  function nanuHost() { return isMember() && personId() == 'nanu'; }
+  function nanuRoundId(q) { return q in ['1','2','3','4','5','6','7','8','9','10','11']; }
+  function nanuSessionPath() { return /databases/$(database)/documents/nanuLive/main; }
+  function nanuRoundPath(q) { return /databases/$(database)/documents/nanuLive/main/rounds/$(q); }
+  function nanuAnswerPath(q,id) { return /databases/$(database)/documents/nanuLive/main/rounds/$(q)/answers/$(id); }
+  function validNanuSession(d) {
+   return only(d,['question','startedAt','updatedAt']) && d.question is int && d.question >= 1 && d.question <= 11
+    && d.startedAt is timestamp && d.updatedAt is timestamp && d.updatedAt == request.time;
+  }
+  function validNanuRound(d) {
+   return only(d,['a','b','c','total']) && d.a is int && d.a >= 0 && d.a <= 12
+    && d.b is int && d.b >= 0 && d.b <= 12 && d.c is int && d.c >= 0 && d.c <= 12
+    && d.total is int && d.total >= 0 && d.total <= 12;
+  }
+  function emptyNanuRound(d) { return d == {'a':0,'b':0,'c':0,'total':0}; }
+  function nanuCurrent(q) { return nanuRoundId(q) && exists(nanuSessionPath()) && get(nanuSessionPath()).data.question == int(q); }
+  function nanuOpened(q) { return nanuRoundId(q) && exists(nanuSessionPath()) && get(nanuSessionPath()).data.question >= int(q); }
+  function validNanuAnswer(q,d) {
+   return fresh(d) && (q == '11'
+    ? only(d,['text','createdAt']) && text(d.text,140) && d.text.matches('.*\\S.*')
+    : only(d,['choice','createdAt']) && (d.choice in ['a','b'] || (d.choice == 'c' && !(q in ['8','9']))));
+  }
+  function nanuVoteDelta(q,d,before,answer) {
+   return validNanuRound(d) && validNanuAnswer(q,answer) && d.total == before.total + 1
+    && (q == '11' ? d.a == 0 && d.b == 0 && d.c == 0
+     : d.a == before.a + (answer.choice == 'a' ? 1 : 0)
+      && d.b == before.b + (answer.choice == 'b' ? 1 : 0)
+      && d.c == before.c + (answer.choice == 'c' ? 1 : 0) && d.a+d.b+d.c == d.total);
+  }
+  function nanuCanAnswer(q,id) { return isMember() && personId() != 'nanu' && id == personId() && nanuCurrent(q); }
+  function nanuCanCloud() { return nanuOpened('11') && (nanuHost() || exists(nanuAnswerPath('11',personId()))); }
+  function nanuOpening(q) {
+   let path=nanuSessionPath();let next=getAfter(path).data;
+   return nanuRoundId(q) && next.question == int(q) && next.updatedAt == request.time
+    && (!exists(path) ? q == '1' : get(path).data.question == int(q)-1);
+  }
+  match /nanuLive/{id} {
+   allow get: if id == 'main' && isMember();
+   allow list,delete: if false;
+   allow create: if id == 'main' && nanuHost() && tripStarted() && validNanuSession(request.resource.data)
+    && request.resource.data.question == 1 && request.resource.data.startedAt == request.time
+    && emptyNanuRound(getAfter(nanuRoundPath('1')).data);
+   allow update: if id == 'main' && nanuHost() && validNanuSession(request.resource.data)
+    && request.resource.data.startedAt == resource.data.startedAt && request.resource.data.question == resource.data.question+1
+    && get(nanuRoundPath(string(resource.data.question))).data.total == 12
+    && !exists(nanuRoundPath(string(request.resource.data.question)))
+    && emptyNanuRound(getAfter(nanuRoundPath(string(request.resource.data.question))).data);
+   match /rounds/{q} {
+    allow get: if id == 'main' && isMember() && nanuOpened(q) && (nanuHost() || exists(nanuAnswerPath(q,personId())));
+    allow list,delete: if false;
+    allow create: if id == 'main' && nanuHost() && nanuOpening(q) && emptyNanuRound(request.resource.data);
+    allow update: if id == 'main' && nanuCanAnswer(q,personId()) && !exists(nanuAnswerPath(q,personId()))
+     && nanuVoteDelta(q,request.resource.data,resource.data,getAfter(nanuAnswerPath(q,personId())).data);
+    match /answers/{voter} {
+     allow get: if id == 'main' && isMember() && nanuRoundId(q) && (voter == personId() || (q == '11' && nanuCanCloud()));
+     allow list: if id == 'main' && q == '11' && isMember() && nanuCanCloud();
+     allow create: if id == 'main' && nanuCanAnswer(q,voter) && !exists(nanuAnswerPath(q,voter))
+      && nanuVoteDelta(q,getAfter(nanuRoundPath(q)).data,get(nanuRoundPath(q)).data,request.resource.data);
+     allow update,delete: if false;
+    }
+   }
   }
   match /{document=**} { allow read, write: if false; }
  }

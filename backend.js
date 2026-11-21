@@ -87,6 +87,7 @@ function syncData(){
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(3)),snap=>{state.hasMural=!snap.empty;state.muralPreview=[...new Set(snap.docs.map(d=>d.data().who))].filter(id=>ALL.includes(id))},true);
  const car=carFor(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
+ if(currentView==='programa')listen('nanuSession',doc(db,'nanuLive','main'),snap=>{state.nanuSession=snap.exists()?snap.data():null});
  const at=Date.now();
  if(['inicio','fotos'].includes(currentView)){
   const full=currentView==='fotos';
