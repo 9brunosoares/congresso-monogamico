@@ -2,6 +2,10 @@ import {ALL} from './roster.js?v=20261120j';
 
 export const NANU_HOST='nanu';
 export const NANU_VOTERS=ALL.filter(id=>id!==NANU_HOST);
+// Ensaio em dois aparelhos: Nanu apresenta, Bru responde. A sala oficial fica preservada.
+export const NANU_TEST_MODE=true;
+export const NANU_ROOM=NANU_TEST_MODE?'teste':'main';
+export const NANU_ACTIVE_VOTERS=NANU_TEST_MODE?['bruno']:NANU_VOTERS;
 export const NANU_QUESTIONS=[
  {text:'Qual percentual dos candidatos recebeu a tag "Porta aberta"?',options:['25%','50%','20%']},
  {text:'Qual percentual dos candidatos recebeu a tag "Maluco"?',options:['37%','7%','12%']},
@@ -21,8 +25,8 @@ export const nanuChoiceValid=(q,choice)=>typeof choice==='string'&&choice.length
 export const cleanNanuText=value=>String(value??'').replace(/\s+/g,' ').trim();
 const fold=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
 export function isNanuActivity(activity){return /(?:retrospectiva|restrospectiva).*meu an/.test(fold(String(activity?.title||'')));}
-export function nanuAgendaAccess(activity,who,session){
- return isNanuActivity(activity)&&ALL.includes(who)&&(who===NANU_HOST||!!nanuQuestion(session?.question));
+export function nanuAgendaAccess(activity,who,session,{testMode=NANU_TEST_MODE}={}){
+ return isNanuActivity(activity)&&(testMode?['nanu','bruno']:ALL).includes(who)&&(who===NANU_HOST||!!nanuQuestion(session?.question));
 }
 
 const STOP=new Set('a as o os um uma uns umas de da das do dos e em no na nos nas por porque pq que pra pro para com ele ela dele dela nanu ser estar esta esse essa isso isso eh muito mais menos tem ta seu sua seus suas so se namora namorar'.split(' '));

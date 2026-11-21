@@ -1,5 +1,5 @@
-import {createNanuPollData} from './nanu-poll-data.js?v=20261121b';
-import {NANU_HOST,NANU_VOTERS,nanuQuestion,cleanNanuText,nanuCloudWords,layoutNanuCloud} from './nanu-poll-model.js?v=20261121b';
+import {createNanuPollData} from './nanu-poll-data.js?v=20261121r';
+import {NANU_HOST,NANU_ACTIVE_VOTERS as NANU_VOTERS,NANU_TEST_MODE,nanuQuestion,cleanNanuText,nanuCloudWords,layoutNanuCloud} from './nanu-poll-model.js?v=20261121r';
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const failText=error=>error?.code==='permission-denied'?'Reabra a enquete para atualizar seu acesso.':error?.code==='unavailable'?'Confira sua conexão e tente novamente.':error?.message||'Não foi possível carregar a enquete.';
@@ -62,7 +62,7 @@ export function openNanuPoll({onClose,onError}={}){
   let content='';
   if(host||state.mine&&state.confirmed){
    content=q===11?cloud():bars(question);
-   content+=`<p class="nanu-progress num" aria-live="polite">${state.round?.total??0} de ${NANU_VOTERS.length} respostas</p>`;
+   content+=`<p class="nanu-progress num" aria-live="polite">${state.round?.total??0} de ${NANU_VOTERS.length} ${NANU_VOTERS.length===1?"resposta":"respostas"}</p>`;
    if(host&&q<11)content+=`<button class="btn seal block" data-nanu-next type="button" ${state.busy||state.round?.total!==NANU_VOTERS.length?'disabled':''}>${q===10?'Liberar última pergunta':'Próxima pergunta'}</button>${state.round?.total!==NANU_VOTERS.length?'<p class="muted nanu-wait">Aguardando todos responderem.</p>':''}`;
    else if(q<11)content+='<p class="muted nanu-wait">O Nanu libera a próxima pergunta.</p>';
   }else if(state.mine===undefined||state.mine&&!state.confirmed){content='<p class="muted" role="status">'+(state.mine?'Enviando resposta…':'Carregando sua participação…')+'</p>';}
@@ -80,7 +80,7 @@ export function openNanuPoll({onClose,onError}={}){
   const input=dialog.querySelector('#nanu-open-answer'),focused=document.activeElement===input,start=input?.selectionStart,end=input?.selectionEnd;
   const choice=document.activeElement?.dataset?.nanuChoice,originals=dialog.querySelector('.nanu-originals')?.open;
   const scroll=activeQuestion===lastRenderedQuestion?dialog.scrollTop:0;lastRenderedQuestion=activeQuestion;
-  dialog.innerHTML=`<div class="nanu-shell"><header class="nanu-top"><button class="link" data-nanu-close type="button">‹ Voltar</button><span class="eyebrow">Apresentação do Nanu</span></header><section class="nanu-content">${body()}${state.error?`<div class="nanu-error" role="alert">${esc(state.error)}<button class="link" data-nanu-retry type="button">Tentar novamente</button></div>`:''}</section></div>`;
+  dialog.innerHTML=`<div class="nanu-shell"><header class="nanu-top"><button class="link" data-nanu-close type="button">‹ Voltar</button><span class="eyebrow">${NANU_TEST_MODE?'Ensaio · Nanu e Bru':'Apresentação do Nanu'}</span></header><section class="nanu-content">${body()}${state.error?`<div class="nanu-error" role="alert">${esc(state.error)}<button class="link" data-nanu-retry type="button">Tentar novamente</button></div>`:''}</section></div>`;
   dialog.scrollTop=scroll;
   if(focused){const next=dialog.querySelector('#nanu-open-answer');next?.focus({preventScroll:true});if(next&&start!=null)next.setSelectionRange(start,end);}
   else if(choice)dialog.querySelector(`[data-nanu-choice="${choice}"]`)?.focus({preventScroll:true});

@@ -5,6 +5,7 @@ import {normalizeOfficialLinks} from './official-links.js?v=20261107c';
 import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {subscriptionPool,lazyCollections,mergeRows,photoLoader} from './data-sync.js';
 import {validReportPhoto} from './report-photo.js';
+import {NANU_ROOM,NANU_TEST_MODE} from './nanu-poll-model.js?v=20261121r';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, verifyPasswordResetCode, confirmPasswordReset, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
@@ -87,7 +88,7 @@ function syncData(){
  listen('hasMural',query(collection(db,'cases'),where('status','==','ok'),limit(3)),snap=>{state.hasMural=!snap.empty;state.muralPreview=[...new Set(snap.docs.map(d=>d.data().who))].filter(id=>ALL.includes(id))},true);
  const car=carFor(state.me);if(car)listen('travelPlan',doc(db,'travelPlans',car.driver),snap=>{state.travelPlan=snap.data()||null});
  if(currentView==='inicio')listen('officialLinks',doc(db,'officialLinks','main'),snap=>{state.officialLinks=snap.exists()?snap.data():null});
- if(currentView==='programa')listen('nanuSession',doc(db,'nanuLive','main'),snap=>{state.nanuSession=snap.exists()?snap.data():null});
+ if(currentView==='programa'&&(!NANU_TEST_MODE||['nanu','bruno'].includes(state.me)))listen('nanuSession',doc(db,'nanuLive',NANU_ROOM),snap=>{state.nanuSession=snap.exists()?snap.data():null});
  if(currentView==='programa')listen('igorSession',doc(db,'igorLive','main'),snap=>{state.igorSession=snap.exists()?snap.data():null});
  const at=Date.now();
  if(['inicio','fotos'].includes(currentView)){

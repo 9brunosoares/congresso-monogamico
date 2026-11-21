@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {NANU_HOST,NANU_VOTERS,NANU_QUESTIONS,nanuQuestion,nanuChoiceValid,nanuAgendaAccess,cleanNanuText,nanuCloudWords,layoutNanuCloud} from '../nanu-poll-model.js';
+import {NANU_HOST,NANU_VOTERS,NANU_ROOM,NANU_TEST_MODE,NANU_ACTIVE_VOTERS,NANU_QUESTIONS,nanuQuestion,nanuChoiceValid,nanuAgendaAccess,cleanNanuText,nanuCloudWords,layoutNanuCloud} from '../nanu-poll-model.js';
 
 test('Nanu: onze perguntas, alternativas exatas e link restrito antes da liberação',()=>{
  assert.equal(NANU_HOST,'nanu');assert.equal(NANU_VOTERS.length,12);assert(!NANU_VOTERS.includes('nanu'));
@@ -13,7 +13,9 @@ test('Nanu: onze perguntas, alternativas exatas e link restrito antes da libera�
  for(const invalid of ['',null,'ab','A',0])assert(!nanuChoiceValid(1,invalid));assert(!nanuChoiceValid(11,'a'));
  const activity={title:'Restrospectiva do meu an*'};
  assert(nanuAgendaAccess(activity,'nanu',null));assert(!nanuAgendaAccess(activity,'bruno',null));assert(!nanuAgendaAccess(activity,'igor',null));
- for(const id of NANU_VOTERS)assert(nanuAgendaAccess(activity,id,{question:1}));
+ for(const id of NANU_VOTERS)assert(nanuAgendaAccess(activity,id,{question:1},{testMode:false}));
+ assert.equal(NANU_TEST_MODE,true);assert.equal(NANU_ROOM,'teste');assert.deepEqual(NANU_ACTIVE_VOTERS,['bruno']);
+ for(const id of NANU_VOTERS)assert.equal(nanuAgendaAccess(activity,id,{question:1}),id==='bruno');
  assert(!nanuAgendaAccess(activity,'kirk',{question:1}));assert(!nanuAgendaAccess({title:'Almoço'},'nanu',{question:1}));
  assert(NANU_QUESTIONS.every(q=>Object.keys(q).sort().join(',')==='options,text'));
 });
@@ -66,7 +68,8 @@ test('Nanu: SDK real com doze clientes, voto atômico, reentrada, avanço e nuve
   await fs.writeFile(sdkPath,Object.keys(sdk).map(n=>`export const ${n}=(...args)=>globalThis.__nanuSdk.${n}(...args);`).join('\n'));
   const source=(await fs.readFile('nanu-poll-data.js','utf8')).replace(/from 'https:\/\/www.gstatic.com\/firebasejs\/13.1.0\/firebase-(app|auth|firestore).js'/g,`from '${pathToFileURL(sdkPath).href}'`).replace(/from '\.\//g,"from '../");
   await fs.writeFile(dataPath,source);const {createNanuPollData}=await import(pathToFileURL(dataPath).href);
-  const host=createNanuPollData(),clients=NANU_VOTERS.map(who=>{selected=who;return createNanuPollData();});
+  const official=()=>createNanuPollData({room:'main',voters:NANU_VOTERS});
+  const host=official(),clients=NANU_VOTERS.map(who=>{selected=who;return official();});
   await assert.rejects(clients[0].start(),/Nanu/);
   await host.start();await host.start();assert.equal(records.get('nanuLive/main').question,1);
   await assert.rejects(host.next(1),/todos/);
@@ -90,6 +93,17 @@ test('Nanu: SDK real com doze clientes, voto atômico, reentrada, avanço e nuve
   await new Promise(r=>setImmediate(r));assert.equal(cloud.length,12);assert.deepEqual(records.get(roundPath(11)),{a:0,b:0,c:0,total:12});
   assert.equal(nanuCloudWords(cloud).find(w=>w.key==='exigente').count,6);
   await host.next(11);assert.equal(records.get('nanuLive/main').question,11);
+  selected='igor';assert.throws(()=>createNanuPollData(),/exclusivo/);
+  selected='nanu';const testHost=createNanuPollData();selected='bruno';const testVoter=createNanuPollData();
+  await testHost.start();await assert.rejects(testHost.answer(1,'a'),/não participa/);
+  for(let q=1;q<=10;q++){
+   await assert.rejects(testHost.next(q),/todos/);await testVoter.answer(q,'a');
+   assert.equal(records.get('nanuLive/teste/rounds/'+q).total,1);await testHost.next(q);
+  }
+  let testCloud;stops.push(testHost.watchCloud(value=>testCloud=value));
+  await testVoter.answer(11,'Só um ensaio');await new Promise(r=>setImmediate(r));
+  assert.equal(testCloud.length,1);assert.equal(testCloud[0].text,'Só um ensaio');
+  assert.equal(records.get('nanuLive/main/rounds/11').total,12);
   assert(![...records.keys()].some(k=>k.startsWith('points/')));
   auths.get(clients[0].who).currentUser=null;await assert.rejects(clients[0].answer(11,'Outra resposta'),/conta mudou/);
   for(const stop of stops)stop();assert.equal(watchers.size,0);

@@ -8,8 +8,8 @@ import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261120j';
 import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261120j';
-import * as backend from './backend.js?v=20261121p';
-import {nanuAgendaAccess} from './nanu-poll-model.js?v=20261121b';
+import * as backend from './backend.js?v=20261121r';
+import {nanuAgendaAccess} from './nanu-poll-model.js?v=20261121r';
 import {igorAgendaAccess} from './igor-poll-model.js?v=20261121p';
 import {openTravelMap} from './mapa-viagem.js?v=20261121o';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
@@ -113,7 +113,7 @@ async function showNanuPoll(){
  if(nanuPoll||nanuPollLoading)return;
  nanuPollLoading=true;const owner=S.me;
  try{
-  const {openNanuPoll}=await import('./nanu-poll.js?v=20261121b');
+  const {openNanuPoll}=await import('./nanu-poll.js?v=20261121r');
   if(S.me!==owner)return;
   nanuPoll=openNanuPoll({onClose(){nanuPoll=null;$('#nanuPollLink')?.focus({preventScroll:true});},onError:backend.reportError});
  }catch(error){backend.reportError(error);toast('Não foi possível abrir a enquete. Tente novamente.');}

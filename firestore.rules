@@ -46,6 +46,7 @@ rules_version = '2';
 // nanuLive/main/rounds/{1..11}: a,b,c,total int0..12; agregados, sem gabarito.
 // rounds/{q}/answers/{apelido}: choice a|b|c ou text1..140, createdAt. Só os12 convidados votam.
 // Um voto imutável por convidado/pergunta, pareado ao incremento do agregado.
+// nanuLive/teste: mesmo fluxo, isolado; Nanu controla e somente Bru vota (quórum1).
 // igorLive/main e rounds/{1..10}: enquete permanente, conduzida só por Igor, com12 votantes.
 // Agregados {counts:{opcao:total},total}; comprovante {choice,createdAt} imutável.
 // querido/{diaSP}: {counts,voters}, com os 13 IDs no mapa counts.
@@ -724,6 +725,48 @@ service cloud.firestore {
      allow list: if id == 'main' && q == '11' && isMember() && nanuCanCloud();
      allow create: if id == 'main' && nanuCanAnswer(q,voter) && !exists(nanuAnswerPath(q,voter))
       && nanuVoteDelta(q,getAfter(nanuRoundPath(q)).data,get(nanuRoundPath(q)).data,request.resource.data);
+     allow update,delete: if false;
+    }
+   }
+  }
+  function nanuTestMember() { return isMember() && personId() in ['nanu','bruno']; }
+  function nanuTestSessionPath() { return /databases/$(database)/documents/nanuLive/teste; }
+  function nanuTestRoundPath(q) { return /databases/$(database)/documents/nanuLive/teste/rounds/$(q); }
+  function nanuTestAnswerPath(q) { return /databases/$(database)/documents/nanuLive/teste/rounds/$(q)/answers/bruno; }
+  function nanuTestCurrent(q) { return nanuRoundId(q) && exists(nanuTestSessionPath()) && get(nanuTestSessionPath()).data.question == int(q); }
+  function nanuTestOpened(q) { return nanuRoundId(q) && exists(nanuTestSessionPath()) && get(nanuTestSessionPath()).data.question >= int(q); }
+  function nanuTestOpening(q) {
+   let path=nanuTestSessionPath();let next=getAfter(path).data;
+   return nanuRoundId(q) && next.question == int(q) && next.updatedAt == request.time
+    && (!exists(path) ? q == '1' : get(path).data.question == int(q)-1);
+  }
+  function nanuTestCanVote(q,voter) { return isMember() && personId() == 'bruno' && voter == 'bruno' && nanuTestCurrent(q); }
+  function nanuTestDelta(q,after,before,answer) {
+   return emptyNanuRound(before) && after.total == 1 && nanuVoteDelta(q,after,before,answer);
+  }
+  match /nanuLive/teste {
+   allow get: if nanuTestMember();
+   allow list,delete: if false;
+   allow create: if nanuHost() && tripStarted() && validNanuSession(request.resource.data)
+    && request.resource.data.question == 1 && request.resource.data.startedAt == request.time
+    && emptyNanuRound(getAfter(nanuTestRoundPath('1')).data);
+   allow update: if nanuHost() && validNanuSession(request.resource.data)
+    && request.resource.data.startedAt == resource.data.startedAt && request.resource.data.question == resource.data.question+1
+    && get(nanuTestRoundPath(string(resource.data.question))).data.total == 1
+    && !exists(nanuTestRoundPath(string(request.resource.data.question)))
+    && emptyNanuRound(getAfter(nanuTestRoundPath(string(request.resource.data.question))).data);
+   match /rounds/{q} {
+    allow get: if nanuTestMember() && nanuTestOpened(q) && (nanuHost() || exists(nanuTestAnswerPath(q)));
+    allow list,delete: if false;
+    allow create: if nanuHost() && nanuTestOpening(q) && emptyNanuRound(request.resource.data);
+    allow update: if nanuTestCanVote(q,personId()) && !exists(nanuTestAnswerPath(q))
+     && nanuTestDelta(q,request.resource.data,resource.data,getAfter(nanuTestAnswerPath(q)).data);
+    match /answers/{voter} {
+     allow get: if nanuTestMember() && nanuRoundId(q)
+      && (personId() == 'bruno' && voter == 'bruno' || q == '11' && nanuTestOpened(q) && (nanuHost() || exists(nanuTestAnswerPath(q))));
+     allow list: if q == '11' && nanuTestMember() && nanuTestOpened(q) && (nanuHost() || exists(nanuTestAnswerPath(q)));
+     allow create: if nanuTestCanVote(q,voter) && !exists(nanuTestAnswerPath(q))
+      && nanuTestDelta(q,getAfter(nanuTestRoundPath(q)).data,get(nanuTestRoundPath(q)).data,request.resource.data);
      allow update,delete: if false;
     }
    }
