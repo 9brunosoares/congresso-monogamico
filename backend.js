@@ -9,8 +9,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebas
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, verifyPasswordResetCode, confirmPasswordReset, signOut, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromServer, startAfter, setDoc, onSnapshot, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, writeBatch, increment, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
-import { ALL, P, EMOJIS } from './roster.js?v=20261120e';
-import { dayKey, tripStarted, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261120e';
+import { ALL, P, EMOJIS } from './roster.js?v=20261120j';
+import { dayKey, tripStarted, tripPhotoDay, applyBallot, validatePin, decodeTally, VOTE_DAYS, votingKey, votingOpen, resultDay, alreadyVotedMessage, notice } from './shared.js?v=20261120j';
 
 const app=initializeApp(firebaseConfig), auth=getAuth(app);
 // O SDK recua para memória se IndexedDB não estiver disponível no navegador.

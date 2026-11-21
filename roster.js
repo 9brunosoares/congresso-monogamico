@@ -15,6 +15,7 @@ export const PEOPLE = [
 ];
 export const ALL = PEOPLE.map(p=>p.id);
 export const P = Object.fromEntries(PEOPLE.map(p=>[p.id,p]));
-export const EMOJIS = ["❤️","💔","🐍","🤮","🧳","🍪","🤥","🎯"];
+// Ordem persistida nos contadores: novas opções entram somente no fim.
+export const EMOJIS = ["❤️","💔","🐍","🤮","🧳","🍪","🤥","🎯","🌱"];
 
 

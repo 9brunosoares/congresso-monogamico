@@ -13,6 +13,16 @@ const {context}=require('./firebase-context.cjs');
   return structuredClone({expectation:'ALLOW',request:{auth,time:new Date(testTime).toISOString(),path:marker?base+'/voters/'+uid:base,method:previous&&!marker?'update':'create',resource:{data:marker?{voted:true}:next}},...(previous?{resource:{data:previous}}:{}),functionMocks:mocks,expressionReportLevel:'FULL'});
  }
  const cases=[make('bruno',first),make('bruno',first,null,true),make('ob',second,first),make('ob',second,first,true)];
+ // Nono emoji: criação, atualização sobre dados antigos e cliente antigo após planta.
+ const plantBallot=id=>Object.fromEntries(ALL.filter(x=>x!==id).map(x=>[x,'🌱']));
+ const plantFirst=applyBallot(undefined,plantBallot('bruno'),'bruno',Date.parse(testTime));
+ const plantSecond=applyBallot(first,plantBallot('ob'),'ob',Date.parse(testTime));
+ const legacyAfterPlant=applyBallot(plantFirst,ballot('ob'),'ob',Date.parse(testTime));
+ cases.push(make('bruno',plantFirst),make('bruno',plantFirst,null,true),make('ob',plantSecond,first),make('ob',plantSecond,first,true),make('ob',legacyAfterPlant,plantFirst));
+ for(const delta of [2*(16**8),16**8+1,16**9,-(16**8)]){
+  const invalid=make('bruno',plantFirst);invalid.expectation='DENY';invalid.request.resource.data.counts.ob=delta;cases.push(invalid);
+ }
+ const plantSelf=make('bruno',plantFirst);plantSelf.expectation='DENY';plantSelf.request.resource.data.counts.bruno=16**8;cases.push(plantSelf);
  const doubled=make('bruno',first);doubled.expectation='DENY';doubled.request.resource.data.counts.ob+=2;cases.push(doubled);
  const self=make('bruno',first);self.expectation='DENY';self.request.resource.data.counts.bruno=1;cases.push(self);
  const missing=make('bruno',first);missing.expectation='DENY';delete missing.request.resource.data.counts.ob;cases.push(missing);

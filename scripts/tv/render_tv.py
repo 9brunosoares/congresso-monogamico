@@ -22,7 +22,7 @@ W, H, FPS = 1920, 1080, 30
 BG, SURFACE, LINE = '#120f1b', '#1d1829', '#332c46'
 INK, MUTED, RED, GOLD = '#f1eef8', '#aaa3bc', '#ff4d68', '#e2bd52'
 SP = timezone(timedelta(hours=-3))
-LABELS = ['Amor', 'Coração partido', 'Cobra', 'Ranço', 'Mala', 'Biscoito', 'Mentira', 'Alvo']
+LABELS = ['Amor', 'Coração partido', 'Cobra', 'Ranço', 'Mala', 'Biscoito', 'Mentira', 'Alvo', 'Planta']
 
 
 class TV:
@@ -140,12 +140,17 @@ class TV:
             self.text(im, row['nick'], x + 194, y + 49, 65, family='head', weight=700)
             total = sum(row['counts'].values())
             self.text(im, f'{total} emojis recebidos', x + 196, y + 127, 27, MUTED)
+            columns = 3 if len(q['emojis']) == 9 else 4
+            cells = math.ceil(len(q['emojis']) / columns)
+            cell_w = (width - 68 - (columns - 1) * 15) // columns
+            cell_h = min(180, (438 - 24 - (cells - 1) * 16) // cells)
             for j, e in enumerate(q['emojis']):
-                cx, cy = x + 34 + (j % 4) * 195, y + 226 + (j // 4) * 204
+                cx, cy = x + 34 + (j % columns) * (cell_w + 15), y + 226 + (j // columns) * (cell_h + 16)
                 n = row['counts'].get(e, 0)
-                d.rounded_rectangle((cx, cy, cx + 180, cy + 180), radius=19, fill='#252031', outline='#3c334a' if n else LINE, width=1)
-                self.emoji(im, j, cx + 55, cy + 18, 70)
-                self.text(im, str(n), cx + 90, cy + 105, 53, GOLD if n else '#70687e', 'num', weight=650, anchor='mt')
+                d.rounded_rectangle((cx, cy, cx + cell_w, cy + cell_h), radius=19, fill='#252031', outline='#3c334a' if n else LINE, width=1)
+                icon_size = 58 if cells > 2 else 70
+                self.emoji(im, j, cx + (cell_w - icon_size) // 2, cy + 12, icon_size)
+                self.text(im, str(n), cx + cell_w // 2, cy + (78 if cells > 2 else 105), 42 if cells > 2 else 53, GOLD if n else '#70687e', 'num', weight=650, anchor='mt')
         if len(rows) == 1:
             self.highlights(im)
         return im

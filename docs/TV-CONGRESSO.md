@@ -77,6 +77,8 @@ mural: {cases[]: {id, who, nick, description, status, createdAt,
 
 Contadores ausentes/zero não são votos negativos. Placar empatado segue a ordem alfabética do app. Não usar `entries` como pontuação. Datas são de São Paulo, independentemente do fuso do computador que renderiza.
 
+Atualização de20/11: o Queridômetro ganhou 🌱 como nona opção, anexada à ordem anterior. Snapshots antigos com oito opções continuam válidos. Novas exportações trazem nove; adicionar o ícone correspondente em `assets/emojis/8.png`. O renderizador adapta a grade para3×3 nesse caso, sem alterar vídeos já entregues.
+
 ## Atualizações durante a viagem
 
 1. Com sessão administrativa já autorizada, executar na raiz do repo:

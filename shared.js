@@ -1,5 +1,5 @@
 import {votePeople} from './travel.js?v=20261117a';
-import { ALL, EMOJIS } from './roster.js?v=20261120e';
+import { ALL, EMOJIS } from './roster.js?v=20261120j';
 export function validatePin(pin){if(!/^[0-9]{6}$/.test(pin))throw Error('Use um PIN de exatamente 6 dígitos.');}
 export function dayKey(at=Date.now()){return String(Math.floor((at-3*60*60*1000)/(24*60*60*1000)));}
 const tripStart=Date.parse('2026-11-18T00:00:00-03:00');
@@ -8,8 +8,9 @@ export function tripStarted(at=Date.now()){return at>=tripStart;}
 export function tripPhotoDay(at=Date.now()){
  return tripStarted(at)&&at<tripPhotoEnd?dayKey(at):null;
 }
-// Cada dígito hexadecimal guarda o total de um dos oito emojis, na ordem de EMOJIS.
-// No máximo 13 recebidos por alvo: não há transporte entre dígitos (base 16).
+// Cada dígito hexadecimal guarda o total de um emoji, na ordem fixa de EMOJIS.
+// Nove opções usam 36 bits, dentro dos inteiros exatos de JavaScript.
+// Com 13 votantes e sem voto próprio, máximo12 recebidos: sem transporte (base16).
 // O número guarda somente totais; não preserva ordem nem autor de cada voto.
 export function decodeTally(value=0){
  return Object.fromEntries(EMOJIS.map((emoji,i)=>[emoji,Math.floor(value/(16**i))%16]));

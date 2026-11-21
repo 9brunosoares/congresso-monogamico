@@ -36,9 +36,10 @@ rules_version = '2';
 // pilotUsage/{diaSP_uid_acao}: {day,action}, recibo imutável de ação diária.
 // mapRecords/latinhas: by oficial, pts int1..999, t timestamp do servidor.
 // points/lake_<pts>: bônus imutável de 15 pontos criado junto com o avanço da placa.
-// querido/{diaSP}: {counts,voters}, com os 14 IDs no mapa counts.
-// Cada valor é um número inteiro0..3722304989 com oito totais em base16.
-// Cada dígito armazena o total de um emoji (ordem fixa no roster.js), máximo13.
+// querido/{diaSP}: {counts,voters}, com os 13 IDs no mapa counts.
+// Cada valor guarda nove totais em base16, como inteiro exato de até36bits.
+// Ordem fixa no roster.js; 🌱 é o nono dígito, sem alterar os oito anteriores.
+// Cada dígito tem máximo12 recebidos, pois não há voto próprio.
 // Não preserva a ordem dos votos nem ligação entre autor e escolha.
 // Contadores e marcador são atualizados na mesma transação (dois documentos).
 // querido/{diaSP}/voters/{uid}: SOMENTE voted:true. Somente o próprio lê.
@@ -548,7 +549,7 @@ service cloud.firestore {
    return local >= 1795046400000 && local < 1795392000000 && local % 86400000 >= 21600000 && local % 86400000 < 43200000;
   }
   // A subtração só aceita números; delta enumerado garante um único incremento.
-  // A partir de zero, com 14 votantes e sem voto próprio, cada dígito tem máximo13.
+  // A partir de zero, com 13 votantes e sem voto próprio, cada dígito tem máximo12.
   function isValidTallyDelta(delta,self,increments) { return self ? delta == 0 : delta in increments; }
   function isValidVoteDay(d,old,day) {
    let me=personId();
@@ -556,7 +557,7 @@ service cloud.firestore {
    let before=old.counts;
    let after=d.counts;
    let official=ids();
-   let increments=[1,16,256,4096,65536,1048576,16777216,268435456];
+   let increments=[1,16,256,4096,65536,1048576,16777216,268435456,4294967296];
    return isToday(day) && votingOpen() && !(early && me in ['bruno','ibrahim','igor','diogo','pelado','felipe','gherardi','luan']) && only(d,['counts','voters']) && d.voters is int && d.voters == old.voters + 1 && d.voters <= (early ? 5 : 13)
     && d.counts is map && after.keys().hasAll(official) && after.keys().hasOnly(official)
     && isValidTallyDelta(after['bruno']-before.get('bruno',0),('bruno'==me || early),increments)

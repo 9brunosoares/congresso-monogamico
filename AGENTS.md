@@ -1,5 +1,11 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Queridômetro: emoji de planta (20/11/2026)
+- Adicionada 🌱 como nona opção, no fim de EMOJIS. Preservar a ordem dos oito emojis anteriores: não migrar nem regravar votos antigos. O nono contador usa16**8; nove dígitos em base16 cabem com precisão no número JS.
+- Seletor em duas linhas, com5 colunas e botões de44px para caber no celular. Resultados mostram 🌱 com o mesmo fluxo dos outros emojis; janela, participação, anonimato e penalidades permanecem iguais.
+- Regras aceitam também o incremento4294967296, mantendo comprovantes e proteção contra duplicação/voto próprio. Publicar somente firestore:rules e front-end; não mudar Realtime Database, mapa, Auth ou índices. Testes usam documentos simulados, sem votar na produção.
+- Renderizador da TV aceita snapshot com8 ou9 opções (grade3×3 quando houver planta); exportações novas precisam do ícone8.png. Vídeo anterior permanece um retrato da captura original.
+
 ## Vídeo em loop para a TV (20/11/2026)
 - Pedido, fontes, schema e instruções para o Claude em `docs/TV-CONGRESSO.md`. Intercala Queridômetro encerrado, placar completo e casos aprovados do mural; sem foto, reconstituição ilustrada a lápis.
 - `node scripts/export-tv.cjs --out <pasta-privada>` exporta somente dados necessários, sem escrever no Firebase; reaproveita roster, elegibilidade, decodificação e cálculo real do placar. `scripts/tv/render_tv.py` compõe offline e recusa ilustração ausente/resultado inconsistente. Não alterar o mapa/app/regras para atualizar esse vídeo.

@@ -34,7 +34,30 @@ test('votos somam um por alvo sem registrar autor nem voto próprio',t=>{
  assert.deepEqual(second.counts.ob,first.counts.ob);assert.equal(first.voters,1);
  assert.throws(()=>applyBallot(undefined,{},'bruno'));
  assert.throws(()=>applyBallot(undefined,{...ballot,bruno:EMOJIS[0]},'bruno'));
- assert.throws(()=>applyBallot(undefined,{...ballot,ob:'🌱'},'bruno'));
+ assert.throws(()=>applyBallot(undefined,{...ballot,ob:'🦄'},'bruno'));
+});
+test('planta acrescenta o nono contador e preserva os oito emojis históricos',()=>{
+ const legacy=['❤️','💔','🐍','🤮','🧳','🍪','🤥','🎯'];
+ assert.deepEqual(EMOJIS,[...legacy,'🌱']);
+ const old=decodeTally(0x76543210);
+ legacy.forEach((emoji,i)=>assert.equal(old[emoji],i));assert.equal(old['🌱'],0);
+ const at=Date.parse('2026-11-21T09:00:00-03:00');
+ const ballot=Object.fromEntries(ALL.filter(id=>id!=='bruno').map(id=>[id,'🌱']));
+ const next=applyBallot({counts:{ob:0x76543210},voters:1},ballot,'bruno',at);
+ assert.equal(next.counts.ob,0x76543210+16**8);assert(Number.isSafeInteger(next.counts.ob));
+ const decoded=decodeTally(next.counts.ob);legacy.forEach((emoji,i)=>assert.equal(decoded[emoji],i));assert.equal(decoded['🌱'],1);
+});
+test('Queridômetro permite selecionar planta e mostra sua contagem no resultado',t=>{
+ t.mock.method(Date,'now',()=>Date.parse('2026-11-21T09:00:00-03:00'));
+ const {context}=ui();
+ vm.runInContext("S={...S,me:'bruno',ready:true};qDraft.ob='🌱'",context);
+ const form=vm.runInContext('viewQuerido()',context);
+ assert.equal((form.match(/data-em="🌱"/g)||[]).length,12);
+ assert(form.includes('data-q="ob" data-em="🌱" aria-pressed="true"'));
+ t.mock.method(Date,'now',()=>Date.parse('2026-11-21T12:00:00-03:00'));
+ const key=votingKey();
+ vm.runInContext(`S={...S,loaded:{'votes-${key}':true},querido:{'${key}':{ob:{'🌱':3}}}}`,context);
+ assert(vm.runInContext('viewQuerido()',context).includes('<span class="qchip">🌱<b>3</b></span>'));
 });
 test('14 pessoas têm foto e só apelido; os três ADMs oficiais permanecem',()=>{
  assert.equal(ALL.length,13);assert.equal(new Set(ALL).size,13);
@@ -218,7 +241,7 @@ test('rateio entre 14 pessoas e acerto não perdem saldo',()=>{
  const result=vm.runInContext('({balance:balances(),transfers:settle()})',context);
  assert.equal(result.balance.bruno,120);assert(ALL.filter(id=>id!=='bruno').every(id=>result.balance[id]===-10));assert.equal(result.transfers.length,12);assert.equal(result.transfers.reduce((s,t)=>s+t.v,0),120);
 });
-test('14 votações completas não causam transporte entre os oito contadores',t=>{
+test('13 votações completas não causam transporte entre os nove contadores',t=>{
  t.mock.method(Date,'now',()=>Date.parse('2026-11-20T10:00:00-03:00'));
  for(const emoji of EMOJIS){let state;for(const voter of ALL){state=applyBallot(state,Object.fromEntries(ALL.filter(id=>id!==voter).map(id=>[id,emoji])),voter);}assert.equal(state.voters,13);for(const id of ALL){const decoded=decodeTally(state.counts[id]);assert.equal(decoded[emoji],12);assert.equal(Object.values(decoded).reduce((a,b)=>a+b,0),12);}}
 });
