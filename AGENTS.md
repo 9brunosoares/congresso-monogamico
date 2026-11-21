@@ -1,5 +1,10 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Resultados atualizados para o Claude (21/11/2026 às 12:14)
+- `docs/TV-CONGRESSO.md` agora contém as tabelas reais do placar e do Queridômetro de21/11; usar a seção Resultados atuais, preservando a entrega inicial como histórico. CapturaUTC `2026-11-21T15:14:57.856Z`.
+- Rodada encerrada com12 votantes/144 emojis,13 no ranking e3 casos publicados. Pontos do Quiz dos Especialistas, bônus já ganhos na High e+3 da chave de Sadano já estão contabilizados: não relançar.
+- Pacote atualizado de mídias/dados em `../TV-Congresso/entrega/Claude-TV-Congresso-2026-11-21-12h14.zip`. Somente tabelas agregadas no repo; snapshot completo e fotos do mural continuam fora da raiz pública. Nenhum vídeo novo foi renderizado nesta atualização.
+
 ## Próximo quiz: dark room da High (21/11/2026)
 - Após o próximo envio do Queridômetro, pergunta “Qual é o nome do dark room da High?”, valendo+20, com os mesmos5s. Aceita “Jardim do Éden” com/sem acento, maiúsculas e espaços extras; persiste apenas `jardim do eden` no acerto, string vazia no erro. Erro/tempo esgotado não tira pontos.
 - Nova rodada, tentativa única por conta em `dailyQuizEden/{uid}` e bônus atômico/imutável `points/quiz_eden_<uid>`. Disponível nos preenchimentos de21 ou22/11 para quem ainda não fez essa pergunta. Ter feito o quiz anterior não bloqueia este. Não apagar/reiniciar os registros `dailyQuizOB` nem alterar os bônus+5 anteriores.

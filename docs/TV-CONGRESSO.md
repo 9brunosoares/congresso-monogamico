@@ -4,6 +4,67 @@
 
 Criar um vídeo horizontal para deixar projetando na televisão, em repetição contínua, intercalando os resultados do Queridômetro, o placar atual e os casos publicados do Mural da Vergonha. Quando um caso não tiver imagem, criar um rascunho da situação descrita, como um desenho de investigação criminal. Durante a viagem, Bru pedirá novas versões com os dados atualizados. Também quer que o Claude possa criar sua própria versão a partir deste briefing e dos mesmos dados.
 
+<!-- TV_RESULTS_BEGIN -->
+## Resultados atuais — 21/11/2026 às 12:14
+
+**Usar esta captura na próxima versão do vídeo.** A seção de entrega inicial, abaixo, permanece como histórico.
+
+Fonte: exportação somente de leitura do Firebase, com o mesmo cálculo do placar do app. Captura UTC: `2026-11-21T15:14:57.856Z`; horário local: America/Sao_Paulo. Estes valores são um retrato desse instante.
+
+### Placar geral
+
+| Posição | Congressista | Pontos |
+|---:|---|---:|
+| 1 | Igor | 107 |
+| 2 | Sadano | 96 |
+| 3 | Luan | 85 |
+| 4 | OB | 60 |
+| 5 | Nanu | 58 |
+| 6 | Cadu | 45 |
+| 7 | Gherardi | 40 |
+| 8 | Felipe | 37 |
+| 9 | Ibrahim | 35 |
+| 10 | Pig | 30 |
+| 11 | Diogo | 20 |
+| 12 | Pelado | 10 |
+| 13 | Bru | -5 |
+
+Os totais já incluem os lançamentos confirmados e as penalidades aplicáveis até a captura, incluindo o Quiz dos Especialistas, os bônus já conquistados no quiz da High e os +3 de Sadano pela chave da cozinha. Não somar esses pontos novamente.
+
+### Queridômetro — rodada de 21/11/2026
+
+**Rodada encerrada: 12 votantes, 13 congressistas elegíveis e 144 emojis recebidos.** Contagens agregadas; não há identificação de quem escolheu cada emoji.
+
+| Congressista | ❤️ | 💔 | 🐍 | 🤮 | 🧳 | 🍪 | 🤥 | 🎯 | 🌱 | Total recebido |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Bru | 4 | 0 | 1 | 1 | 0 | 0 | 5 | 0 | 0 | 11 |
+| OB | 6 | 0 | 3 | 1 | 1 | 0 | 0 | 0 | 0 | 11 |
+| Luan | 5 | 0 | 2 | 1 | 3 | 0 | 0 | 0 | 0 | 11 |
+| Igor | 6 | 0 | 1 | 1 | 1 | 0 | 0 | 2 | 0 | 11 |
+| Pig | 5 | 0 | 1 | 1 | 2 | 0 | 1 | 1 | 0 | 11 |
+| Pelado | 2 | 1 | 1 | 2 | 0 | 2 | 0 | 1 | 2 | 11 |
+| Gherardi | 5 | 0 | 1 | 1 | 1 | 0 | 0 | 2 | 1 | 11 |
+| Nanu | 4 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 4 | 11 |
+| Sadano | 8 | 0 | 0 | 1 | 0 | 1 | 0 | 1 | 0 | 11 |
+| Ibrahim | 7 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 3 | 12 |
+| Cadu | 6 | 0 | 4 | 1 | 0 | 0 | 0 | 0 | 0 | 11 |
+| Diogo | 5 | 0 | 1 | 1 | 0 | 2 | 0 | 1 | 1 | 11 |
+| Felipe | 8 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 11 |
+| **Total** | 71 | 2 | 15 | 14 | 8 | 7 | 7 | 8 | 12 | **144** |
+
+🌱 já está incluído como nona opção. Para renderizar esta rodada, usar a grade3×3 e o arquivo `assets/emojis/8.png` do pacote atualizado.
+
+### Mural e pacote atualizado para o Claude
+
+Há **3 casos publicados** nesta captura: **2 com imagem original** e **1 sem foto**. As descrições completas, imagens e a reconstituição ilustrada correspondente estão no pacote local atualizado, fora do GitHub público.
+
+Pacote: `../TV-Congresso/entrega/Claude-TV-Congresso-2026-11-21-12h14.zip`.
+
+Dentro do ZIP, usar `snapshot/dados-tv.json` para os dados completos, `RESULTADOS-EM-TEXTO.txt` para leitura direta e as pastas de retratos/mural. O rascunho da cozinha foi reutilizado porque a descrição do caso permanece igual. As mídias não são buscadas por URLs públicas do Firebase.
+
+Esta atualização fornece dados e referências para o Claude criar o próximo vídeo. O MP4 de20/11 e seu pacote original permanecem preservados.
+<!-- TV_RESULTS_END -->
+
 ## Entrega inicial, 20/11/2026
 
 - Captura dos dados: **20/11/2026 às 18:01, America/Sao_Paulo** (`2026-11-20T21:01:21.850Z`). É um retrato desse instante; não chamar de transmissão ao vivo.
@@ -15,7 +76,7 @@ Criar um vídeo horizontal para deixar projetando na televisão, em repetição 
 
 ## Arquivos e dados para entregar ao Claude
 
-O pacote local **`TV-Congresso/entrega/Claude-TV-Congresso-2026-11-20.zip`** fica na pasta PAI deste repositório. Entregar esse ZIP ao Claude junto com este briefing. Ele contém os dados reais completos, as mídias, fontes e código para reproduzir a versão entregue, sem depender de acesso ao Firebase.
+O pacote atual é **`TV-Congresso/entrega/Claude-TV-Congresso-2026-11-21-12h14.zip`**, na pasta PAI deste repositório. Entregar esse ZIP ao Claude junto com este briefing. Ele contém os dados reais completos desta captura, as mídias, fontes e código para criar o vídeo sem acesso ao Firebase. O pacote de20/11 permanece guardado como histórico.
 
 Estrutura do pacote:
 
@@ -27,7 +88,7 @@ snapshot/retratos/*.jpg          # Retratos e enquadramentos do app
 snapshot/mural/caso-*.jpg        # Imagem original de cada caso com foto
 snapshot/mural/ilustracao-*.png  # Rascunho de cada caso sem foto
 assets/*.ttf                    # Bricolage, Figtree e JetBrains
-assets/emojis/*.png             # Oito ícones na ordem do app
+assets/emojis/*.png             # Nove ícones na ordem do app
 assets/licencas/*               # Licenças das fontes
 PROMPTS-ILUSTRACOES.md           # Prompt usado e modo de geração
 render_tv.py                    # Montagem offline, sem acesso ao Firebase
@@ -36,13 +97,13 @@ manifesto-video.json            # Ordem das telas e duração
 contato-telas.jpg               # Visão geral da composição entregue
 ```
 
-Os snapshots e as fotos autenticadas do mural ficam nesse pacote local, fora do repositório público e da raiz do GitHub Pages. Não publicar credenciais, UIDs de autenticação, PINs, dados financeiros, chat ou escolhas individuais de voto. O pacote contém somente o material necessário à exibição solicitada.
+As tabelas agregadas solicitadas por Bru estão neste briefing. O snapshot completo e as fotos autenticadas do mural ficam no pacote local, fora do repositório público e da raiz do GitHub Pages. Não publicar credenciais, UIDs de autenticação, PINs, dados financeiros, chat ou escolhas individuais de voto. O pacote contém somente o material necessário à exibição solicitada.
 
 ## Identidade e direção
 
 Manter a identidade do app: fundo roxo quase preto `#120f1b`, cartões `#1d1829`, texto claro `#f1eef8`, vermelho `#ff4d68` e dourado `#e2bd52` para pontos/destaques. Bricolage Grotesque nos títulos, Figtree nos textos e JetBrains Mono nos números. Margens generosas, contraste alto e nomes/números grandes para ler do sofá.
 
-Tom divertido de congresso entre amigos. Evitar animações incessantes, estímulos excessivos e efeitos que atrapalhem a leitura. A versão inicial não tem narração nem música. Cada tela do Queridômetro mostra dois congressistas e seus oito contadores. A última também mostra destaques calculados, preservando empates. O placar completo aparece em duas colunas. O mural mostra um caso por vez, com descrição fiel, apelido, imagem e penalidade efetivamente registrada.
+Tom divertido de congresso entre amigos. Evitar animações incessantes, estímulos excessivos e efeitos que atrapalhem a leitura. A versão inicial não tem narração nem música. Cada tela do Queridômetro mostra dois congressistas e seus nove contadores (oito nas capturas anteriores à inclusão de 🌱). A última também mostra destaques calculados, preservando empates. O placar completo aparece em duas colunas. O mural mostra um caso por vez, com descrição fiel, apelido, imagem e penalidade efetivamente registrada.
 
 Com os dados iniciais, a sequência é: duas telas do Queridômetro (8s cada), placar completo (12s), um caso do mural (10s), repetindo esse padrão. Sete telas cobrem os 13 resultados; quatro inserções de placar e quatro de mural completam 144s. Os dois casos aparecem duas vezes. Com novos casos, ajustar a sequência para mostrar todos, sem prender a duração a 144s.
 
