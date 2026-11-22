@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Carros da volta para São Paulo (22/11/2026)
+- Card de Volta para São Paulo personalizado na Home e na Agenda, com carro e ocupantes do perfil logado. `RETURN_CARS` em `travel.js` é independente da vinda: Nanu[Nanu,Pelado]; Bru[Bru,Ibrahim]; Felipe[OB,Felipe,Cadu,Luan]; Igor[Igor,Pig,Diogo,Gherardi]; Sadano[Sadano]. Não alterar `CARS`, horários da vinda ou elegibilidade histórica do Queridômetro.
+- Observação do card real atualizada somente no campo `note`: Procure o motorista para combinar o horário. Horários e demais campos da agenda preservados; backup privado e verificação em `.private/update-return-note-20261122.cjs`. A personalização usa o nome atual Bru e conserva o título comum da atividade. Teste dos13 perfis na Home/Agenda e regressão da divisão da vinda aprovados. Front-end20261122d; sem deploy de regras ou mapa.
+
 ## Ranking das apresentações após o último Queridômetro (22/11/2026)
 - Autorizado por Bru: Queridômetro22 abre desde00h SP e continua encerrando às12h. Dias19–21 mantêm início às06h; resultados e penalidades históricas preservados. Após enviar os emojis de22, oferece ranking em lugar do quiz de5s; o quiz High anterior e seus bônus não são apagados. Quem já enviou os emojis pode abrir pela aba Queridômetro; reentrada recupera o próprio voto ou rascunho local.
 -12 apresentações, com fotos recortadas das duas montagens fornecidas pelo usuário em `assets/presentations`: foto1 Ibrahim/Sadano/Nanu/Pelado/Igor/OB; foto2 Luan/Bru/Cadu/Felipe/Gherardi/Pig. Diogo não apresentou e avalia12; os demais avaliam11, sem voto próprio. Setas e seletor de posição, foto ampliável, sem cronômetro, envio definitivo até12h22/11 SP. Não regravar votos antigos ou criar votos reais para validar.

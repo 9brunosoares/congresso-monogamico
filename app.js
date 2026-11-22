@@ -1,4 +1,4 @@
-import {carFor,departure,availableDay,agendaFor,votePeople,departureFor} from './travel.js?v=20261117a';
+import {carFor,departure,availableDay,agendaFor,votePeople,departureFor,returnActivity} from './travel.js?v=20261122d';
 import {prepareReportPhoto} from './report-photo.js';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261120e';
 import {PIX_TYPES} from './pix.js?v=20261107c';
@@ -215,7 +215,7 @@ function header(){
 
 function nextItem(){
   const t=now(),trip=departure(S.me);
-  const personal=agendaFor(AGENDA,S.me);
+  const personal=agendaFor(AGENDA,S.me).map(a=>returnActivity(a,S.me));
   if(trip)personal.push({d:trip.day,title:`Saída · carro de ${first(trip.driver)}`,place:trip.people.map(first).join(' · '),start:trip.start,end:trip.start,address:S.travelPlan?.address,travelNote:trip.note});
   personal.sort((a,b)=>a.start-b.start);
   const cur = personal.find(a=>a.start<=t && t<a.end);
@@ -311,6 +311,7 @@ function viewInicio(){
     <h2>${esc(main.title)}</h2>
     ${main.place||main.pts?`<div class="next-place">${esc(main.place||'')}${main.pts?` · até ${main.pts} pts`:''}</div>`:''}
     ${main.address?`<p class="next-address">${esc(main.address)}</p>`:''}
+    ${main.travelPeople?`<p class="next-address">${esc(main.travelPeople)}</p>`:''}
     ${main.travelNote?`<p class="next-address">${esc(main.travelNote)}</p>`:''}
     ${cur?'':'<div class="count" id="count"></div>'}
     ${main.prep?`<div class="prep"><small>Leve / prepare</small>${esc(main.prep)}</div>`:''}
@@ -340,7 +341,7 @@ function viewPrograma(){
   const t=now();
   const visibleDays=DAYS.filter(d=>(agendaAdminMode&&isAdm())||d.d>=availableDay(S.me));
   if(!(agendaAdminMode&&isAdm())&&day<availableDay(S.me))day=availableDay(S.me);
-  const items = (agendaAdminMode&&isAdm()?AGENDA:agendaFor(AGENDA,S.me)).filter(a=>a.d===day);
+  const items = (agendaAdminMode&&isAdm()?AGENDA:agendaFor(AGENDA,S.me)).filter(a=>a.d===day).map(a=>returnActivity(a,S.me));
   const car=departureFor(S.me,day),personalCar=carFor(S.me);
   return `
   ${isAdm()?`<button class="link" id="fullAgenda" type="button">${agendaAdminMode?'Minha agenda':'Agenda completa'}</button>`:''}<div class="days" role="tablist">${visibleDays.map(d=>`<button type="button" data-day="${d.d}" aria-pressed="${d.d===day}"><span>${d.wd}</span><b>${d.d}</b><span>${d.title}</span></button>`).join("")}</div>
@@ -349,9 +350,9 @@ function viewPrograma(){
   ${car?departureCard(car):''}
   <div class="card" style="padding-block:4px">${items.map(a=>{
     const st = t>=a.end?"done":(t>=a.start?"now":"");
-    return `<div class="slot ${st}"><time>${a.t}</time><div><h4>${esc(a.title)}</h4>${isAdm()?`<button class="link" data-edit-activity="${esc(a.id)}" type="button">Editar</button>`:''}
+    return `<div class="slot ${st}"><time>${a.t}</time><div><h4>${esc(a.title)}</h4>${a.travelPeople?`<div class="note"><b>${esc(a.place)}</b><br>${esc(a.travelPeople)}</div>`:''}${isAdm()?`<button class="link" data-edit-activity="${esc(a.id)}" type="button">Editar</button>`:''}
       ${a.note?`<div class="note">${esc(a.note)}</div>`:""}
-      <div class="meta">${st==="now"?'<span class="tag live">Agora</span>':""}${a.place?`<span class="tag">${esc(a.place)}</span>`:""}${a.pts?`<span class="pts">até ${a.pts} pts</span>`:""}${a.prep?`<span class="tag prepn">Preparação</span>`:""}</div>
+      <div class="meta">${st==="now"?'<span class="tag live">Agora</span>':""}${a.place&&!a.travelPeople?`<span class="tag">${esc(a.place)}</span>`:""}${a.pts?`<span class="pts">até ${a.pts} pts</span>`:""}${a.prep?`<span class="tag prepn">Preparação</span>`:""}</div>
       ${a.prep?`<div class="note"><b style="color:var(--ink)">Leve/prepare:</b> ${esc(a.prep)}</div>`:""}
       ${nanuAgendaAccess(a,S.me,S.nanuSession)?`<button id="nanuPollLink" class="link nanu-agenda-link" type="button">${S.me==='nanu'?'Conduzir enquete do Nanu':'Participar da enquete do Nanu'} ↗</button>`:''}
       ${igorAgendaAccess(a,S.me,S.igorSession)?`<button id="igorPollLink" class="link nanu-agenda-link" type="button">${S.me==='igor'?'Conduzir enquete do Igor':'Participar da enquete do Igor'} ↗</button>`:''}

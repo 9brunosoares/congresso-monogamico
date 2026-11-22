@@ -1,5 +1,5 @@
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from '../discovery.js';
-import {carFor,departure,availableDay,agendaFor,votePeople,departureFor} from '../travel.js';
+import {carFor,departure,availableDay,agendaFor,votePeople,departureFor,returnActivity,RETURN_CARS,RETURN_NOTE} from '../travel.js';
 import test from 'node:test';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from '../finance.js';
 import {PIX_TYPES} from '../pix.js';
@@ -144,6 +144,7 @@ function ui(){
  const code=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8').replace(/^import .*?;$/gm,'').replace(/backend.start\(data=>\{[\s\S]*$/,'');
  const nodes={},events={},timers=new Map();let timerId=0;const context={createDiscovery,DISCOVERY_OWNER,DISCOVERY_END,carFor,departure,availableDay,agendaFor,votePeople,departureFor,moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows,PIX_TYPES,EMPTY_OFFICIAL_LINKS,REACTIONS,createChatColors,prepareReportPhoto,bindAgendaSwipe,adjacentDay,PEOPLE,P,ALL,EMOJIS,dayKey,tripStarted,VOTE_DAYS,votingKey,votingOpen,missedVotePoints,resultDay,alreadyVotedMessage,scoringPoints,notice,Date,Intl,console,backend:{formatStamp:()=>''},setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout(id){timers.delete(id)},setInterval(){},scrollY:0,scrollTo(){},location:{},localStorage:{getItem(){return null},setItem(){}},document:{querySelector(s){return nodes[s]??={innerHTML:'',querySelectorAll(){return []}}},querySelectorAll(){return []},addEventListener(name,fn){(events[name]??=[]).push(fn)}}};
  context.QUIZ_POINTS=QUIZ_POINTS;
+ context.returnActivity=returnActivity;
  context.nanuAgendaAccess=nanuAgendaAccess;
   context.igorAgendaAccess=igorAgendaAccess;
  vm.createContext(context);vm.runInContext(code,context);return {context,nodes,html,events,timers};
@@ -381,6 +382,22 @@ test('saídas personalizadas mantêm a agenda comum e respeitam carros e períod
  assert.match(vm.runInContext('viewPrograma()',context),/Saída a confirmar.*Carro de Sadano.*Cervejas/);
  assert(!vm.runInContext('viewInicio()',context).includes('carro de Sadano'));
 });
+test('volta a São Paulo mostra o carro de cada um na Home e Agenda sem alterar a vinda',t=>{
+ t.mock.method(Date,'now',()=>Date.parse('2026-11-22T13:00:00-03:00'));
+ assert.deepEqual(RETURN_CARS.flatMap(car=>car.people).slice().sort(),ALL.slice().sort());
+ assert.deepEqual(RETURN_CARS.find(car=>car.driver==='nanu').people,['nanu','pelado']);
+ assert.deepEqual(RETURN_CARS.find(car=>car.driver==='bruno').people,['bruno','ibrahim']);
+ assert.deepEqual(RETURN_CARS.find(car=>car.driver==='felipe').people,['ob','felipe','cadu','luan']);
+ assert.deepEqual(RETURN_CARS.find(car=>car.driver==='igor').people,['igor','pig','diogo','gherardi']);
+ const activity={id:'return-fixture',d:22,t:'14:00',title:'Volta para São Paulo',place:'Casa',note:RETURN_NOTE,start:Date.parse('2026-11-22T14:00:00-03:00'),end:Date.parse('2026-11-22T16:00:00-03:00')};
+ const {context}=ui();context.returnFixture=activity;vm.runInContext('AGENDA.splice(0,AGENDA.length,returnFixture);day=22',context);
+ for(const car of RETURN_CARS)for(const who of car.people){
+  vm.runInContext(`S={...S,me:'${who}',ready:true}`,context);
+  for(const view of ['viewPrograma()','viewInicio()']){const html=vm.runInContext(view,context);assert(html.includes('Carro de '+P[car.driver].nick));assert(html.includes(car.people.map(id=>P[id].nick).join(' · ')));assert(html.includes(RETURN_NOTE));}
+ }
+ assert.equal(activity.place,'Casa');assert.equal(carFor('pelado').driver,'bruno');assert.equal(carFor('ob').driver,'nanu');
+});
+
 test('PIN é uma segunda etapa e possui volta discreta',()=>{
  const {context,nodes}=ui();vm.runInContext("loginPerson='ob';viewLogin()",context);const html=nodes['#root'].innerHTML;
  assert(html.includes('id="identityStep" hidden'));assert(!html.includes('id="pinStep" hidden'));assert(html.includes('id="backIdentity"'));

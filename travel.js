@@ -1,3 +1,18 @@
+import {P} from './roster.js?v=20261120j';
+export const RETURN_NOTE='Procure o motorista para combinar o horário';
+export const RETURN_CARS=[
+ {driver:'nanu',people:['nanu','pelado']},
+ {driver:'bruno',people:['bruno','ibrahim']},
+ {driver:'felipe',people:['ob','felipe','cadu','luan']},
+ {driver:'igor',people:['igor','pig','diogo','gherardi']},
+ {driver:'sadano',people:['sadano']}
+];
+export function returnActivity(activity,id){
+ const car=RETURN_CARS.find(car=>car.people.includes(id));
+ if(!car||activity.d!==22||!/^volta (?:para|pra) são paulo/i.test(activity.title||''))return activity;
+ const note=activity.note||RETURN_NOTE;
+ return {...activity,place:`Carro de ${P[car.driver].nick}`,travelPeople:car.people.map(id=>P[id].nick).join(' · '),note,travelNote:note};
+}
 export const CARS=[
  {day:18,period:'À noite',driver:'nanu',time:'19:00',people:['nanu','cadu','ob','pig'],note:'Carro alugado.'},
  {day:19,period:'À noite',driver:'igor',time:'20:00',people:['igor','diogo'],note:'Comidas'},
