@@ -35,8 +35,8 @@ const {context}=require('./firebase-context.cjs');
   cases.push(denied);
  }
  const noReceipt=make('bruno',first);noReceipt.expectation='DENY';noReceipt.functionMocks.find(m=>m.args[0].exactValue.includes('/participation/')).result.value=null;cases.push(noReceipt);
- // Último dia foi liberado à meia-noite, preservando o encerramento às12h SP.
- for(const [time,expectation]of [['2026-11-22T00:00:00-03:00','ALLOW'],['2026-11-22T05:59:59-03:00','ALLOW'],['2026-11-22T11:59:59-03:00','ALLOW'],['2026-11-22T12:00:00-03:00','DENY']]){
+ // Revelação antecipada autorizada após todos os13 comprovantes:22/11 às10h16 SP.
+ for(const [time,expectation]of [['2026-11-22T00:00:00-03:00','ALLOW'],['2026-11-22T05:59:59-03:00','ALLOW'],['2026-11-22T10:15:59-03:00','ALLOW'],['2026-11-22T10:16:00-03:00','DENY'],['2026-11-22T11:59:59-03:00','DENY'],['2026-11-22T12:00:00-03:00','DENY']]){
   const final=make('bruno',first);final.expectation=expectation;final.request.time=new Date(time).toISOString();
   const actual=dayKey(Date.parse(time));final.request.path=final.request.path.replace('/'+key,'/'+actual);
   for(const mock of final.functionMocks)mock.args[0].exactValue=mock.args[0].exactValue.replaceAll('/'+key,'/'+actual);
@@ -83,6 +83,9 @@ const {context}=require('./firebase-context.cjs');
   }
  }
  const adminMorning=make('bruno',first);adminMorning.request.method='get';adminMorning.expectation='DENY';adminMorning.functionMocks.push(mock('exists',prefix+'/admins/'+uid,true));cases.push(adminMorning);
+ for(const [time,expectation]of [['2026-11-22T10:15:59-03:00','DENY'],['2026-11-22T10:16:00-03:00','ALLOW']]){
+  const t=make('bruno',first);t.request.method='get';t.request.time=new Date(time).toISOString();t.request.path=prefix+'/querido/20779';t.expectation=expectation;cases.push(t);
+ }
  function scoreCase(method,admin,closed=false){
   return {expectation:'ALLOW',request:{auth:{uid,token:{email:'bruno@congresso.app'}},time:new Date(testTime).toISOString(),path:prefix+'/scoreClosures/main',method,resource:{data:{closedAt:new Date(testTime).toISOString(),closedBy:'bruno'}}},functionMocks:[mock('get',prefix+'/people/bruno',{data:{uid}}),mock('exists',prefix+'/admins/'+uid,admin),mock('exists',prefix+'/scoreClosures/main',closed)]};
  }

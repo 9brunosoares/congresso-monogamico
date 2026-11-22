@@ -10,7 +10,7 @@ const {context}=require('./firebase-context.cjs');
   const points=await tx.get(c.db.collection('points'));
   const cases=await tx.get(c.db.collection('cases').where('status','==','ok'));
   const asOf=points.readTime.toMillis(),closure=closed.exists?closed.data():null;
-  const revealed=VOTE_DAYS.filter(day=>day.deadline<=asOf).at(-1),cutoff=closure?.closedAt?.toMillis?.()??asOf;
+  const revealed=VOTE_DAYS.filter(day=>day.revealAt<=asOf).at(-1),cutoff=closure?.closedAt?.toMillis?.()??asOf;
   let vote=null;
   if(revealed){const total=await tx.get(c.db.doc('querido/'+revealed.key));vote=total.exists?total.data():null;}
   const attendance={},attendanceReady={};

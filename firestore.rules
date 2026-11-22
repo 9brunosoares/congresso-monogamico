@@ -603,11 +603,11 @@ service cloud.firestore {
   function votingDay(day) { return day in ['20776','20777','20778','20779']; }
   function isToday(day) { return day == tripDay(); }
   function resultsReleased(day) {
-   return votingDay(day) && request.time.toMillis() >= int(day) * 86400000 + 54000000;
+   return votingDay(day) && request.time.toMillis() >= (day == '20779' ? 1795353360000 : int(day) * 86400000 + 54000000);
   }
   function votingOpen() {
    let local=request.time.toMillis()-10800000;
-   return local >= 1795046400000 && local < 1795392000000 && (tripDay() == '20779' || local % 86400000 >= 21600000) && local % 86400000 < 43200000;
+   return local >= 1795046400000 && local < 1795392000000 && (tripDay() == '20779' || local % 86400000 >= 21600000) && (tripDay() != '20779' || request.time.toMillis() < 1795353360000) && local % 86400000 < 43200000;
   }
   // A subtração só aceita números; delta enumerado garante um único incremento.
   // A partir de zero, com 13 votantes e sem voto próprio, cada dígito tem máximo12.

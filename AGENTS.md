@@ -1,5 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Queridômetro final revelado antecipadamente; apresentações aguardam OB (22/11/2026)
+- Bru autorizou publicar o Queridômetro de22 após os13/13 votos. Revelação/encerramento antecipados em22/11 às10h16 SP (`FINAL_RESULTS_AT` e `revealAt` em shared.js; regras de leitura e janela ajustadas somente para20779). Prazo original de penalidades permanece12h; dias anteriores e votos armazenados preservados. Exportação da TV usa `revealAt` para incluir a rodada final já publicada.
+- Conferência mostrou12/13 rankings, faltando OB. Bru escolheu explicitamente aguardar OB: **não encerrar as apresentações nem lançar os prêmios agora**. `RANKING_END` e `PRESENTATION_END` continuam12h e as regras de ranking permanecem intactas. Front-end20261122e; publicar somente regras do Firestore e front-end.
+
 ## Carros da volta para São Paulo (22/11/2026)
 - Card de Volta para São Paulo personalizado na Home e na Agenda, com carro e ocupantes do perfil logado. `RETURN_CARS` em `travel.js` é independente da vinda: Nanu[Nanu,Pelado]; Bru[Bru,Ibrahim]; Felipe[OB,Felipe,Cadu,Luan]; Igor[Igor,Pig,Diogo,Gherardi]; Sadano[Sadano]. Não alterar `CARS`, horários da vinda ou elegibilidade histórica do Queridômetro.
 - Observação do card real atualizada somente no campo `note`: Procure o motorista para combinar o horário. Horários e demais campos da agenda preservados; backup privado e verificação em `.private/update-return-note-20261122.cjs`. A personalização usa o nome atual Bru e conserva o título comum da atividade. Teste dos13 perfis na Home/Agenda e regressão da divisão da vinda aprovados. Front-end20261122d; sem deploy de regras ou mapa.

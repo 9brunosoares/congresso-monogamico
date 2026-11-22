@@ -256,7 +256,7 @@ test('13 votações completas não causam transporte entre os nove contadores',t
 test('votação somente nas quatro manhãs e penalidade única após o prazo',()=>{
  assert(!votingOpen(Date.parse('2026-11-18T10:00:00-03:00')));
  for(const day of VOTE_DAYS){
-  assert.equal(votingOpen(day.start),day.day===22);assert.equal(votingOpen(day.start+6*3600000-1),day.day===22);assert(votingOpen(day.start+6*3600000));assert(votingOpen(day.deadline-1));assert(!votingOpen(day.deadline));
+  assert.equal(votingOpen(day.start),day.day===22);assert.equal(votingOpen(day.start+6*3600000-1),day.day===22);assert(votingOpen(day.start+6*3600000));assert(votingOpen(day.revealAt-1));assert(!votingOpen(day.revealAt));assert(!votingOpen(day.deadline));
  }
  assert(!votingOpen(Date.parse('2026-11-23T10:00:00-03:00')));
  const d=VOTE_DAYS[0],attendance={[d.key]:{pig:true}};
@@ -350,6 +350,12 @@ test('resultado fica oculto mesmo com cache até meio-dia; domingo sem promessa 
   Date.now=()=>Date.parse('2026-11-22T10:00:00-03:00');const final=dayKey();vm.runInContext(`S.qvoted={'${final}':['ob']};render()`,context);assert(nodes['#root'].innerHTML.includes('Esta foi a última votação do congresso.'));assert(!nodes['#root'].innerHTML.includes('Amanhã'));
  }finally{Date.now=previous;}
 });
+test('resultado de22 é revelado antecipadamente sem antecipar multas nem encerrar apresentações',()=>{
+ const before=Date.parse('2026-11-22T10:15:59-03:00'),after=before+1000;
+ assert.equal(resultDay(before),null);assert.equal(resultDay(after).day,22);assert(!votingOpen(after));
+ assert.equal(missedVotePoints({},after).length,26);
+});
+
 test('placar congelado não ganha multa de domingo; CPF padrão e novas categorias',()=>{
  const closeAt=Date.parse('2026-11-22T09:00:00-03:00'),later=Date.parse('2026-11-22T13:00:00-03:00');
  const before=scoringPoints([],{},undefined,{closedAt:{toMillis:()=>closeAt}},later);

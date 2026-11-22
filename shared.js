@@ -26,16 +26,19 @@ export function applyBallot(previous,ballot,voter,at=Date.now()){
  return {counts,voters:(previous?.voters||0)+1};
 }
 
+// Revelação antecipada autorizada após os13 votos de22/11; penalidades mantêm o prazo original.
+export const FINAL_RESULTS_AT=Date.parse('2026-11-22T10:16:00-03:00');
 // Quatro manhãs no horário de São Paulo.
 export const VOTE_DAYS=[19,20,21,22].map(d=>{
  const start=Date.parse(`2026-11-${d}T00:00:00-03:00`);
- return {key:dayKey(start),day:d,start,deadline:start+12*3600000};
+ const deadline=start+12*3600000;
+ return {key:dayKey(start),day:d,start,deadline,revealAt:d===22?FINAL_RESULTS_AT:deadline};
 });
 export const votingKey=dayKey;
-export function votingOpen(at=Date.now()){return VOTE_DAYS.some(d=>at>=d.start+(d.day===22?0:6*3600000)&&at<d.deadline);}
+export function votingOpen(at=Date.now()){return VOTE_DAYS.some(d=>at>=d.start+(d.day===22?0:6*3600000)&&at<d.revealAt);}
 export function resultDay(at=Date.now()){
  const today=VOTE_DAYS.find(d=>d.key===dayKey(at));
- return today?(at>=today.deadline?today:null):at>=VOTE_DAYS.at(-1).deadline?VOTE_DAYS.at(-1):null;
+ return today?(at>=today.revealAt?today:null):at>=VOTE_DAYS.at(-1).revealAt?VOTE_DAYS.at(-1):null;
 }
 export function alreadyVotedMessage(at=Date.now()){
  return dayKey(at)===VOTE_DAYS.at(-1).key||at>=VOTE_DAYS.at(-1).deadline?'Esta foi a última votação do congresso.':'Você já votou hoje. Amanhã abre de novo.';
