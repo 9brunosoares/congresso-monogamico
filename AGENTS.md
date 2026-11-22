@@ -61,6 +61,12 @@
 - `nanu-poll.js` abre diálogo independente da renderização do app, acompanha somente a pergunta atual e interrompe consultas ao fechar/ocultar. A Agenda observa apenas o documento de sessão; a Home não ganha consulta. Preservar mapas, RTDB, Auth, contas, pontos, Queridômetro e quizzes anteriores.
 - Verificação:76 testes locais;44 cenários do javali,205 cenários específicos de regras,337 de regressão e133 dos quizzes anteriores no serviço oficial com documentos simulados. Prévia isolada com duas contas confirmou liberação, voto/contagem sem recarregar, avanço até a pergunta11 e nuvem responsiva. Nenhum voto ou sessão de teste foi criado na produção. Publicar somente `firestore:rules` e front-end via GitHub Pages.
 
+## Chácara: Kirk estava dentro da fantasia de tubarão (22/11/2026, Claude)
+- Pedido do Bru: o avatar Kirk (boné verde com estrela vermelha, cabelo escuro cacheado, bigode e cavanhaque, camisa amarela com gola verde) era quem estava o tempo todo dentro do tubarão. Ele faz o mesmo passeio bobo do tubarão (`sharkAt`, pelo relógio, igual para todos), andando e girando, com o nome Kirk sobre a cabeça. É obstáculo como o tubarão era (`sharkC`, raio 0,55).
+- A fantasia fica murcha, deitada de lado no gramado perto do estacionamento (`shark` em 17,2 · 6,6), com três obstáculos ao longo do corpo em `CIRC`.
+- Kirk é NPC do mapa, fora de `PEOPLE`/roster: não entra em presença, placar nem app. `makeChar(KIRK,13)` é chamado no fim da cena, para não mudar a sequência de `rnd()` do resto do cenário. Novas opções de `makeChar`: `shirt`, `collar`, `nolock` (sem cadeado do congresso) e `capStar`.
+- Rosto em `mapa/spr/face_kirk.webp`, derivado do rosto do OB com barba por fazer e pinta. Sem mudança no Firebase.
+
 ## Chácara: capivaras que subiram pelo portão (21/11/2026, Claude)
 - Pedido do Bruno: capivaras espalhadas para confundir com o javali. Nove em `CAPYS` (`mapa/index.html`): quatro passeiam em elipse (3 × 2,2 m) pelo relógio, igual em todos os aparelhos; duas pastam; três dormem deitadas com os mesmos "z" do javali (perto do portão, a oeste da Capela e perto do mirante). Mais claras que o javali, sem presas.
 - Uma malha só por capivara (duas geometrias compartilhadas, cor por vértice). Não são obstáculo. Pisar numa mostra "Era só uma capivara."; não dá ponto e não grava nada. Sem mudança no Firebase.

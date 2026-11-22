@@ -11,7 +11,7 @@ import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,vo
 import * as backend from './backend.js?v=20261122e';
 import {nanuAgendaAccess} from './nanu-poll-model.js?v=20261121t';
 import {igorAgendaAccess} from './igor-poll-model.js?v=20261121p';
-import {openTravelMap} from './mapa-viagem.js?v=20261121o';
+import {openTravelMap} from './mapa-viagem.js?v=20261122k';
 import {createDiscovery,DISCOVERY_OWNER,DISCOVERY_END} from './discovery.js?v=20261111o';
 import {openDailyQuiz,QUIZ_POINTS} from './daily-quiz.js?v=20261121q';
 import {quizAvailable,startQuiz,answerQuiz} from './daily-quiz-data.js?v=20261121q';

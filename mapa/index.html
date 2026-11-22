@@ -863,7 +863,7 @@ var texLoader=new T.TextureLoader(),starM=new T.SpriteMaterial({map:starTex,tran
 function lockTex(col){return textTex(function(g,w){g.strokeStyle=col;g.fillStyle=col;g.lineWidth=11;g.lineCap='round';g.beginPath();g.arc(w/2,w*.4,w*.17,Math.PI,0);g.stroke();g.beginPath();g.moveTo(w*.33,w*.4);g.lineTo(w*.33,w*.5);g.moveTo(w*.67,w*.4);g.lineTo(w*.67,w*.5);g.stroke();rrect(g,w*.2,w*.46,w*.6,w*.44,9);g.fill();g.globalCompositeOperation='destination-out';g.beginPath();g.arc(w/2,w*.63,w*.07,0,7);g.fill();g.fillRect(w*.47,w*.64,w*.06,w*.14);},96,96);}
 var lockR=new T.MeshBasicMaterial({map:lockTex('#e0202a'),transparent:true}),lockW=new T.MeshBasicMaterial({map:lockTex('#ffffff'),transparent:true});
 var icoG=new T.IcosahedronGeometry(1,0);
-function makeChar(p,i){var g=new T.Group(),roll=new T.Group(),b=new T.Group(),s=p.s,skin=S(p.skin),hairM=lam(p.hair),shirt=p.bare?skin:S(p.org?0x1c1c1e:0xf4f1ee),sg=S(p.sunga);
+function makeChar(p,i){var g=new T.Group(),roll=new T.Group(),b=new T.Group(),s=p.s,skin=S(p.skin),hairM=lam(p.hair),shirt=p.bare?skin:S(p.shirt||(p.org?0x1c1c1e:0xf4f1ee)),sg=S(p.sunga);
   roll.position.y=1.15*s;b.position.y=-1.15*s;b.scale.set(s,s,s);roll.add(b);g.add(roll);
   function limb(x,y,r1,r2,l1,l2,up,low,end){var a=new T.Group(),k=new T.Group();a.position.set(x,y,0);k.position.y=-l1;a.add(k);b.add(a);
     rod(r1,r1*.9,l1,up,0,-l1/2,0,a);ball(r1*.92,up,0,-l1,0,a);rod(r1*.88,r2,l2,low,0,-l2/2,0,k);end(k,l2);return {a:a,k:k};}
@@ -871,7 +871,8 @@ function makeChar(p,i){var g=new T.Group(),roll=new T.Group(),b=new T.Group(),s=
   var AL=limb(-.52,1.38,.125,.1,.3,.28,shirt,skin,function(k,l){ball(.125,skin,0,-l-.06,0,k);}),AR=limb(.52,1.38,.125,.1,.3,.28,shirt,skin,function(k,l){ball(.125,skin,0,-l-.06,0,k);});
   ball(.14,shirt,-.5,1.4,0,b);ball(.14,shirt,.5,1.4,0,b);
   ball(1,shirt,0,1.14,0,b,.43,.4,.29);ball(1,sg,0,.76,0,b,.37,.2,.27);rod(.13,.15,.16,skin,0,1.5,0,b);
-  if(!p.bare){var lk=new T.Mesh(new T.PlaneGeometry(.26,.26),p.org?lockW:lockR);lk.position.set(0,1.2,.292);b.add(lk);
+  if(p.collar){var cl=new T.Mesh(new T.TorusGeometry(.17,.035,6,18),S(p.collar));cl.position.set(0,1.5,.02);cl.rotation.x=1.45;b.add(cl);}
+  if(!p.bare&&!p.nolock){var lk=new T.Mesh(new T.PlaneGeometry(.26,.26),p.org?lockW:lockR);lk.position.set(0,1.2,.292);b.add(lk);
     if(p.org){var bk=new T.Mesh(new T.PlaneGeometry(.5,.5),new T.MeshBasicMaterial({map:backTex}));bk.position.set(0,1.2,-.295);bk.rotation.y=Math.PI;b.add(bk);}}
   if(p.steth){var stt=new T.Mesh(new T.TorusGeometry(.2,.025,6,16),S(0x2a2a2e));stt.position.set(0,1.42,.1);stt.rotation.x=1.15;b.add(stt);ball(.05,0xb9bec6,.12,1.2,.3,b);}
   /* cabeça: volume em 3D, rosto do atlas na frente, cabelo por estilo */
@@ -896,7 +897,9 @@ function makeChar(p,i){var g=new T.Group(),roll=new T.Group(),b=new T.Group(),s=
     if(st!=='short'){lump(.06,.56,.22,.14,up);lump(-.1,.54,.14,.13,up);}}
   /* boné: copa por cima do cabelo e aba para a frente */
   if(p.cap){var capM=S(p.cap),dome=new T.Mesh(new T.SphereGeometry(1,18,10,0,6.2832,0,1.4),capM);dome.scale.set(.44,.5,.45);dome.position.set(0,.07,-.01);dome.rotation.x=-.16;hd.add(dome);
-    var visor=ball(1,capM,0,.25,.47,hd,.3,.028,.22);visor.rotation.x=.1;ball(.045,capM,0,.57,-.1,hd);}
+    var visor=ball(1,capM,0,.25,.47,hd,.3,.028,.22);visor.rotation.x=.1;ball(.045,capM,0,.57,-.1,hd);
+    if(p.capStar){var sh=new T.Shape();for(var q=0;q<10;q++){var ra=q%2?.045:.11,an=q/10*6.2832+Math.PI/2;sh[q?'lineTo':'moveTo'](Math.cos(an)*ra,Math.sin(an)*ra);}
+      var star=new T.Mesh(new T.ShapeGeometry(sh),new T.MeshBasicMaterial({color:p.capStar,side:T.DoubleSide}));star.position.set(0,.38,.41);star.rotation.x=-.42;hd.add(star);}}
   var stars=new T.Group();stars.position.y=2.5*s;stars.visible=false;for(k=0;k<3;k++){var sr=new T.Sprite(starM);sr.scale.set(.36,.36,1);sr.position.set(Math.cos(k*2.094)*.55,0,Math.sin(k*2.094)*.55);stars.add(sr);}g.add(stars);
   var lb=label(p.nick,.62);lb.position.y=2.52*s+.42;g.add(lb);
   var blob=new T.Mesh(blobG,blobM);blob.rotation.x=-Math.PI/2;blob.position.y=.04;g.add(blob);
@@ -1250,6 +1253,19 @@ function moveCapys(){
       if(d>2.5)cp.armed=true;else if(d<.95&&cp.armed){cp.armed=false;toast('Era só uma capivara.');}}
   }
 }
+
+/* Kirk: estava o tempo todo dentro da fantasia de tubarão. A fantasia ficou jogada no gramado e ele faz o mesmo passeio bobo, pelo relógio. */
+var KIRK={id:'kirk',nick:'Kirk',s:1,skin:0xf0a46e,hair:0x2a1a14,style:'curly',beard:0x3a2519,sunga:0x1f3f9a,cap:0x3b5233,capStar:0xd8202a,shirt:0xf3cf22,collar:0x1c8a3c,nolock:1};
+var kirk=makeChar(KIRK,13);kirk.moving=true;
+(function(){shark.position.set(17.2,H(17.2,6.6)+.78,6.6);shark.rotation.set(0,.9,1.42);shark.scale.set(.85,1,1);shark.updateMatrixWorld(true);
+  /* fantasia murcha também é obstáculo */
+  [1.2,2.3,3.3].forEach(function(h){var v=new T.Vector3(0,h,0);shark.localToWorld(v);CIRC.push([v.x,v.z,.65]);});
+  sharkC[2]=.55;})();
+function moveKirk(dt){var st=Date.now()/1000,a=sharkAt(st),b=sharkAt(st+.25),calm=reduceMotion.matches;
+  sharkC[0]=a[0];sharkC[1]=a[1];kirk.pos.set(a[0],0,a[1]);
+  kirk.g.rotation.y=Math.atan2(b[0]-a[0],b[1]-a[1])+(calm?0:Math.sin(st*2.1)*.55+(Math.sin(st*.19)>.93?st*5:0));
+  place(kirk,dt);
+  if(me&&!boat&&me.st===0&&me.swim<.5){var dx=me.pos.x-a[0],dz=me.pos.z-a[1],d=Math.hypot(dx,dz),R=sharkC[2]+.45;if(d<R&&d>1e-4){me.pos.x=a[0]+dx/d*R;me.pos.z=a[1]+dz/d*R;}}}
 
 /* ---------- entrada ---------- */
 var keys={},joy={on:false,id:-1,x:0,y:0,ox:0,oy:0},look={on:false,id:-1,x:0,y:0},yaw=0,pitch=.42,dist=9.5;
@@ -1713,11 +1729,7 @@ function frame(){requestAnimationFrame(frame);var dt=Math.min(.05,clock.getDelta
   moveDog(dt);
   moveBoar(dt);
   moveCapys();
-  /* tubarão: passeio bobo guiado pelo relógio, para todos verem o mesmo percurso; é obstáculo de verdade */
-  (function(){var st=Date.now()/1000,a=sharkAt(st),b=sharkAt(st+.25),calm=reduceMotion.matches;
-    sharkC[0]=a[0];sharkC[1]=a[1];shark.position.set(a[0],calm?0:Math.abs(Math.sin(st*3.4))*.16,a[1]);
-    shark.rotation.y=Math.atan2(b[0]-a[0],b[1]-a[1])+(calm?0:Math.sin(st*2.1)*.55+(Math.sin(st*.19)>.93?st*5:0));shark.rotation.z=calm?0:Math.sin(st*6.5)*.1;
-    if(me&&!boat&&me.st===0&&me.swim<.5){var dx=me.pos.x-a[0],dz=me.pos.z-a[1],d=Math.hypot(dx,dz),R=sharkC[2]+.45;if(d<R&&d>1e-4){me.pos.x=a[0]+dx/d*R;me.pos.z=a[1]+dz/d*R;}}})();
+  moveKirk(dt);
   /* rede do Comedouro: obstáculo que gira até 90° para o lado empurrado, trava e volta balançando */
   (function(){var held=false,k,c,R=.45;
     for(k=0;k<chars.length;k++){c=chars[k];if(c!==me&&!c.remote)continue;if(c===me&&(boat||me.st!==0))continue;
