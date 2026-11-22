@@ -137,7 +137,7 @@ async function offerPresentationRanking(force=false){
 function presentationEntry(){
  if(Date.now()<Date.parse('2026-11-22T00:00:00-03:00'))return '';
  if(Date.now()<PRESENTATION_END&&!(S.qvoted['20779']||[]).includes(S.me))return '';
- return `<button class="card official-card" id="presentationRanking" type="button" style="margin-top:18px"><span class="grow"><strong>Ranking das apresentações</strong><small>${Date.now()<PRESENTATION_END?'Ordene com calma e envie até meio-dia':'Ver resultado e premiação'}</small></span><span aria-hidden="true">›</span></button>`;
+ return `<button class="card official-card" id="presentationRanking" type="button" style="margin-top:18px"><span class="grow"><strong>Ranking das apresentações</strong><small>${Date.now()<PRESENTATION_END?'Reveja aqui':'Ver resultado e premiação'}</small></span><span aria-hidden="true">›</span></button>`;
 }
 async function settlePresentationAwards(){
  const owner=S.me;if(!S.ready||!owner||Date.now()<PRESENTATION_END||presentationAwardsChecked.has(owner))return;
