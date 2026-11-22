@@ -913,6 +913,44 @@ service cloud.firestore {
     && d.kind == 'jogo' && d.why == 'Retrospectiva do Meu An* · Top 3';
   }
 
+  // Avaliação: apenas totais, sugestões sem autor e comprovante privado sem escolhas/data.
+  function reviewPath() { return /databases/$(database)/documents/congressReviews/xvi; }
+  function reviewVoterPath() { return /databases/$(database)/documents/congressReviewVoters/$(request.auth.uid); }
+  function reviewIncrement(n) { return n is int && n in [1,16,256,4096,65536,1048576]; }
+  function validReviewDelta(after,before) {
+   return only(after,['geral','chacara','comida','programacao','organizacao','app'])
+    && reviewIncrement(after.geral-before.geral) && reviewIncrement(after.chacara-before.chacara)
+    && reviewIncrement(after.comida-before.comida) && reviewIncrement(after.programacao-before.programacao)
+    && reviewIncrement(after.organizacao-before.organizacao) && reviewIncrement(after.app-before.app);
+  }
+  function validReviewSuggestions(after,before) {
+   return after is list && after.size() <= 13
+    && (after == before || (after.size() == before.size()+1
+     && after == before.concat([after[before.size()]])
+     && only(after[before.size()],['id','text'])
+     && after[before.size()].id.matches('[a-f0-9]{32}') && text(after[before.size()].text,1500)));
+  }
+  function validReviewTotal(d,before) {
+   return only(d,['voters','ratings','suggestions']) && d.voters is int && d.voters == before.voters+1 && d.voters <= 13
+    && d.ratings is map && validReviewDelta(d.ratings,before.ratings)
+    && validReviewSuggestions(d.suggestions,before.suggestions);
+  }
+  function reviewEmpty() { return {'voters':0,'ratings':{'geral':0,'chacara':0,'comida':0,'programacao':0,'organizacao':0,'app':0},'suggestions':[]}; }
+  match /congressReviews/{id} {
+   allow get: if id == 'xvi' && isAdmin();
+   allow create: if id == 'xvi' && isMember() && !exists(reviewVoterPath())
+    && getAfter(reviewVoterPath()).data.voted == true && validReviewTotal(request.resource.data,reviewEmpty());
+   allow update: if id == 'xvi' && isMember() && !exists(reviewVoterPath())
+    && getAfter(reviewVoterPath()).data.voted == true && validReviewTotal(request.resource.data,resource.data);
+   allow list, delete: if false;
+  }
+  match /congressReviewVoters/{uid} {
+   allow get: if isMember() && isOwner(uid);
+   allow create: if isMember() && isOwner(uid) && only(request.resource.data,['voted']) && request.resource.data.voted == true
+    && getAfter(reviewPath()).data.voters == (exists(reviewPath()) ? get(reviewPath()).data.voters+1 : 1);
+   allow list, update, delete: if false;
+  }
+
   match /{document=**} { allow read, write: if false; }
  }
 }

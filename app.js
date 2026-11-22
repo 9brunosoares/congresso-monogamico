@@ -23,6 +23,13 @@ try { discoveryStorage=localStorage; } catch {}
 const discovery=createDiscovery(discoveryStorage);
 const openedProfiles=new Set(),seenResults=new Set();
 let portalAppearedAt=0,backgroundAt=0,bruAlert;
+let congressReview=null;
+async function showCongressReview(){
+ if(congressReview||!S.me)return;const owner=S.me;
+ const {openCongressReview}=await import('./congress-review.js?v=20261122n');
+ if(S.me!==owner||congressReview)return;
+ congressReview=openCongressReview({admin:isAdm(),onClose:()=>{congressReview=null;}});
+}
 
 // Viagem: quarta 18 à noite até domingo 22/11/2026 no começo da tarde.
 const DAYS = [
@@ -320,6 +327,7 @@ function viewInicio(){
   </section>` : `<section class="card next"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2></section>`}
 
   ${homeShortcuts()}
+  <button class="card official-card" id="congressReview" type="button" aria-haspopup="dialog"><svg class="resource-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg><span class="grow"><strong>Avalie o Congresso</strong><small>Conte pra COMORG · pesquisa anônima</small></span><span class="muted" aria-hidden="true">›</span></button>
   ${homeChacara()}
 
   ${homeQueridometro()}
@@ -903,6 +911,7 @@ document.addEventListener('click',e=>{
  const tripDelete=e.target.closest('[data-trip-delete]');if(tripDelete){sheetDeleteTripPhoto(tripDelete.dataset.tripDelete);return;}
  if(e.target.closest('#addTripPhoto')){sheetTripPhoto();return;}
  if(e.target.closest('#simulateTrip')){simulateTrip();return;}
+ if(e.target.closest('#congressReview')){void showCongressReview().catch(()=>toast('Não foi possível abrir a pesquisa. Tente novamente.'));return;}
  if(e.target.closest('#nanuPollLink')){void showNanuPoll();return;}
  if(e.target.closest('#igorPollLink')){void showIgorPoll();return;}
  const edit=e.target.closest('[data-edit-activity]');if(edit){sheetActivity(AGENDA.find(a=>a.id===edit.dataset.editActivity));return;}
@@ -951,7 +960,7 @@ document.addEventListener('visibilitychange',()=>{
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;presentationRanking?.close();presentationRanking=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){congressReview?.close();congressReview=null;travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;presentationRanking?.close();presentationRanking=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
  if(S.ready&&S.me&&(!wasReady||previous!==S.me)&&!document.hidden)void backend.recordPilotUsage?.('open');
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);
