@@ -1,5 +1,8 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Avaliação em destaque no encerramento (22/11/2026)
+- Pedido de Bru: botão **Avalie o Congresso** agora dentro do card **Congresso encerrado / Até o XVII.**, com botão vermelho destacado e indicação de pesquisa anônima. Removido o atalho separado. Nosso feed passa para depois dos demais blocos da Home; Mural permanece no topo. Front-end20261122o, sem mudanças em dados, regras ou mapa.
+
 ## Pesquisa anônima de avaliação do Congresso (22/11/2026)
 - Autorizada por Bru e aberta no card **Avalie o Congresso**, na Home após Links oficiais, preservando Mural/Feed e demais blocos. Seis temas de1–5 estrelas ou Não se aplica: experiência geral, chácara, comidas/bebidas, programação, organização e aplicativo. Campo opcional de sugestões até1500 caracteres. Uma entrega definitiva por conta, sem prazo configurado ou pontos.
 - `congressReviews/xvi`: somente `{voters,ratings,suggestions}`. Notas são seis contadores compactados em base16 (N/A e estrelas1–5), atualizados por incrementos atômicos; não há avaliações individuais, UID, autor ou horário. Sugestões são lista de `{id,text}`, ID aleatório sem vínculo com conta, preservando textos iguais. `congressReviewVoters/{uid}` guarda apenas `{voted:true}`, sem escolhas, texto ou data; só o titular lê. Batch pareado impede votos repetidos/sem recibo. Histórico técnico da infraestrutura não é uma garantia de anonimato absoluto.

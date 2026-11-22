@@ -311,7 +311,6 @@ function viewInicio(){
   const main=cur||nxt;
   return `
   ${homeMural()}
-  ${tripFeed()}
   ${main ? `<section class="card next">
     <div class="sealmark" aria-hidden="true">XVI</div>
     <div class="eyebrow">${cur?`Agora · até ${fmtTime(cur.end)}`:`Próxima atividade · ${dayOf(nxt.start)?.wd||''} ${fmtTime(nxt.start)}`}</div>
@@ -324,14 +323,14 @@ function viewInicio(){
     ${main.prep?`<div class="prep"><small>Leve / prepare</small>${esc(main.prep)}</div>`:''}
     ${cur&&nxt?`<div class="next-following"><span class="eyebrow">Depois · ${dayOf(nxt.start)?.wd||''} ${fmtTime(nxt.start)}</span><b>${esc(nxt.title)}</b>${nxt.prep?`<span class="next-following-prep">Leve / prepare: ${esc(nxt.prep)}</span>`:''}</div>`:''}
     <button class="next-agenda" data-go="programa" type="button">Agenda <span aria-hidden="true">↗</span></button>
-  </section>` : `<section class="card next"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2></section>`}
+  </section>` : `<section class="card next congress-farewell"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2><p>Como foi pra você? Conte pra COMORG.</p><button class="btn seal block" id="congressReview" type="button" aria-haspopup="dialog">Avalie o Congresso <span aria-hidden="true">↗</span></button><small>Pesquisa anônima</small></section>`}
 
   ${homeShortcuts()}
-  <button class="card official-card" id="congressReview" type="button" aria-haspopup="dialog"><svg class="resource-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg><span class="grow"><strong>Avalie o Congresso</strong><small>Conte pra COMORG · pesquisa anônima</small></span><span class="muted" aria-hidden="true">›</span></button>
   ${homeChacara()}
 
   ${homeQueridometro()}
   ${homePortal()}
+  ${tripFeed()}
   `;
 }
 

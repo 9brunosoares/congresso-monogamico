@@ -73,7 +73,7 @@ test('Nosso feed tem botão de publicar no título e curtidas simples',()=>{
   {id:'a',author:'ob',createdAt:'stamp',caption:'Chegamos! <3',reactions:{bruno:'❤️',igor:'😂'}},{id:'b',author:'bruno',createdAt:'stamp',reactions:{ob:'❤️'}},{id:'c',author:'igor',reactions:{}}
  ]};render()`,context);
  const home=nodes['#root'].innerHTML;
- assert(home.indexOf('id="trip-title"')<home.indexOf('class="card next"'));
+ assert(home.indexOf('id="trip-title"')>home.indexOf('class="card next'));
  assert(home.indexOf('class="card next"')<home.indexOf('id="officialLinks"'));
  for(const section of ['Seu placar','Liderança','Suas contas'])assert(!home.includes(`<h3>${section}</h3>`));
  assert.equal((home.match(/data-trip-photo=/g)||[]).length,2);
@@ -274,7 +274,7 @@ test('home mostra mural apenas após condenação; login sem selo ADM',()=>{
  assert(nodes['#root'].innerHTML.includes('Fazer denúncia'));assert(nodes['#root'].innerHTML.includes('Mural da Vergonha'));
  const home=nodes['#root'].innerHTML;
  assert(home.indexOf('data-go="mural"')<home.indexOf('id="trip-title"'));
- assert(home.indexOf('id="trip-title"')<home.indexOf('class="card next"'));
+ assert(home.indexOf('id="trip-title"')>home.indexOf('class="card next'));
  assert.equal((home.match(/data-go="mural"/g)||[]).length,1);
  assert(!nodes['#root'].innerHTML.includes('Relógio real'));
 });
