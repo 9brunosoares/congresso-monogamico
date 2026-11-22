@@ -1257,14 +1257,45 @@ function moveCapys(){
 /* Kirk: estava o tempo todo dentro da fantasia de tubarão. A fantasia ficou jogada no gramado e ele faz o mesmo passeio bobo, pelo relógio. */
 var KIRK={id:'kirk',nick:'Kirk',s:1,skin:0xf0a46e,hair:0x2a1a14,style:'curly',beard:0x3a2519,sunga:0x1f3f9a,cap:0x3b5233,capStar:0xd8202a,shirt:0xf3cf22,collar:0x1c8a3c,nolock:1};
 var kirk=makeChar(KIRK,13);kirk.moving=true;
-(function(){shark.position.set(17.2,H(17.2,6.6)+.78,6.6);shark.rotation.set(0,.9,1.42);shark.scale.set(.85,1,1);shark.updateMatrixWorld(true);
-  /* fantasia murcha também é obstáculo */
-  [1.2,2.3,3.3].forEach(function(h){var v=new T.Vector3(0,h,0);shark.localToWorld(v);CIRC.push([v.x,v.z,.65]);});
-  sharkC[2]=.55;})();
-function moveKirk(dt){var st=Date.now()/1000,a=sharkAt(st),b=sharkAt(st+.25),calm=reduceMotion.matches;
+/* fantasia inflável sem ar: um "pano" achatado e amassado no gramado plano, com barbatana e cauda tombadas */
+var COSTUME=[27.6,3.4];
+(function(){shark.visible=false;var g=new T.Group(),B=S(0x4f86b5),Wm=S(0xf3f5f7),y0=H(COSTUME[0],COSTUME[1])+.02;g.position.set(COSTUME[0],y0,COSTUME[1]);g.rotation.y=.7;scene.add(g);
+  function flat(pts,depth,mat,y){var sh=new T.Shape();pts.forEach(function(q,i){sh[i?'lineTo':'moveTo'](q[0],q[1]);});
+    var m=new T.Mesh(new T.ExtrudeGeometry(sh,{depth:depth,bevelEnabled:true,bevelThickness:depth*.9,bevelSize:.08,bevelSegments:2,curveSegments:6}),mat);m.rotation.x=-Math.PI/2;m.position.y=y;g.add(m);return m;}
+  // corpo murcho: contorno irregular, achatado
+  var body=[];for(var i=0;i<26;i++){var an=i/26*6.2832,r=1+.12*Math.sin(an*5+1)+.07*Math.sin(an*9);body.push([Math.cos(an)*1.05*r,Math.sin(an)*1.75*r]);}
+  flat(body,.05,B,0);
+  // barriga branca amassada
+  var belly=[];for(i=0;i<18;i++){an=i/18*6.2832;r=1+.15*Math.sin(an*4+2);belly.push([Math.cos(an)*.55*r+.15,Math.sin(an)*1.1*r+.25]);}
+  flat(belly,.02,Wm,.07);
+  // cabeça cônica tombada, cauda e barbatanas caídas
+  flat([[-.55,1.55],[.6,1.5],[.1,2.65]],.05,B,.02);
+  flat([[-.25,-1.6],[.25,-1.6],[.95,-2.55],[.15,-2.15],[-.75,-2.6]],.04,B,.02);
+  flat([[1.0,.2],[1.95,-.35],[1.05,-.45]],.03,B,.03);flat([[-1.0,.3],[-1.8,.95],[-1.05,-.2]],.03,B,.03);
+  flat([[-.15,-.2],[.25,-.25],[.9,.35]],.03,S(0x3f73a0),.11);
+  // rugas: cristas finas sobre o pano
+  for(i=0;i<7;i++){var w=new T.Mesh(new T.CylinderGeometry(.05,.05,.9+.4*Math.sin(i*2.3),6),S(i%2?0x5b94c4:0x427aa8));
+    w.rotation.z=Math.PI/2;w.rotation.y=i*.9+.3;w.scale.set(1,1,.5);w.position.set(Math.sin(i*1.7)*.6,.1,Math.cos(i*2.1)*1.1);g.add(w);}
+  // olhos e boca sem ar, de lado
+  [-.2,.25].forEach(function(dx){var e=new T.Mesh(new T.CircleGeometry(.11,12),Wm);e.rotation.x=-Math.PI/2;e.position.set(dx,.13,1.75);g.add(e);var p2=new T.Mesh(new T.CircleGeometry(.05,10),S(0x111111));p2.rotation.x=-Math.PI/2;p2.position.set(dx+.02,.14,1.77);g.add(p2);});
+  var mo=new T.Mesh(new T.CircleGeometry(.22,14),S(0x7a1f2b));mo.scale.set(1,.35,1);mo.rotation.x=-Math.PI/2;mo.position.set(.05,.13,2.1);g.add(mo);
+  // pés da fantasia esvaziados ao lado
+  [-.45,.5].forEach(function(dx,k){var f=new T.Mesh(new T.SphereGeometry(.22,10,6),S(0x2e5f86));f.scale.set(1,.25,1.6);f.position.set(dx+.2,.05,-1.0-k*.2);g.add(f);});
+  CIRC.push([COSTUME[0],COSTUME[1],.2]);sharkC[2]=.55;})();
+/* Kirk enlouquecido: corre pelo gramado plano a leste dos carros, saltita e rodopia. Tudo pelo relógio. */
+function kirkAt(t){return [35+6*(.6*Math.sin(t*.53)+.4*Math.sin(t*.29+1.3)),-4+7*(.6*Math.sin(t*.41+2)+.4*Math.sin(t*.19))];}
+function moveKirk(dt){var st=Date.now()/1000,a=kirkAt(st),b=kirkAt(st+.15),calm=reduceMotion.matches;
   sharkC[0]=a[0];sharkC[1]=a[1];kirk.pos.set(a[0],0,a[1]);
-  kirk.g.rotation.y=Math.atan2(b[0]-a[0],b[1]-a[1])+(calm?0:Math.sin(st*2.1)*.55+(Math.sin(st*.19)>.93?st*5:0));
+  // rodopio: a cada 5,5 s, duas voltas completas em 0,9 s
+  var ph=(st%5.5)/.9,spin=ph<1?ph*ph*(3-2*ph)*12.566:0;
+  kirk.g.rotation.y=Math.atan2(b[0]-a[0],b[1]-a[1])+(calm?0:spin+Math.sin(st*3.1)*.35);
   place(kirk,dt);
+  if(!calm){var hop=Math.abs(Math.sin(st*Math.PI*1.9)),air=hop>.25;
+    kirk.g.position.y+=hop*.75;
+    // braços para cima sacudindo, pernas encolhidas no ar
+    var fl=Math.sin(st*15);kirk.AL.a.rotation.x=-2.7+fl*.35;kirk.AR.a.rotation.x=-2.7-fl*.35;kirk.AL.a.rotation.z=-.5-fl*.2;kirk.AR.a.rotation.z=.5-fl*.2;kirk.AL.k.rotation.x=-.3;kirk.AR.k.rotation.x=-.3;
+    if(air){kirk.LL.a.rotation.x=-.9*hop;kirk.LR.a.rotation.x=-.5*hop;kirk.LL.k.rotation.x=1.3*hop;kirk.LR.k.rotation.x=1.0*hop;}
+    kirk.blob.scale.setScalar(1-hop*.4);kirk.blob.position.y=.04-hop*.75;}
   if(me&&!boat&&me.st===0&&me.swim<.5){var dx=me.pos.x-a[0],dz=me.pos.z-a[1],d=Math.hypot(dx,dz),R=sharkC[2]+.45;if(d<R&&d>1e-4){me.pos.x=a[0]+dx/d*R;me.pos.z=a[1]+dz/d*R;}}}
 
 /* ---------- entrada ---------- */
