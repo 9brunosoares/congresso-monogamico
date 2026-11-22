@@ -255,7 +255,7 @@ test('13 votações completas não causam transporte entre os nove contadores',t
 test('votação somente nas quatro manhãs e penalidade única após o prazo',()=>{
  assert(!votingOpen(Date.parse('2026-11-18T10:00:00-03:00')));
  for(const day of VOTE_DAYS){
-  assert(!votingOpen(day.start));assert(!votingOpen(day.start+6*3600000-1));assert(votingOpen(day.start+6*3600000));assert(votingOpen(day.deadline-1));assert(!votingOpen(day.deadline));
+  assert.equal(votingOpen(day.start),day.day===22);assert.equal(votingOpen(day.start+6*3600000-1),day.day===22);assert(votingOpen(day.start+6*3600000));assert(votingOpen(day.deadline-1));assert(!votingOpen(day.deadline));
  }
  assert(!votingOpen(Date.parse('2026-11-23T10:00:00-03:00')));
  const d=VOTE_DAYS[0],attendance={[d.key]:{pig:true}};

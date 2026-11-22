@@ -302,6 +302,7 @@ service cloud.firestore {
     : id.matches('quiz_eden_.*') ? validEdenQuizPoint(id,d)
     : id.matches('lake_[0-9]+') ? validLakePoint(id,d)
     : id == 'javali' ? validBoarPoint(d)
+    : id.matches('presentation_.*') ? validPresentationPoint(id,d)
     : (isAdmin() || (id.matches('task_[a-zA-Z0-9_-]+') && directTaskPoint(id,d))));
   }
   match /scoreClosures/{id} {
@@ -315,9 +316,9 @@ service cloud.firestore {
    allow create: if tripStarted() && isMember() && scoringOpen() && fresh(request.resource.data)
     && (id.matches('inf_[a-zA-Z0-9_-]+') ? directInfraction(request.resource.data)
      : regularPointCreate(id,request.resource.data));
-   allow update: if id != 'javali' && !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && sameCreation()
+   allow update: if id != 'javali' && !id.matches('presentation_.*') && !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && tripStarted() && isAdmin() && scoringOpen() && sameCreation()
     && (id.matches('inf_[a-zA-Z0-9_-]+') ? isValidInfraction(request.resource.data) && request.resource.data.by == resource.data.by : isValidPoint(request.resource.data));
-   allow delete: if id != 'javali' && !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && isAdmin() && scoringOpen();
+   allow delete: if id != 'javali' && !id.matches('presentation_.*') && !id.matches('quiz_(ob|eden)_.*') && !id.matches('lake_[0-9]+') && isAdmin() && scoringOpen();
   }
   function isValidExpense(d) {
    return only(d,['title','cat','amount','amountCents','by','payer','split','at','createdAt','status','version','updatedAt','updatedBy']) && text(d.title,120)
@@ -606,7 +607,7 @@ service cloud.firestore {
   }
   function votingOpen() {
    let local=request.time.toMillis()-10800000;
-   return local >= 1795046400000 && local < 1795392000000 && local % 86400000 >= 21600000 && local % 86400000 < 43200000;
+   return local >= 1795046400000 && local < 1795392000000 && (tripDay() == '20779' || local % 86400000 >= 21600000) && local % 86400000 < 43200000;
   }
   // A subtração só aceita números; delta enumerado garante um único incremento.
   // A partir de zero, com 13 votantes e sem voto próprio, cada dígito tem máximo12.
@@ -830,6 +831,88 @@ service cloud.firestore {
     }
    }
   }
+
+  // Ranking das apresentações: voto único privado, agregado atômico, resultado após22/11 às12h SP.
+  function presentationIds() { return ["bruno","ob","luan","igor","pig","pelado","gherardi","nanu","sadano","ibrahim","cadu","felipe"]; }
+  function presentationOpen() { return request.time.toMillis() >= 1795316400000 && request.time.toMillis() < 1795359600000; }
+  function presentationReleased() { return request.time.toMillis() >= 1795359600000; }
+  function presentationTallyPath() { return /databases/$(database)/documents/presentationTallies/main; }
+  function presentationBallotPath(id) { return /databases/$(database)/documents/presentationBallots/$(id); }
+  function presentationZero() { return {'voters':0,'sums':{"bruno":0,"ob":0,"luan":0,"igor":0,"pig":0,"pelado":0,"gherardi":0,"nanu":0,"sadano":0,"ibrahim":0,"cadu":0,"felipe":0},'samples':{"bruno":0,"ob":0,"luan":0,"igor":0,"pig":0,"pelado":0,"gherardi":0,"nanu":0,"sadano":0,"ibrahim":0,"cadu":0,"felipe":0}}; }
+  function validPresentationBallot(d) {
+   let order=d.order;let n=order.size();let step=n == 11 ? 11 : 10;let scores=d.scores;
+   return only(d,['order','scores','createdAt']) && fresh(d) && d.order is list
+    && d.order.size() == (personId() == 'diogo' ? 12 : 11)
+    && d.order.toSet().size() == d.order.size() && d.order.hasOnly(presentationIds())
+    && !d.order.hasAny([personId()]) && d.scores is map && only(d.scores,presentationIds())
+    && (personId() == 'diogo' || d.scores[personId()] == 0)
+    && scores[order[0]] == (n-1)*step
+    && scores[order[1]] == (n-2)*step
+    && scores[order[2]] == (n-3)*step
+    && scores[order[3]] == (n-4)*step
+    && scores[order[4]] == (n-5)*step
+    && scores[order[5]] == (n-6)*step
+    && scores[order[6]] == (n-7)*step
+    && scores[order[7]] == (n-8)*step
+    && scores[order[8]] == (n-9)*step
+    && scores[order[9]] == (n-10)*step
+    && scores[order[10]] == (n-11)*step
+    && (d.order.size() == 11 || scores[order[11]] == 0);
+  }
+
+
+  function validPresentationTally(d,before,ballot) {
+   let sums=d.sums;let oldSums=before.sums;let samples=d.samples;let oldSamples=before.samples;let scores=ballot.scores;let me=personId();
+   return only(d,['voters','sums','samples']) && d.voters is int && d.voters == before.voters+1 && d.voters <= 13
+    && sums is map && samples is map && only(sums,presentationIds()) && only(samples,presentationIds())
+    && validPresentationBallot(ballot)
+    && sums.bruno == oldSums.bruno+scores.bruno && samples.bruno == oldSamples.bruno+('bruno' == me ? 0 : 1)
+    && sums.ob == oldSums.ob+scores.ob && samples.ob == oldSamples.ob+('ob' == me ? 0 : 1)
+    && sums.luan == oldSums.luan+scores.luan && samples.luan == oldSamples.luan+('luan' == me ? 0 : 1)
+    && sums.igor == oldSums.igor+scores.igor && samples.igor == oldSamples.igor+('igor' == me ? 0 : 1)
+    && sums.pig == oldSums.pig+scores.pig && samples.pig == oldSamples.pig+('pig' == me ? 0 : 1)
+    && sums.pelado == oldSums.pelado+scores.pelado && samples.pelado == oldSamples.pelado+('pelado' == me ? 0 : 1)
+    && sums.gherardi == oldSums.gherardi+scores.gherardi && samples.gherardi == oldSamples.gherardi+('gherardi' == me ? 0 : 1)
+    && sums.nanu == oldSums.nanu+scores.nanu && samples.nanu == oldSamples.nanu+('nanu' == me ? 0 : 1)
+    && sums.sadano == oldSums.sadano+scores.sadano && samples.sadano == oldSamples.sadano+('sadano' == me ? 0 : 1)
+    && sums.ibrahim == oldSums.ibrahim+scores.ibrahim && samples.ibrahim == oldSamples.ibrahim+('ibrahim' == me ? 0 : 1)
+    && sums.cadu == oldSums.cadu+scores.cadu && samples.cadu == oldSamples.cadu+('cadu' == me ? 0 : 1)
+    && sums.felipe == oldSums.felipe+scores.felipe && samples.felipe == oldSamples.felipe+('felipe' == me ? 0 : 1);
+  }
+  function presentationSubmission(d,before) {
+   let ballot=presentationBallotPath(personId());
+   return isMember() && presentationOpen() && !exists(ballot)
+    && exists(/databases/$(database)/documents/querido/20779/voters/$(request.auth.uid))
+    && validPresentationTally(d,before,getAfter(ballot).data);
+  }
+  match /presentationBallots/{id} {
+   allow get: if isMember() && id == personId();
+   allow list,update,delete: if false;
+   allow create: if isMember() && id == personId() && presentationOpen()
+    && exists(/databases/$(database)/documents/querido/20779/voters/$(request.auth.uid))
+    && validPresentationTally(getAfter(presentationTallyPath()).data,
+      exists(presentationTallyPath()) ? get(presentationTallyPath()).data : presentationZero(),request.resource.data);
+  }
+  match /presentationTallies/{id} {
+   allow get: if id == 'main' && isMember() && presentationReleased();
+   allow list,delete: if false;
+   allow create: if id == 'main' && presentationSubmission(request.resource.data,presentationZero());
+   allow update: if id == 'main' && presentationSubmission(request.resource.data,resource.data);
+  }
+  function presentationBetter(t,other,id) {
+   return t.samples[other] > 0 && t.sums[other]*t.samples[id] > t.sums[id]*t.samples[other] ? 1 : 0;
+  }
+  function presentationPlace(t,id) {
+   return 1 +presentationBetter(t,'bruno',id)+presentationBetter(t,'ob',id)+presentationBetter(t,'luan',id)+presentationBetter(t,'igor',id)+presentationBetter(t,'pig',id)+presentationBetter(t,'pelado',id)+presentationBetter(t,'gherardi',id)+presentationBetter(t,'nanu',id)+presentationBetter(t,'sadano',id)+presentationBetter(t,'ibrahim',id)+presentationBetter(t,'cadu',id)+presentationBetter(t,'felipe',id);
+  }
+  function validPresentationPoint(id,d) {
+   let t=get(presentationTallyPath()).data;let place=presentationPlace(t,d.who);
+   return presentationReleased() && id == 'presentation_'+d.who && d.who in presentationIds()
+    && t.voters > 0 && t.samples[d.who] > 0 && place <= 3
+    && d.d == (place == 1 ? 20 : place == 2 ? 10 : 5)
+    && d.kind == 'jogo' && d.why == 'Retrospectiva do Meu An* · Top 3';
+  }
+
   match /{document=**} { allow read, write: if false; }
  }
 }

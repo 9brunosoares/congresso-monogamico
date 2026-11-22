@@ -35,6 +35,13 @@ const {context}=require('./firebase-context.cjs');
   cases.push(denied);
  }
  const noReceipt=make('bruno',first);noReceipt.expectation='DENY';noReceipt.functionMocks.find(m=>m.args[0].exactValue.includes('/participation/')).result.value=null;cases.push(noReceipt);
+ // Último dia foi liberado à meia-noite, preservando o encerramento às12h SP.
+ for(const [time,expectation]of [['2026-11-22T00:00:00-03:00','ALLOW'],['2026-11-22T05:59:59-03:00','ALLOW'],['2026-11-22T11:59:59-03:00','ALLOW'],['2026-11-22T12:00:00-03:00','DENY']]){
+  const final=make('bruno',first);final.expectation=expectation;final.request.time=new Date(time).toISOString();
+  const actual=dayKey(Date.parse(time));final.request.path=final.request.path.replace('/'+key,'/'+actual);
+  for(const mock of final.functionMocks)mock.args[0].exactValue=mock.args[0].exactValue.replaceAll('/'+key,'/'+actual);
+  cases.push(final);
+ }
  const receipt=make('bruno',first);receipt.request.path=prefix+'/participation/'+key+'/people/bruno';receipt.request.resource.data={voted:true};cases.push(receipt);
  const wrongReceipt=structuredClone(receipt);wrongReceipt.expectation='DENY';wrongReceipt.request.path=prefix+'/participation/'+key+'/people/ob';cases.push(wrongReceipt);
  const casePath=prefix+'/cases/test-photo-case',photoPath=prefix+'/casePhotos/test-photo-case',photo={dataUrl:'data:image/jpeg;base64,AAAA'};

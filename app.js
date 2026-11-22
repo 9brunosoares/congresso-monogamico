@@ -7,8 +7,8 @@ import {REACTIONS} from './mural-reactions.js?v=20261107c';
 import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261120j';
-import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261120j';
-import * as backend from './backend.js?v=20261121t';
+import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261122a';
+import * as backend from './backend.js?v=20261122a';
 import {nanuAgendaAccess} from './nanu-poll-model.js?v=20261121t';
 import {igorAgendaAccess} from './igor-poll-model.js?v=20261121p';
 import {openTravelMap} from './mapa-viagem.js?v=20261121o';
@@ -118,6 +118,32 @@ async function showNanuPoll(){
   nanuPoll=openNanuPoll({onClose(){nanuPoll=null;$('#nanuPollLink')?.focus({preventScroll:true});},onError:backend.reportError});
  }catch(error){backend.reportError(error);toast('Não foi possível abrir a enquete. Tente novamente.');}
  finally{nanuPollLoading=false;}
+}
+let presentationRanking=null,presentationLoading=false;
+const presentationOffered=new Set(),presentationAwardsChecked=new Set();
+const PRESENTATION_END=Date.parse('2026-11-22T12:00:00-03:00');
+async function offerPresentationRanking(force=false){
+ if(presentationRanking||presentationLoading||!S.me)return;
+ const owner=S.me;if(!force&&presentationOffered.has(owner))return;
+ presentationOffered.add(owner);presentationLoading=true;
+ try{
+  if(!force){const {createPresentationRankingData}=await import('./presentation-ranking-data.js?v=20261122a');const state=await createPresentationRankingData().load();if(state.saved||!state.eligible)return;}
+  const {openPresentationRanking}=await import('./presentation-ranking.js?v=20261122a');
+  if(S.me!==owner)return;
+  presentationRanking=openPresentationRanking({onClose(){presentationRanking=null;},onError:backend.reportError});
+ }catch(e){presentationOffered.delete(owner);backend.reportError(e);toast('Não foi possível abrir o ranking. Seu Queridômetro está salvo. Tente pelo botão na aba.');}
+ finally{presentationLoading=false;}
+}
+function presentationEntry(){
+ if(Date.now()<Date.parse('2026-11-22T00:00:00-03:00'))return '';
+ if(Date.now()<PRESENTATION_END&&!(S.qvoted['20779']||[]).includes(S.me))return '';
+ return `<button class="card official-card" id="presentationRanking" type="button" style="margin-top:18px"><span class="grow"><strong>Ranking das apresentações</strong><small>${Date.now()<PRESENTATION_END?'Ordene com calma e envie até meio-dia':'Ver resultado e premiação'}</small></span><span aria-hidden="true">›</span></button>`;
+}
+async function settlePresentationAwards(){
+ const owner=S.me;if(!S.ready||!owner||Date.now()<PRESENTATION_END||presentationAwardsChecked.has(owner))return;
+ presentationAwardsChecked.add(owner);
+ try{const {createPresentationRankingData}=await import('./presentation-ranking-data.js?v=20261122a');if(S.me===owner)await createPresentationRankingData().finalize();}
+ catch(e){backend.reportError(e);}
 }
 async function offerDailyQuiz(){
  const owner=S.me;
@@ -502,8 +528,8 @@ function viewQuerido(){
     <div class="card" style="margin-top:12px;padding-block:4px">${votePeople(ALL,revealed.day).slice().sort((a,b)=>((res[b]||{})["❤️"]||0)-((res[a]||{})["❤️"]||0)).map(id=>{
       const c=res[id]||{}; const chips=EMOJIS.filter(em=>c[em]).sort((a,b)=>c[b]-c[a]).map(em=>`<span class="qchip">${em}<b>${c[em]}</b></span>`).join("");
       return `<div class="qres ${id===S.me?"me-row":""}">${av(id)}<div style="min-width:0"><div class="nm">${esc(P[id].nick)}</div><div class="qchips">${chips||'<span class="muted" style="font-size:13px">sem votos ainda</span>'}</div></div><span class="muted num" style="font-size:13px">${total(id)}</span></div>`}).join("")}</div>`;
-  if(revealed)return results+(revealed.day===VOTE_DAYS.at(-1).day?'<p class="muted">Esta foi a última votação do congresso.</p>':'');
-  return (!votingOpen()&&!voted?'<div class="card"><h2>Votação fechada</h2><p>De 19 a 22/11, pela manhã até meio-dia (São Paulo).</p></div>':voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos foram enviados.'}</div></div>`:form) + (VOTE_DAYS.some(v=>v.key===d)?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'');
+  if(revealed)return results+(revealed.day===VOTE_DAYS.at(-1).day?'<p class="muted">Esta foi a última votação do congresso.</p>':'')+presentationEntry();
+  return (!votingOpen()&&!voted?'<div class="card"><h2>Votação fechada</h2><p>De 19 a 22/11, pela manhã até meio-dia (São Paulo).</p></div>':voted?`<div class="card row"><span class="emo-strip" aria-hidden="true">✅</span><div class="grow">${d===VOTE_DAYS.at(-1).key?'Esta foi a última votação do congresso.':'Seus votos foram enviados.'}</div></div>`:form) + (VOTE_DAYS.some(v=>v.key===d)?'<p class="muted">O resultado será revelado ao meio-dia.</p>':'')+presentationEntry();
 }
 
 function viewFofoca(){
@@ -893,7 +919,8 @@ document.addEventListener('click',e=>{
  const button=e.target.closest('button'),id=button?.id;
  if(id==='olderScores'){scoreHistoryLimit+=12;render();return;}
  ({fullAgenda:()=>{agendaAdminMode=!agendaAdminMode;render();},officialLinks:sheetOfficialLinks,closeScores:sheetCloseScores,closeAccounts:sheetCloseAccounts,newPayment:()=>sheetPayment(),copyClosing:()=>act(button,async()=>{const text=closingReport(S.closing,S.payments,S.pixKeys);if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Relatório copiado');}else sheet(`<h3>Relatório final</h3><textarea readonly style="width:100%;min-height:260px">${esc(text)}</textarea><button class="btn ghost block" data-close type="button">Fechar</button>`,()=>{});}),olderFinance:()=>act(button,()=>backend.loadOlderFinanceHistory()),myPix:()=>sheetPix(),retrySync:()=>backend.retrySync(),olderChat:()=>act(button,()=>backend.loadOlderChat()),olderMural:()=>act(button,()=>backend.loadOlderMural()),meBtn:sheetMe,quickReport:sheetTask,quickExp:()=>sheetExpense(),givePts:()=>sheetPoints(false),takePts:()=>sheetPoints(true),report:sheetReport,homeReport:sheetReport,editBudget:sheetBudget,addAct:sheetActivity,
- qSend:()=>act(button,async()=>{const owner=S.me;await backend.vote({...qDraft});if(S.me!==owner)return;qDraft={};toast('Votos enviados, anonimamente');void offerDailyQuiz();})})[id]?.();
+ presentationRanking:()=>void offerPresentationRanking(true),
+ qSend:()=>act(button,async()=>{const owner=S.me;await backend.vote({...qDraft});if(S.me!==owner)return;qDraft={};toast('Votos enviados, anonimamente');if(dayKey()==='20779')void offerPresentationRanking();else void offerDailyQuiz();})})[id]?.();
 });
 
 function tick(){
@@ -911,7 +938,7 @@ document.addEventListener('submit',e=>{
 function votingPhaseAt(at=Date.now()){return resultDay(at)?.key??votingOpen(at);}
 function homePhase(){const {cur,nxt}=nextItem();return `${cur?.start}:${nxt?.start}:${Date.now()<DISCOVERY_END}`;}
 let votingPhase=votingPhaseAt(),currentHomePhase=homePhase();
-setInterval(()=>{tick();const phase=votingPhaseAt(),home=homePhase();if(phase!==votingPhase||home!==currentHomePhase){votingPhase=phase;currentHomePhase=home;backend.refreshTime?.();render();}},1000);
+setInterval(()=>{tick();const phase=votingPhaseAt(),home=homePhase();if(phase!==votingPhase||home!==currentHomePhase){votingPhase=phase;currentHomePhase=home;backend.refreshTime?.();render();void settlePresentationAwards();}},1000);
 document.addEventListener('visibilitychange',()=>{
  bruAlert?.update({me:S.me,ready:S.ready,hidden:document.hidden});
  if(document.hidden){backgroundAt=Date.now();return;}
@@ -923,11 +950,13 @@ document.addEventListener('visibilitychange',()=>{
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;presentationRanking?.close();presentationRanking=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
  if(S.ready&&S.me&&(!wasReady||previous!==S.me)&&!document.hidden)void backend.recordPilotUsage?.('open');
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);
  if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}
  bruAlert??=createBruAlert({storage:discoveryStorage});
  bruAlert.update({me:S.me,ready:S.ready,hidden:document.hidden});
+ if(S.ready&&S.me&&dayKey()==='20779'&&Date.now()<PRESENTATION_END&&(S.qvoted['20779']||[]).includes(S.me))void offerPresentationRanking();
+ void settlePresentationAwards();
 }).catch(e=>{S.ready=true;S.error=backend.errorText(e);render();});

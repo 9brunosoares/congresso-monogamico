@@ -76,7 +76,15 @@ const { context } = require('./firebase-context.cjs');
   }
   const { Client } = require(path.join(c.root, 'lib/apiv2.js')), api = require(path.join(c.root, 'lib/api.js'));
   const client = new Client({ urlPrefix: api.rulesOrigin(), apiVersion: 'v1', auth: true });
-  const response = await client.post('/projects/congresso-monogamico:test', { source: { files: [{ name: 'firestore.rules', content: fs.readFileSync('firestore.rules', 'utf8') }] }, testSuite: { testCases: tests } }, { skipLog: { body: true } });
+  const report={issues:[],testResults:[]};
+  for(let offset=0;offset<tests.length;offset+=30){
+   let part;for(let retry=0;retry<3;retry++){
+    try{part=await client.post('/projects/congresso-monogamico:test',{source:{files:[{name:'firestore.rules',content:fs.readFileSync('firestore.rules','utf8')}]},testSuite:{testCases:tests.slice(offset,offset+30)}},{skipLog:{body:true}});break;}
+    catch(e){if(retry===2||!String(e.message).includes('503'))throw e;}
+   }
+   report.issues.push(...part.body.issues||[]);report.testResults.push(...part.body.testResults||[]);
+  }
+  const response={body:report};
   const results = response.body.testResults || [], failed = results.flatMap((result, i) => result.state === 'SUCCESS' ? [] : [{ name: names[i], ...result }]);
   fs.writeFileSync('.private/quiz-rules-report.json', JSON.stringify(response.body, null, 2));
   console.log(JSON.stringify({ total: results.length, issues: response.body.issues, failed: failed.map(({ name, state, error }) => ({ name, state, error })) }, null, 2));
