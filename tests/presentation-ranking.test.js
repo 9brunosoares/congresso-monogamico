@@ -42,7 +42,7 @@ test('SDK:13 rankings simultâneos, recuperação, premiação concorrente e fec
   t.mock.method(Date,'now',()=>RANKING_END);const prizes=presentationResults(tally).filter(r=>r.prize);
   await Promise.all(clients.map(client=>client.finalize()));assert.equal([...records.keys()].filter(k=>k.startsWith('points/')).length,prizes.length);
   for(const row of prizes)assert.equal(records.get('points/presentation_'+row.id).d,row.prize);
-  await assert.rejects(clients[0].send(rankingCandidates('bruno')),/encerrou/);
+  await assert.rejects(clients[0].send(rankingCandidates('bruno')),/encerr/);
   records.set('scoreClosures/main',{closedAt:RANKING_END});assert.deepEqual(await clients[0].finalize(),[]);
   auths.get('bruno').currentUser=null;await assert.rejects(clients[0].load(),/conta mudou/);
  }finally{delete globalThis.__presentationSdk;await Promise.all(files.map(f=>fs.rm(f,{force:true})));}

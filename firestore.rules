@@ -834,8 +834,8 @@ service cloud.firestore {
 
   // Ranking das apresentações: voto único privado, agregado atômico, resultado após22/11 às12h SP.
   function presentationIds() { return ["bruno","ob","luan","igor","pig","pelado","gherardi","nanu","sadano","ibrahim","cadu","felipe"]; }
-  function presentationOpen() { return request.time.toMillis() >= 1795316400000 && request.time.toMillis() < 1795359600000; }
-  function presentationReleased() { return request.time.toMillis() >= 1795359600000; }
+  function presentationOpen() { return request.time.toMillis() >= 1795316400000 && request.time.toMillis() < 1795354800000; }
+  function presentationReleased() { return request.time.toMillis() >= 1795354800000; }
   function presentationTallyPath() { return /databases/$(database)/documents/presentationTallies/main; }
   function presentationBallotPath(id) { return /databases/$(database)/documents/presentationBallots/$(id); }
   function presentationZero() { return {'voters':0,'sums':{"bruno":0,"ob":0,"luan":0,"igor":0,"pig":0,"pelado":0,"gherardi":0,"nanu":0,"sadano":0,"ibrahim":0,"cadu":0,"felipe":0},'samples':{"bruno":0,"ob":0,"luan":0,"igor":0,"pig":0,"pelado":0,"gherardi":0,"nanu":0,"sadano":0,"ibrahim":0,"cadu":0,"felipe":0}}; }

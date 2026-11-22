@@ -1,5 +1,10 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Apresentações encerradas com13 rankings (22/11/2026)
+- OB enviou o último ranking e Bru autorizou encerrar.13 comprovantes conferidos, sem auto voto, com agregado recalculado independentemente antes da premiação. Encerramento antecipado às10h40 SP em `RANKING_END`, `PRESENTATION_END` e regras; Queridômetro permanece revelado desde10h16. Nenhum voto individual alterado/apagado.
+- Resultado:1º Felipe(+20),2º Gherardi(+10),3º Nanu(+5), sem empate. Bônus únicos `points/presentation_felipe`, `points/presentation_gherardi`, `points/presentation_nanu`, conferidos/criados idempotentemente pelo script privado `.private/finalize-presentations-20261122.cjs --apply`; evitar relançar. Placar geral continua aberto.
+- Front-end20261122f. Publicar somente regras do Firestore e front-end; não alterar RTDB, Auth, mapa ou outras votações. Resultado agregado fora da raiz pública em `../Resultados-Apresentacoes-2026/resultado.json`.
+
 ## Queridômetro final revelado antecipadamente; apresentações aguardam OB (22/11/2026)
 - Bru autorizou publicar o Queridômetro de22 após os13/13 votos. Revelação/encerramento antecipados em22/11 às10h16 SP (`FINAL_RESULTS_AT` e `revealAt` em shared.js; regras de leitura e janela ajustadas somente para20779). Prazo original de penalidades permanece12h; dias anteriores e votos armazenados preservados. Exportação da TV usa `revealAt` para incluir a rodada final já publicada.
 - Conferência mostrou12/13 rankings, faltando OB. Bru escolheu explicitamente aguardar OB: **não encerrar as apresentações nem lançar os prêmios agora**. `RANKING_END` e `PRESENTATION_END` continuam12h e as regras de ranking permanecem intactas. Front-end20261122e; publicar somente regras do Firestore e front-end.

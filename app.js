@@ -121,14 +121,14 @@ async function showNanuPoll(){
 }
 let presentationRanking=null,presentationLoading=false;
 const presentationOffered=new Set(),presentationAwardsChecked=new Set();
-const PRESENTATION_END=Date.parse('2026-11-22T12:00:00-03:00');
+const PRESENTATION_END=Date.parse('2026-11-22T10:40:00-03:00');
 async function offerPresentationRanking(force=false){
  if(presentationRanking||presentationLoading||!S.me)return;
  const owner=S.me;if(!force&&presentationOffered.has(owner))return;
  presentationOffered.add(owner);presentationLoading=true;
  try{
-  if(!force){const {createPresentationRankingData}=await import('./presentation-ranking-data.js?v=20261122a');const state=await createPresentationRankingData().load();if(state.saved||!state.eligible)return;}
-  const {openPresentationRanking}=await import('./presentation-ranking.js?v=20261122b');
+  if(!force){const {createPresentationRankingData}=await import('./presentation-ranking-data.js?v=20261122f');const state=await createPresentationRankingData().load();if(state.saved||!state.eligible)return;}
+  const {openPresentationRanking}=await import('./presentation-ranking.js?v=20261122f');
   if(S.me!==owner)return;
   presentationRanking=openPresentationRanking({onClose(){presentationRanking=null;},onError:backend.reportError});
  }catch(e){presentationOffered.delete(owner);backend.reportError(e);toast('Não foi possível abrir o ranking. Seu Queridômetro está salvo. Tente pelo botão na aba.');}
@@ -142,7 +142,7 @@ function presentationEntry(){
 async function settlePresentationAwards(){
  const owner=S.me;if(!S.ready||!owner||Date.now()<PRESENTATION_END||presentationAwardsChecked.has(owner))return;
  presentationAwardsChecked.add(owner);
- try{const {createPresentationRankingData}=await import('./presentation-ranking-data.js?v=20261122a');if(S.me===owner)await createPresentationRankingData().finalize();}
+ try{const {createPresentationRankingData}=await import('./presentation-ranking-data.js?v=20261122f');if(S.me===owner)await createPresentationRankingData().finalize();}
  catch(e){backend.reportError(e);}
 }
 async function offerDailyQuiz(){

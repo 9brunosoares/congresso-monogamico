@@ -2,7 +2,7 @@ import {ALL,P} from './roster.js?v=20261120j';
 
 export const PRESENTERS=ALL.filter(id=>id!=='diogo');
 export const RANKING_START=Date.parse('2026-11-22T00:00:00-03:00');
-export const RANKING_END=Date.parse('2026-11-22T12:00:00-03:00');
+export const RANKING_END=Date.parse('2026-11-22T10:40:00-03:00');
 export const RANKING_DAY='20779';
 export const PRESENTATION_REASON='Retrospectiva do Meu An* · Top 3';
 export const rankingOpen=(at=Date.now())=>at>=RANKING_START&&at<RANKING_END;

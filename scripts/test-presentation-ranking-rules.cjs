@@ -20,8 +20,8 @@ const {context}=require('./firebase-context.cjs');
    if(target==='ballot'&&extra.missingBallot||target==='tally'&&extra.missingTally)continue;
    add('inválido '+target+JSON.stringify(extra),vote({target,...extra,expectation:'DENY'}));
   }
-  for(const time of ['2026-11-22T02:59:59.999Z','2026-11-22T15:00:00.000Z'])add('prazo '+target+time,vote({target,time,expectation:'DENY'}));
-  add('último milissegundo '+target,vote({target,time:'2026-11-22T14:59:59.999Z'}));
+  for(const time of ['2026-11-22T02:59:59.999Z',new Date(m.RANKING_END).toISOString(),'2026-11-22T15:00:00.000Z'])add('prazo '+target+time,vote({target,time,expectation:'DENY'}));
+  add('último milissegundo '+target,vote({target,time:new Date(m.RANKING_END-1).toISOString()}));
  }
  add('tally duplicado',vote({target:'tally',updating:true,duplicate:true,expectation:'DENY'}));
  const scores=m.rankingDelta('ibrahim',m.rankingCandidates('ibrahim')).sums;
