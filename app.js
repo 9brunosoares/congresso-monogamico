@@ -128,7 +128,7 @@ async function offerPresentationRanking(force=false){
  presentationOffered.add(owner);presentationLoading=true;
  try{
   if(!force){const {createPresentationRankingData}=await import('./presentation-ranking-data.js?v=20261122a');const state=await createPresentationRankingData().load();if(state.saved||!state.eligible)return;}
-  const {openPresentationRanking}=await import('./presentation-ranking.js?v=20261122a');
+  const {openPresentationRanking}=await import('./presentation-ranking.js?v=20261122b');
   if(S.me!==owner)return;
   presentationRanking=openPresentationRanking({onClose(){presentationRanking=null;},onError:backend.reportError});
  }catch(e){presentationOffered.delete(owner);backend.reportError(e);toast('Não foi possível abrir o ranking. Seu Queridômetro está salvo. Tente pelo botão na aba.');}
