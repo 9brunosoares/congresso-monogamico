@@ -1,9 +1,9 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
 ## Congresso XVI Wrapped (23/11/2026)
-- “Meu XVI Wrapped” no card de encerramento da Home e na despedida do XVII. Abertura sob demanda, oito etapas, navegação manual. Todos os 13 têm lembrança e tempo de tela distintos. Diogo usa a foto de credencial na etapa de lembrança. O PNG final de 1080×1440 sai do mesmo canvas exibido.
+- “Meu XVI Wrapped” apenas na tela preta de despedida do XVII, após a avaliação. Abertura sob demanda, oito etapas, navegação manual. Todos os 13 têm lembrança e tempo de tela distintos. Diogo usa a foto de credencial na etapa de lembrança. O PNG final de 1080×1440 sai do mesmo canvas exibido.
 - Posição e pontos usam o ranking do app no momento da abertura. Queridômetro soma exclusivamente as contagens recebidas das rodadas reveladas (20–22 tinham documento na conferência de 23/11), com empates. Fofoca coletiva usa somente a contagem horária durante 18–22/11 em São Paulo: 35 mensagens; pico único em 22/11 das 9h às 10h com 4. Nenhum texto ou autor foi usado.
-- A experiência lê até quatro documentos agregados quando aberta. Sem escrita, alteração de regras ou exigência de responder à pesquisa para abrir. Preview com 13 perfis, dois pontos de entrada, navegação, download e API de compartilhamento simulada. Front-end 20261123b.
+- A experiência lê até quatro documentos agregados quando aberta. Preview com 13 perfis, navegação, download e API de compartilhamento simulada. Front-end 20261123c.
 
 
 ## Despedida do XVII após a avaliação (22/11/2026)

@@ -55,9 +55,9 @@ function enterFarewell(){
 let wrapped=null;
 async function showWrapped(){
  const uid=S.uid,id=S.me;
- if(!uid||!P[id]||wrapped)return;
+ if(!uid||!P[id]||farewellOwner!==uid||tab!=='despedida'||wrapped)return;
  const [{openWrapped},{loadWrappedEmoji}]=await Promise.all([import('./wrapped.js?v=20261123b'),import('./wrapped-data.js?v=20261123b')]);
- if(S.uid!==uid||wrapped)return;
+ if(S.uid!==uid||farewellOwner!==uid||tab!=='despedida'||wrapped)return;
  const rows=ranking(),index=rows.findIndex(row=>row.id===id);
  wrapped=openWrapped({id,rank:index+1,points:rows[index].s,loadEmoji:loadWrappedEmoji,onClose:()=>{wrapped=null;document.querySelector('[data-open-wrapped]')?.focus();}});
 }
@@ -361,7 +361,7 @@ function viewInicio(){
     ${main.prep?`<div class="prep"><small>Leve / prepare</small>${esc(main.prep)}</div>`:''}
     ${cur&&nxt?`<div class="next-following"><span class="eyebrow">Depois · ${dayOf(nxt.start)?.wd||''} ${fmtTime(nxt.start)}</span><b>${esc(nxt.title)}</b>${nxt.prep?`<span class="next-following-prep">Leve / prepare: ${esc(nxt.prep)}</span>`:''}</div>`:''}
     <button class="next-agenda" data-go="programa" type="button">Agenda <span aria-hidden="true">↗</span></button>
-  </section>` : `<section class="card next congress-farewell"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2><p>Como foi pra você? Conte pra COMORG.</p><button class="btn seal block" id="congressReview" type="button" aria-haspopup="dialog">Avalie o Congresso <span aria-hidden="true">↗</span></button><small>Pesquisa anônima</small><button type="button" class="wrap-launch" data-open-wrapped aria-haspopup="dialog">Meu XVI Wrapped ↗</button></section>`}
+  </section>` : `<section class="card next congress-farewell"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2><p>Como foi pra você? Conte pra COMORG.</p><button class="btn seal block" id="congressReview" type="button" aria-haspopup="dialog">Avalie o Congresso <span aria-hidden="true">↗</span></button><small>Pesquisa anônima</small></section>`}
 
   ${homeShortcuts()}
   ${homeChacara()}
