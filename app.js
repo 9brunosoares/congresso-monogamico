@@ -1,4 +1,4 @@
-import {playFarewell,farewellScreen} from './farewell.js?v=20261122p';
+import {playFarewell,farewellScreen} from './farewell.js?v=20261123a';
 import {carFor,departure,availableDay,agendaFor,votePeople,departureFor,returnActivity} from './travel.js?v=20261122d';
 import {prepareReportPhoto} from './report-photo.js';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261120e';
@@ -51,6 +51,15 @@ function enterFarewell(){
  root.querySelector('h1').focus({preventScroll:true});
  photoObserver?.disconnect();
  render();
+}
+let wrapped=null;
+async function showWrapped(){
+ const uid=S.uid,id=S.me;
+ if(!uid||!P[id]||wrapped)return;
+ const [{openWrapped},{loadWrappedEmoji}]=await Promise.all([import('./wrapped.js?v=20261123a'),import('./wrapped-data.js?v=20261123a')]);
+ if(S.uid!==uid||wrapped)return;
+ const rows=ranking(),index=rows.findIndex(row=>row.id===id);
+ wrapped=openWrapped({id,rank:index+1,points:rows[index].s,loadEmoji:loadWrappedEmoji,onClose:()=>{wrapped=null;document.querySelector('[data-open-wrapped]')?.focus();}});
 }
 let congressReview=null;
 async function showCongressReview(){
@@ -352,7 +361,7 @@ function viewInicio(){
     ${main.prep?`<div class="prep"><small>Leve / prepare</small>${esc(main.prep)}</div>`:''}
     ${cur&&nxt?`<div class="next-following"><span class="eyebrow">Depois · ${dayOf(nxt.start)?.wd||''} ${fmtTime(nxt.start)}</span><b>${esc(nxt.title)}</b>${nxt.prep?`<span class="next-following-prep">Leve / prepare: ${esc(nxt.prep)}</span>`:''}</div>`:''}
     <button class="next-agenda" data-go="programa" type="button">Agenda <span aria-hidden="true">↗</span></button>
-  </section>` : `<section class="card next congress-farewell"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2><p>Como foi pra você? Conte pra COMORG.</p><button class="btn seal block" id="congressReview" type="button" aria-haspopup="dialog">Avalie o Congresso <span aria-hidden="true">↗</span></button><small>Pesquisa anônima</small></section>`}
+  </section>` : `<section class="card next congress-farewell"><div class="eyebrow">Congresso encerrado</div><h2>Até o XVII.</h2><p>Como foi pra você? Conte pra COMORG.</p><button class="btn seal block" id="congressReview" type="button" aria-haspopup="dialog">Avalie o Congresso <span aria-hidden="true">↗</span></button><small>Pesquisa anônima</small><button type="button" class="wrap-launch" data-open-wrapped aria-haspopup="dialog">Meu XVI Wrapped ↗</button></section>`}
 
   ${homeShortcuts()}
   ${homeChacara()}
@@ -954,6 +963,7 @@ document.addEventListener('click',e=>{
  if(e.target.closest('#addTripPhoto')){sheetTripPhoto();return;}
  if(e.target.closest('#exitFinaleAccount')){const b=e.target.closest('button');void act(b,()=>backend.logout());return;}
  if(e.target.closest('#simulateTrip')){simulateTrip();return;}
+ if(e.target.closest('[data-open-wrapped]')){void showWrapped().catch(()=>toast('Não foi possível abrir o Wrapped. Tente novamente.'));return;}
  if(e.target.closest('#congressReview')){void showCongressReview().catch(()=>toast('Não foi possível abrir a pesquisa. Tente novamente.'));return;}
  if(e.target.closest('#nanuPollLink')){void showNanuPoll();return;}
  if(e.target.closest('#igorPollLink')){void showIgorPoll();return;}
@@ -1003,7 +1013,7 @@ document.addEventListener('visibilitychange',()=>{
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){if(farewellOwner){farewellOwner=null;tab='inicio';document.querySelector('.finale-transition')?.remove();}congressReview?.close();congressReview=null;travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;presentationRanking?.close();presentationRanking=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){wrapped?.close();if(farewellOwner){farewellOwner=null;tab='inicio';document.querySelector('.finale-transition')?.remove();}congressReview?.close();congressReview=null;travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;presentationRanking?.close();presentationRanking=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
  if(S.ready&&S.me&&(!wasReady||previous!==S.me)&&!document.hidden)void backend.recordPilotUsage?.('open');
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);

@@ -26,6 +26,7 @@ export function farewellScreen(animate) {
       <div class="finale-crest"><img src="assets/finale/xvii.webp" width="1254" height="1254" alt="XVII Congresso Monogâmico de São Paulo · COMORG"></div>
       <h1 id="finale-title" tabindex="-1">Nos vemos no congresso <br>do ano que vem</h1>
     </div>
+    <button type="button" class="wrap-launch" data-open-wrapped aria-haspopup="dialog">Meu XVI Wrapped ↗</button>
     <button class="btn seal finale-finance" type="button" data-go="contas"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7h18v12H3zM3 11h18M6 15h4"/></svg>Racha Conta <span aria-hidden="true">↗</span></button>
   </main>`;
 }

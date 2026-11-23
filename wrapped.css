@@ -1,0 +1,14 @@
+.wrap-launch{display:block;margin:12px auto 0;background:#dcff48;color:#171228;border:0;border-radius:99px;font:800 15px var(--f-display);padding:12px 22px;min-height:44px;cursor:pointer}
+.congress-farewell .wrap-launch{margin:16px 0 0}
+.xvi-wrapped{color-scheme:dark;position:fixed;inset:0;margin:auto;background:#13111a;color:#faf7ef;border:0;padding:0;width:100%;max-width:100vw;height:100%;max-height:100dvh;overflow:auto;overscroll-behavior:contain}
+.xvi-wrapped::backdrop{background:#13111a}
+.wrap-shell{box-sizing:border-box;width:min(100%,560px);height:100%;min-height:420px;margin:auto;padding:max(10px,env(safe-area-inset-top)) 14px max(12px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:9px}
+.wrap-top,.wrap-actions{display:flex;align-items:center;gap:10px}.wrap-top b{font:800 14px var(--f-display);color:#dcff48;letter-spacing:.04em}.wrap-index{margin-left:auto;font:500 11px var(--f-mono)}
+.xvi-wrapped button,.wrap-actions a{font:700 15px var(--f-body);cursor:pointer;color:inherit;min-height:44px;border-radius:99px;border:1px solid #5e5769;background:transparent;padding:8px 16px;text-decoration:none}
+.wrap-top button{min-width:44px;padding:0}.wrap-bars{display:flex;gap:4px}.wrap-bars i{flex:1;height:3px;background:#453e50;border-radius:3px}.wrap-bars i.lit{background:#dcff48}
+.wrap-art{flex:1;min-height:0;display:grid;place-items:center}.wrap-art canvas{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
+.wrap-choices,.wrap-actions{justify-content:center;display:flex;flex-wrap:wrap;gap:5px}.wrap-choices button{font-size:20px;padding:4px 7px;min-width:44px}
+.wrap-actions [data-wrap=next]{background:#dcff48;color:#171228;border-color:#dcff48;flex:1}.wrap-actions a{display:grid;place-items:center;box-sizing:border-box}
+.wrap-actions button:disabled{opacity:.4}.xvi-wrapped :focus-visible,.wrap-launch:focus-visible{outline:3px solid #ff845f;outline-offset:2px}
+.wrap-state{text-align:center}.wrap-sr{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+
