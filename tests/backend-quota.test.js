@@ -22,7 +22,8 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   getDocFromCache:async ref=>{if(ref.path==='people/bruno')return {data:()=>({uid:user.uid})};throw Error('Cache vazio')},
   getDoc:async ref=>{gets.push(ref.path);return ref.path==='admins/'+user.uid?{exists:()=>false}:{exists:()=>true,data:()=>({dataUrl:'data:image/jpeg;base64,AAAA'})}},
   getDocs:async ref=>{gets.push(ref);return snap([])},getDocsFromServer:async()=>snap([]),
-  onSnapshot:(ref,accept,fail)=>{
+  onSnapshot:(ref,...args)=>{
+   const [accept,fail]=args.slice(-2);
    const item={ref,accept,fail,active:true};listeners.push(item);
    queueMicrotask(()=>{if(!item.active)return;
     if(ref.path==='settings/main')accept({data:()=>({budget:12000})});
@@ -60,6 +61,16 @@ test('backend: carregamento por tela, cache de fotos, paginação, pausa e limit
   assert(active().find(x=>x.ref.path==='tripPosts').ref.filters.some(f=>f.limit===2));
   assert(!gets.some(x=>typeof x==='string'&&x.startsWith('tripPhotos/')));
   assert.equal(gets.filter(x=>typeof x==='string'&&x.startsWith('casePhotos/')).length,0);
+  globalThis.document.documentElement={dataset:{finale:'xvii'}};
+  api.refreshTime();await flush();
+  const receipt=active().find(x=>x.ref.path==='congressReviewVoters/'+user.uid);
+  assert.equal(state.reviewed,false);
+  receipt.accept({exists:()=>true,metadata:{hasPendingWrites:true}});assert.equal(state.reviewed,false);
+  receipt.accept({exists:()=>true,metadata:{hasPendingWrites:false}});assert.equal(state.reviewed,true);
+  api.setView('despedida');assert.equal(active().length,0);
+  api.setView('contas');await flush();assert(active().some(x=>x.ref.path==='pixKeys'));
+  globalThis.document.documentElement.dataset={};
+  api.setView('inicio');await flush();assert(!active().some(x=>x.ref.path.startsWith('congressReviewVoters/')));
   const coreCount=listeners.length;api.setView('fofoca');await flush();assert.equal(listeners.length,coreCount+2);
   const chatQuery=active().find(x=>x.ref.path==='chat'&&x.ref.filters.some(f=>f.limit===50)).ref;assert(chatQuery.filters.some(f=>f.limit===50));assert.equal(state.chat.length,50);assert(state.chatHasMore);assert(active().some(x=>x.ref.path==='chatAuthors/'+user.uid+'/messages'));
   assert(!active().some(x=>x.ref.path==='tripPosts'));

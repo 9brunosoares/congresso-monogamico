@@ -1,0 +1,36 @@
+.finale-stage {
+  position:fixed; inset:0; z-index:2; overflow:auto; overscroll-behavior:contain;
+  box-sizing:border-box; background:#000; color:#f4f2ef;
+  display:flex; flex-direction:column; align-items:center;
+  padding:max(16px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom));
+}
+.finale-center {margin:auto 0; text-align:center; padding:12px 0 28px}
+.finale-crest {position:relative; margin:0 auto; width:min(88vw,53vh,510px)}
+.finale-crest img {display:block; width:100%; height:auto}
+.finale-stage h1 {font:400 clamp(22px,4.9vw,35px)/1.16 Georgia,serif; letter-spacing:-.035em; margin:0; color:#e8e5e1}
+.finale-stage h1:focus {outline:none}
+.finale-finance {display:flex; align-items:center; gap:11px; min-height:46px; flex-shrink:0; margin-top:12px}
+.finale-finance svg {width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round}
+.finale-finance span {margin-left:7px}
+.finale-finance-header {display:flex; align-items:center; justify-content:space-between; margin:4px 0 22px}
+.finale-transition,.finale-old,.finale-embers {position:fixed; inset:0; overflow:hidden; pointer-events:none}
+.finale-transition {z-index:1000}
+.finale-old {background:var(--bg); padding-top:env(safe-area-inset-top); box-sizing:border-box;
+  -webkit-mask:url('assets/finale/dissolve.png') top / 100% 2800% no-repeat;
+  mask:url('assets/finale/dissolve.png') top / 100% 2800% no-repeat;
+  animation:finale-erode 1.65s steps(27,end) .28s both}
+.finale-embers {background:url('assets/finale/embers.png') top / 100% 2800% no-repeat; animation:finale-sparks 1.65s steps(27,end) .28s both}
+@keyframes finale-erode {from{-webkit-mask-position:0 0%;mask-position:0 0%}to{-webkit-mask-position:0 100%;mask-position:0 100%}}
+@keyframes finale-sparks {from{background-position:0 0%}to{background-position:0 100%}}
+.finale-opening .finale-crest {animation:finale-emerge 2.25s cubic-bezier(.16,.76,.2,1) both}
+.finale-opening .finale-crest::after {content:"";position:absolute;left:87.8%;top:20.7%;width:14%;aspect-ratio:1;
+  background:radial-gradient(ellipse,#fff9dc 0%,#ffa77e 8%,transparent 64%); pointer-events:none;
+  animation:finale-glint 1.15s 1.45s both}
+.finale-opening h1,.finale-opening .finale-finance {animation:finale-caption .75s 1.4s both}
+.finale-opening .finale-finance {animation-delay:1.75s}
+@keyframes finale-emerge {from{opacity:.12;transform:scale(.93);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+@keyframes finale-glint {0%,100%{opacity:0;transform:translate(-50%,-50%) scale(.35)}45%{opacity:.9;transform:translate(-50%,-50%) scale(1)}}
+@keyframes finale-caption {from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@media(max-height:450px){.finale-crest{width:min(52vh,270px)}.finale-center{padding:0}.finale-stage h1{font-size:18px}.finale-stage h1 br{display:none}.finale-stage h1 br:after{content:" "}}
+@media(prefers-reduced-motion:reduce){.finale-transition{display:none}.finale-opening *,.finale-opening *::after{animation:none!important}.finale-opening .finale-crest::after{display:none}}
+

@@ -39,7 +39,9 @@ const errorText=e=>notice(({
 export {errorText};
 const pool=subscriptionPool(spec=>{
  let active=true;
- const stop=onSnapshot(spec.ref,snapshot=>{
+ // The receipt can be acknowledged without changing its fields.
+ const options=spec.key==='reviewReceipt'?[{includeMetadataChanges:true}]:[];
+ const stop=onSnapshot(spec.ref,...options,snapshot=>{
   if(!active||spec.version!==generation)return;
   spec.accept(snapshot);firstSnapshots.add(spec.key);state.loaded={...state.loaded,[spec.key]:true};
   if([...required].every(key=>firstSnapshots.has(key)))state.ready=true;
@@ -76,9 +78,15 @@ function rows(snapshot){return snapshot.docs.map(d=>({...d.data(),id:d.id})).sor
 function publishChat(){state.chat=mergeRows(chatOlder,chatHead).map(m=>({...m,at:formatStamp(m.createdAt),mine:mine.has(m.id)}));}
 function syncData(){
  if(!sessionReady||paused||quotaBlocked)return;
+ if(currentView==='despedida'&&state.ready){pool.sync([]);return;}
  const version=generation,lazy=lazyCollections(currentView,state.admin),specs=[];
  required=new Set();
  const listen=(key,ref,accept,essential=false)=>{specs.push({key,ref,accept,version});if(essential)required.add(key);};
+ if(document.documentElement?.dataset?.finale==='xvii'){
+  listen('reviewReceipt',doc(db,'congressReviewVoters',auth.currentUser.uid),snap=>{
+   if(!snap.metadata?.hasPendingWrites)state.reviewed=snap.exists();
+  });
+ }
  for(const [name,key] of [['points','points'],['expenses','exps']])listen(key,collection(db,name),snapshot=>{state[key]=rows(snapshot)},true);
  listen('payments',collection(db,'payments'),snapshot=>{state.payments=rows(snapshot)},true);
  listen('closing',doc(db,'financeClosings','main'),snapshot=>{state.closing=snapshot.exists()?{...snapshot.data(),transfers:transferRows(snapshot.data())}:null},true);
@@ -212,7 +220,7 @@ export async function start(onUpdate){
   try{
    await claimProfile(user,id);if(version!==generation)return;
    const access=await getDoc(doc(db,'admins',user.uid));if(version!==generation)return;
-   state.me=id;state.admin=access.exists();sessionReady=true;syncData();emit();
+   state.me=id;state.uid=user.uid;state.admin=access.exists();sessionReady=true;syncData();emit();
   }catch(e){if(version!==generation)return;failed(e);}
  });
  // Só compara datas localmente. A pool não recria consultas que continuam iguais.

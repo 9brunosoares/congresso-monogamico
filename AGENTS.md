@@ -1,5 +1,12 @@
 # XVI Congresso Monogâmico — passagem de bastão
 
+## Despedida do XVII após a avaliação (22/11/2026)
+- O atributo `data-finale="xvii"` no elemento `html` do index ativa a despedida. Para voltar ao app completo, remova o atributo e publique o index. O recibo privado da pesquisa e os dados do congresso continuam válidos. A mudança de modo vale ao reabrir.
+- A conta autenticada entra no encerramento após confirmação do envio ou leitura do próprio recibo existente. A animação usa a tela do XVI como camada superior e uma máscara de erosão sincronizada com a borda incandescente. O marcador local por UID permite entrar direto na tela final nas próximas visitas nesse aparelho. Movimento reduzido pula a dissolução.
+- Racha Conta usa as telas e operações financeiras existentes com acesso a gastos, Pix, pagamentos, saldo, histórico e fechamento. A tela de despedida suspende as consultas da navegação. O botão “Encerramento” volta ao XVII. Nenhuma alteração de regras ou migração de dados.
+- Verificado em navegador móvel simulado com envio recusado e confirmado, reentrada, recibo anterior, contas independentes, movimento reduzido, navegação financeira e volta ao modo original. Front-end 20261122p.
+
+
 ## Avaliação em destaque no encerramento (22/11/2026)
 - Pedido de Bru: botão **Avalie o Congresso** agora dentro do card **Congresso encerrado / Até o XVII.**, com botão vermelho destacado e indicação de pesquisa anônima. Removido o atalho separado. Nosso feed passa para depois dos demais blocos da Home; Mural permanece no topo. Front-end20261122o, sem mudanças em dados, regras ou mapa.
 

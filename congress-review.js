@@ -2,7 +2,7 @@ import {REVIEW_TOPICS,REVIEW_SUGGESTION,validReview,reviewSummary} from './congr
 import {createCongressReviewData} from './congress-review-data.js?v=20261122n';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-export function openCongressReview({admin=false,onClose,api=createCongressReviewData()}={}){
+export function openCongressReview({admin=false,onClose,onReviewed,api=createCongressReviewData()}={}){
  const dialog=document.createElement('dialog');dialog.className='congress-review';dialog.setAttribute('aria-labelledby','review-title');
  const ratings={};let text='',loading=true,busy=false,saved=false,error='',loadFailed=false,results=null,closed=false;
  function close(){if(closed)return;closed=true;dialog.close();dialog.remove();onClose?.();}
@@ -13,7 +13,7 @@ export function openCongressReview({admin=false,onClose,api=createCongressReview
   if(results)body+=`<section class="review-results"><h3>O que a turma achou</h3><p class="muted">${results.voters} ${results.voters===1?'avaliação recebida':'avaliações recebidas'} · respostas anônimas</p>${reviewSummary(results).map(t=>`<div class="review-result"><b>${t.title}</b><strong class="num">${t.average===null?'—':t.average.toFixed(1).replace('.',',')}<small> / 5</small></strong><p class="muted">${t.rated} notas · ${t.counts[0]} não se aplica</p><div class="review-counts">${t.counts.slice(1).map((n,i)=>`<span>${i+1}★ <b>${n}</b></span>`).join('')}</div></div>`).join('')}<h3>Sugestões</h3>${Object.values(results.suggestions).length?Object.values(results.suggestions).map(s=>`<blockquote>${esc(s.text)}</blockquote>`).join(''):'<p class="muted">Nenhuma sugestão por enquanto.</p>'}</section>`;
   dialog.innerHTML=`<div class="review-shell"><header class="row"><span class="eyebrow grow">XVI Congresso · avaliação</span><button class="link" type="button" data-review-close>Fechar</button></header><h2 id="review-title">Como foi pra você?</h2>${body}<p class="review-error" role="alert">${esc(error)}</p></div>`;dialog.scrollTop=scroll;
  }
- async function load(){loading=true;error='';render();try{saved=await api.load();}catch{error='Não foi possível carregar. Feche e reabra a pesquisa.';}finally{loading=false;if(error)loadFailed=true;render();}}
+ async function load(){loading=true;error='';render();try{saved=await api.load();if(saved&&!closed)onReviewed?.();}catch{error='Não foi possível carregar. Feche e reabra a pesquisa.';}finally{loading=false;if(error)loadFailed=true;render();}}
  dialog.addEventListener('click',e=>{
   if(e.target.closest('[data-review-close]'))return close();
   const rate=e.target.closest('[data-review-rate]');if(rate&&!busy){text=dialog.querySelector('#review-text')?.value||'';ratings[rate.dataset.reviewRate]=Number(rate.dataset.value);error='';render();dialog.querySelector(`[data-review-rate="${rate.dataset.reviewRate}"][data-value="${rate.dataset.value}"]`)?.focus({preventScroll:true});}
@@ -23,7 +23,7 @@ export function openCongressReview({admin=false,onClose,api=createCongressReview
  dialog.addEventListener('submit',e=>{
   e.preventDefault();if(busy||saved||loading)return;text=dialog.querySelector('#review-text').value;
   if(!validReview(ratings,text)){error='Avalie os seis temas ou marque Não se aplica.';render();dialog.querySelector('.review-error')?.scrollIntoView({block:'nearest'});return;}
-  busy=true;error='';render();void api.send({...ratings},text).then(()=>{saved=true;text='';dialog.scrollTop=0;}).catch(()=>{error='Não foi possível enviar. Suas escolhas continuam aqui; confira a conexão e tente novamente.';}).finally(()=>{busy=false;render();});
+  busy=true;error='';render();void api.send({...ratings},text).then(()=>{saved=true;text='';dialog.scrollTop=0;onReviewed?.();}).catch(()=>{error='Não foi possível enviar. Suas escolhas continuam aqui; confira a conexão e tente novamente.';}).finally(()=>{busy=false;render();});
  });
  dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
  document.body.append(dialog);render();dialog.showModal();void load();return {close};

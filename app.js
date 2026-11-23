@@ -1,3 +1,4 @@
+import {playFarewell,farewellScreen} from './farewell.js?v=20261122p';
 import {carFor,departure,availableDay,agendaFor,votePeople,departureFor,returnActivity} from './travel.js?v=20261122d';
 import {prepareReportPhoto} from './report-photo.js';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261120e';
@@ -8,7 +9,7 @@ import {createChatColors} from './chat-colors.js?v=20261107c';
 import {bindAgendaSwipe,adjacentDay} from './agenda-gesture.js';
 import {PEOPLE, P, ALL, EMOJIS} from './roster.js?v=20261120j';
 import {dayKey,tripStarted,tripPhotoDay,votingOpen,missedVotePoints,VOTE_DAYS,votingKey,resultDay,alreadyVotedMessage,scoringPoints,notice} from './shared.js?v=20261122e';
-import * as backend from './backend.js?v=20261122e';
+import * as backend from './backend.js?v=20261122p';
 import {nanuAgendaAccess} from './nanu-poll-model.js?v=20261121t';
 import {igorAgendaAccess} from './igor-poll-model.js?v=20261121p';
 import {openTravelMap} from './mapa-viagem.js?v=20261122m';
@@ -23,12 +24,40 @@ try { discoveryStorage=localStorage; } catch {}
 const discovery=createDiscovery(discoveryStorage);
 const openedProfiles=new Set(),seenResults=new Set();
 let portalAppearedAt=0,backgroundAt=0,bruAlert;
+const finaleEnabled=document.documentElement?.dataset?.finale==='xvii';
+const financeTabs=new Set(['contas','saldo','pagamentos','historico','fechamento']);
+let farewellOwner=null;
+const seenFarewells=new Set();
+function enterFarewell(){
+ if(!finaleEnabled||!S.uid||farewellOwner===S.uid)return;
+ farewellOwner=S.uid;
+ const key='xvi-finale-seen:'+S.uid;
+ let seen=seenFarewells.has(key);
+ try{seen ||= discoveryStorage?.getItem(key)==='1';}catch{}
+ congressReview?.close();
+ bruAlert?.update({me:null,ready:false});
+ for(const item of document.querySelectorAll('.scrim'))item.remove();
+ travelMap?.close();dailyQuiz?.close();presentationRanking?.close();igorPoll?.close();nanuPoll?.close();
+ const root=$('#root');
+ if(!seen){
+  if(!root.querySelector('.auth-view'))root.innerHTML='<div class="app auth-view">'+header()+'<main>'+viewInicio()+'</main></div>';
+  playFarewell(root);
+  seenFarewells.add(key);
+  try{discoveryStorage?.setItem(key,'1');}catch{}
+ }
+ tab='despedida';
+ root.innerHTML=farewellScreen(!seen);
+ scrollTo(0,0);
+ root.querySelector('h1').focus({preventScroll:true});
+ photoObserver?.disconnect();
+ render();
+}
 let congressReview=null;
 async function showCongressReview(){
- if(congressReview||!S.me)return;const owner=S.me;
- const {openCongressReview}=await import('./congress-review.js?v=20261122n');
- if(S.me!==owner||congressReview)return;
- congressReview=openCongressReview({admin:isAdm(),onClose:()=>{congressReview=null;}});
+ if(congressReview||!S.me)return;const owner=S.me,uid=S.uid;
+ const {openCongressReview}=await import('./congress-review.js?v=20261122p');
+ if(S.me!==owner||S.uid!==uid||congressReview||farewellOwner)return;
+ congressReview=openCongressReview({admin:isAdm(),onReviewed:()=>{if(S.uid===uid&&S.me===owner)enterFarewell();},onClose:()=>{congressReview=null;}});
 }
 
 // Viagem: quarta 18 à noite até domingo 22/11/2026 no começo da tarde.
@@ -821,6 +850,7 @@ function simulateTrip(){
  }});
 }
 function go(t){
+ if(farewellOwner&&t!=='despedida'&&!financeTabs.has(t))return;
  if(t==='tribunal'&&!isAdm())return;
  if(t==='programa')day=currentAgendaDay();
  if(t==='fofoca'&&tab!=='fofoca'){enterChat=true;chatColors.reset();}
@@ -839,10 +869,23 @@ function render(){
   backend.setView?.(tab==='saldo'?'contas':tab);
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
+  if(finaleEnabled&&S.reviewed&&!farewellOwner){enterFarewell();return;}
+  if(farewellOwner&&tab==='despedida'){
+   if(!$('#root').querySelector('.finale-stage'))$('#root').innerHTML=farewellScreen(false);
+   return;
+  }
+  if(finaleEnabled&&!farewellOwner&&!S.loaded?.reviewReceipt&&!S.error){
+   $('#root').innerHTML='<div class="app login">'+loader()+'<p role="status">Abrindo o congresso…</p></div>';return;
+  }
   if(!openedProfiles.has(S.me)){openedProfiles.add(S.me);discovery.record(S.me,'open');}
   if(tab==='programa'||tab==='contas')discovery.record(S.me,tab);
   if(tab==='inicio'&&discovery.portal(S.me)&&!portalAppearedAt)portalAppearedAt=Date.now();
   const body = ({inicio:viewInicio,fotos:()=>tripFeed(true),programa:viewPrograma,placar:viewPlacar,querido:viewQuerido,contas:viewContas,saldo:viewPersonalBalance,pagamentos:viewPayments,historico:viewFinanceHistory,fechamento:viewClosing,fofoca:viewFofoca,mural:viewMural,tribunal:viewTribunal}[tab]||viewInicio)();
+  if(farewellOwner){
+   $('#root').innerHTML=`<div class="app auth-view"><header class="finale-finance-header"><button class="link" type="button" data-go="despedida">← Encerramento</button><button class="link" type="button" id="exitFinaleAccount">Sair da conta</button></header><h1 class="page-title">Racha Conta</h1>${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:''}<main>${body}</main></div>`;
+   for(const id of busyActions){const button=document.getElementById(id);if(button)button.disabled=true;}
+   refreshRecipientPix();return;
+  }
   $("#root").innerHTML = `<div class="app auth-view ${tab==='fofoca'?'chat-view':''}">${header()}${S.error?`<p role="alert">${esc(S.error)}</p><button class="link" id="retrySync" type="button">Tentar novamente</button>`:""}<main>${body}</main>
     </div>
     <nav class="tabs" aria-label="Seções"><div class="tabs-in">${Object.keys(LABELS).map(k=>`<button type="button" data-go="${k}" aria-label="${LABELS[k]}" ${k===tab||(k==='contas'&&['saldo','pagamentos','historico','fechamento'].includes(tab))?'aria-current="page"':""}><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${(k==='fofoca'&&unreadChat())||(k==='querido'&&votePeople(ALL,Number(new Date(Date.now()-10800000).getUTCDate())).includes(S.me)&&votingOpen()&&S.loaded?.['voted-'+votingKey()]&&!(S.qvoted[votingKey()]||[]).includes(S.me))?`<i class="notice-dot ${k==='querido'?'pulse':''}"></i>`:''}</span><span class="tab-label">${k==="querido"?"Queri<br>dômetro":LABELS[k]}</span></button>`).join("")}</div></nav>`;
@@ -909,6 +952,7 @@ document.addEventListener('click',e=>{
  }
  const tripDelete=e.target.closest('[data-trip-delete]');if(tripDelete){sheetDeleteTripPhoto(tripDelete.dataset.tripDelete);return;}
  if(e.target.closest('#addTripPhoto')){sheetTripPhoto();return;}
+ if(e.target.closest('#exitFinaleAccount')){const b=e.target.closest('button');void act(b,()=>backend.logout());return;}
  if(e.target.closest('#simulateTrip')){simulateTrip();return;}
  if(e.target.closest('#congressReview')){void showCongressReview().catch(()=>toast('Não foi possível abrir a pesquisa. Tente novamente.'));return;}
  if(e.target.closest('#nanuPollLink')){void showNanuPoll();return;}
@@ -949,7 +993,7 @@ function homePhase(){const {cur,nxt}=nextItem();return `${cur?.start}:${nxt?.sta
 let votingPhase=votingPhaseAt(),currentHomePhase=homePhase();
 setInterval(()=>{tick();const phase=votingPhaseAt(),home=homePhase();if(phase!==votingPhase||home!==currentHomePhase){votingPhase=phase;currentHomePhase=home;backend.refreshTime?.();render();void settlePresentationAwards();}},1000);
 document.addEventListener('visibilitychange',()=>{
- bruAlert?.update({me:S.me,ready:S.ready,hidden:document.hidden});
+ bruAlert?.update({me:farewellOwner?null:S.me,ready:S.ready,hidden:document.hidden});
  if(document.hidden){backgroundAt=Date.now();return;}
  // Uma volta após um minuto fora também conta como novo acesso no PWA do iOS.
  if(S.ready&&S.me&&backgroundAt&&Date.now()-backgroundAt>=60000){discovery.record(S.me,'open');render();}
@@ -959,13 +1003,13 @@ document.addEventListener('visibilitychange',()=>{
 render();
 backend.start(data=>{
  const chat=$('#chatIn'),draft=chat?.value,focused=document.activeElement===chat,position=chat?.selectionStart;
- const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){congressReview?.close();congressReview=null;travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;presentationRanking?.close();presentationRanking=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
+ const previous=S.me,wasReady=S.ready;S=data;if(previous!==S.me){if(farewellOwner){farewellOwner=null;tab='inicio';document.querySelector('.finale-transition')?.remove();}congressReview?.close();congressReview=null;travelMap?.close();dailyQuiz?.close();dailyQuiz=null;nanuPoll?.close();nanuPoll=null;igorPoll?.close();igorPoll=null;presentationRanking?.close();presentationRanking=null;loginPerson=null;enterChat=tab==='fofoca';qDraft={};chatColors.reset();}
  if(S.ready&&S.me&&(!wasReady||previous!==S.me)&&!document.hidden)void backend.recordPilotUsage?.('open');
  AGENDA.splice(0,AGENDA.length,...(data.agenda||[]));
  const bottom=document.documentElement.scrollHeight-innerHeight-scrollY<160;const y=scrollY;render();if(tab==='fofoca'&&(enterChat||bottom)){enterChat=false;scrollChat();}else scrollTo(0,y);
  if(draft && $('#chatIn')){$('#chatIn').value=draft;if(focused){$('#chatIn').focus();$('#chatIn').setSelectionRange(position,position);}}
  bruAlert??=createBruAlert({storage:discoveryStorage});
- bruAlert.update({me:S.me,ready:S.ready,hidden:document.hidden});
+ bruAlert.update({me:farewellOwner?null:S.me,ready:S.ready,hidden:document.hidden});
  if(S.ready&&S.me&&dayKey()==='20779'&&Date.now()<PRESENTATION_END&&(S.qvoted['20779']||[]).includes(S.me))void offerPresentationRanking();
  void settlePresentationAwards();
 }).catch(e=>{S.ready=true;S.error=backend.errorText(e);render();});
