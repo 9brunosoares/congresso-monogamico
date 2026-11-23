@@ -1,6 +1,6 @@
 import {EMOJIS,P} from './roster.js?v=20261120j';
-import {keepsakes} from './wrapped-model.js?v=20261123a';
-import {slides,paintPoster,summary} from './wrapped-poster.js?v=20261123a';
+import {keepsakes} from './wrapped-model.js?v=20261123b';
+import {slides,paintPoster,summary} from './wrapped-poster.js?v=20261123b';
 
 function photo(src){
  return new Promise(resolve=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>resolve(null);img.src=src;});

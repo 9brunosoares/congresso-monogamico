@@ -1,6 +1,6 @@
 import {getFirestore,doc,getDoc} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import {VOTE_DAYS} from './shared.js?v=20261122e';
-import {emojiStory} from './wrapped-model.js?v=20261123a';
+import {emojiStory} from './wrapped-model.js?v=20261123b';
 
 export async function loadWrappedEmoji(id){
  const db=getFirestore();

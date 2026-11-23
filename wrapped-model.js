@@ -1,7 +1,7 @@
 import {decodeTally} from './shared.js?v=20261122e';
-import {EMOJIS} from './roster.js?v=20261120j';
+import {ALL,EMOJIS} from './roster.js?v=20261120j';
 
-// Minutos de tela fictícios. O destaque ao lado é uma lembrança da viagem.
+// Tempo de tela e lembrança de cada edição pessoal.
 export const keepsakes = {
  bruno:[60480,'O congresso coube no seu bolso.','Você fez o app. Depois precisou de um app para contar o que aconteceu no app.'],
  cadu:[48967,'O javali era de verdade.','Tinha um javali escondido no aplicativo. Você achou um na vida real. A COMORG pagou 10 pontos.'],
@@ -18,16 +18,30 @@ export const keepsakes = {
  sadano:[38999,'A chave estava com você.','Você encontrou a chave da cozinha. A casa voltou a funcionar e o achado rendeu 3 pontos.']
 };
 
-export function emojiStory(rounds,id){
+function leaders(tally,choices){
+ const count=Math.max(...choices.map(e=>tally[e]));
+ return {count,leaders:count?choices.filter(e=>tally[e]===count):[]};
+}
+
+function profileTallies(rounds,id){
  const totals=Object.fromEntries(EMOJIS.map(e=>[e,0]));
  const days=[];
  for(const {day,counts} of rounds){
   const tally=decodeTally(counts?.[id]||0);
   for(const e of EMOJIS)totals[e]+=tally[e];
-  const best=Math.max(...Object.values(tally));
-  if(best)days.push({day,leaders:EMOJIS.filter(e=>tally[e]===best)});
+  days.push({day,tally});
  }
- const count=Math.max(...Object.values(totals));
- return {count,leaders:count?EMOJIS.filter(e=>totals[e]===count):[],days};
+ return {totals,days};
+}
+
+export function emojiStory(rounds,id){
+ const heart='❤️';
+ const profiles=ALL.map(person=>({person,...profileTallies(rounds,person)}));
+ const common=profiles.filter(p=>leaders(p.totals,EMOJIS).leaders.includes(heart)).length>ALL.length/2;
+ const mostHearts=profiles.reduce((best,p)=>p.totals[heart]>best.totals[heart]?p:best);
+ const choices=common?(mostHearts.person===id?[heart]:EMOJIS.filter(e=>e!==heart)):EMOJIS;
+ const profile=profiles.find(p=>p.person===id);
+ const days=profile.days.map(({day,tally})=>({day,leaders:leaders(tally,choices).leaders})).filter(d=>d.leaders.length);
+ return {...leaders(profile.totals,choices),days};
 }
 
