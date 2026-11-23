@@ -28,9 +28,9 @@ test('os 13 têm lembranças e tempos de tela distintos, inclusive no resumo com
  assert.deepEqual(Object.keys(keepsakes).sort(),[...ALL].sort());
  const minutes=ALL.map(id=>keepsakes[id][0]);assert.equal(new Set(minutes).size,13);
  for(const id of ALL){
-  const [minutes,title,memory]=keepsakes[id];assert(minutes>5*24*60);assert(title&&memory);
+  const [minutes,title,memory]=keepsakes[id];assert(Number.isInteger(minutes)&&minutes>0&&minutes<24*60);assert(title&&memory);
   const data={id,nick:id,emoji:{leaders:['❤️'],count:4},points:87,rank:2,minutes,title,memory};
-  const card=summary(7,data);assert(card.includes('2º lugar'));assert(card.includes('87 pontos'));assert(card.includes(screenTime(minutes)));assert.doesNotMatch(card+' '+summary(4,data),/fictíci|inventad/i);
+  const card=summary(7,data);assert(card.includes('2º lugar'));assert(card.includes('87 pontos'));assert(card.includes(screenTime(minutes)));assert(summary(4,data).includes(screenTime(minutes)));assert.doesNotMatch(card+' '+summary(4,data),/fictíci|inventad/i);
  }
 });
 

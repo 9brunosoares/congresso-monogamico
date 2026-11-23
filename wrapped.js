@@ -1,5 +1,5 @@
 import {EMOJIS,P} from './roster.js?v=20261120j';
-import {keepsakes} from './wrapped-model.js?v=20261123b';
+import {keepsakes} from './wrapped-model.js?v=20261123d';
 import {slides,paintPoster,summary} from './wrapped-poster.js?v=20261123b';
 
 function photo(src){
