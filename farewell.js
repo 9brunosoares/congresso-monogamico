@@ -23,7 +23,7 @@ export function playFarewell(root) {
 export function farewellScreen(animate) {
   return `<main class="finale-stage${animate?' finale-opening':''}" aria-labelledby="finale-title">
     <div class="finale-center">
-      <div class="finale-crest"><img src="assets/finale/xvii.webp" width="1254" height="1254" alt="XVII Congresso Monogâmico de São Paulo · COMORG"></div>
+      <div class="finale-crest"><img src="assets/finale/xvii.webp" width="1254" height="1254" alt="XVII Congresso Monogâmico de São Paulo · COMORG"><time class="finale-date" datetime="2027-11-11">11/11/2027</time></div>
       <h1 id="finale-title" tabindex="-1">Nos vemos no congresso <br>do ano que vem</h1>
     </div>
     <button type="button" class="wrap-launch" data-open-wrapped aria-haspopup="dialog">Meu XVI Wrapped ↗</button>

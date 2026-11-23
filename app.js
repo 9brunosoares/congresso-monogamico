@@ -1,4 +1,4 @@
-import {playFarewell,farewellScreen} from './farewell.js?v=20261123a';
+import {playFarewell,farewellScreen} from './farewell.js?v=20261123g';
 import {carFor,departure,availableDay,agendaFor,votePeople,departureFor,returnActivity} from './travel.js?v=20261122d';
 import {prepareReportPhoto} from './report-photo.js';
 import {moneyToCents,expenseCents,ledgerBalances,simplifiedTransfers,settlementsOpen,activeExpenses,canManagePayment,splitCents,closingReport,closingSnapshot,transferRows} from './finance.js?v=20261120e';

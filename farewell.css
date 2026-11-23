@@ -8,6 +8,7 @@
 .finale-crest {position:relative; margin:0 auto; width:min(88vw,53vh,510px)}
 .finale-crest img {display:block; width:100%; height:auto}
 .finale-stage h1 {font:400 clamp(22px,4.9vw,35px)/1.16 Georgia,serif; letter-spacing:-.035em; margin:0; color:#e8e5e1}
+.finale-date {position:absolute; inset-inline:0; bottom:5%; color:#ff9984; font:600 clamp(13px,3.5vw,18px)/1.2 var(--f-mono); letter-spacing:.13em}
 .finale-stage h1:focus {outline:none}
 .finale-finance {display:flex; align-items:center; gap:11px; min-height:46px; flex-shrink:0; margin-top:12px}
 .finale-finance svg {width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round}
