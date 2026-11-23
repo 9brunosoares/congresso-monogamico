@@ -56,7 +56,7 @@ let wrapped=null;
 async function showWrapped(){
  const uid=S.uid,id=S.me;
  if(!uid||!P[id]||farewellOwner!==uid||tab!=='despedida'||wrapped)return;
- const [{openWrapped},{loadWrappedEmoji}]=await Promise.all([import('./wrapped.js?v=20261123e'),import('./wrapped-data.js?v=20261123d')]);
+ const [{openWrapped},{loadWrappedEmoji}]=await Promise.all([import('./wrapped.js?v=20261123f'),import('./wrapped-data.js?v=20261123d')]);
  if(S.uid!==uid||farewellOwner!==uid||tab!=='despedida'||wrapped)return;
  const rows=ranking(),index=rows.findIndex(row=>row.id===id);
  wrapped=openWrapped({id,rank:index+1,points:rows[index].s,loadEmoji:loadWrappedEmoji,onClose:()=>{wrapped=null;document.querySelector('[data-open-wrapped]')?.focus();}});

@@ -134,7 +134,7 @@ export function openWrapped({id,rank,points,onClose,loadEmoji}){
    const [emoji,avatar,presentation]=await Promise.all([loadEmoji(id),photo('img/'+id+'.jpg'),id==='diogo'?null:photo('assets/presentations/'+id+'.webp'),document.fonts?.ready]);
    if(closed)return;Object.assign(data,{emoji,avatar,presentation});ready=true;
    announce('Seu Congresso Wrapped está pronto.');
-   actions.innerHTML=button('silent','Sem som')+button('play','▶　Dar play com som');
+   actions.innerHTML=button('silent','Sem som')+button('play','▶　Dar play');
   }catch{if(!closed){announce('Não foi possível carregar o Wrapped.',true);actions.innerHTML=button('retry','Tentar novamente');}}
  }
  let touchStart=null;
