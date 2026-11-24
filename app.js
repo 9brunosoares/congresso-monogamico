@@ -24,12 +24,12 @@ try { discoveryStorage=localStorage; } catch {}
 const discovery=createDiscovery(discoveryStorage);
 const openedProfiles=new Set(),seenResults=new Set();
 let portalAppearedAt=0,backgroundAt=0,bruAlert;
-const finaleEnabled=document.documentElement?.dataset?.finale==='xvii';
+function finaleEnabled(){const config=document.documentElement?.dataset;return config?.finale==='xvii'&&!(Date.now()<Date.parse(config.previewUntil));}
 const financeTabs=new Set(['contas','saldo','pagamentos','historico','fechamento']);
 let farewellOwner=null;
 const seenFarewells=new Set();
 function enterFarewell(){
- if(!finaleEnabled||!S.uid||farewellOwner===S.uid)return;
+ if(!finaleEnabled()||!S.uid||farewellOwner===S.uid)return;
  farewellOwner=S.uid;
  const key='xvi-finale-seen:'+S.uid;
  let seen=seenFarewells.has(key);
@@ -878,12 +878,12 @@ function render(){
   backend.setView?.(tab==='saldo'?'contas':tab);
   if(!S.ready){$('#root').innerHTML=`<div class="app login">${loader()}<h2>Conectando ao congresso…</h2><p class="muted" role="status">${esc(S.error||'Carregando seus dados.')}</p>${S.error?'<button class="btn" id="retry" type="button">Tentar novamente</button>':''}</div>`;const retry=$('#retry');if(retry)retry.onclick=()=>location.reload();return;}
   if(!S.me || !P[S.me]){ viewLogin(); return; }
-  if(finaleEnabled&&S.reviewed&&!farewellOwner){enterFarewell();return;}
+  if(finaleEnabled()&&S.reviewed&&!farewellOwner){enterFarewell();return;}
   if(farewellOwner&&tab==='despedida'){
    if(!$('#root').querySelector('.finale-stage'))$('#root').innerHTML=farewellScreen(false);
    return;
   }
-  if(finaleEnabled&&!farewellOwner&&!S.loaded?.reviewReceipt&&!S.error){
+  if(finaleEnabled()&&!farewellOwner&&!S.loaded?.reviewReceipt&&!S.error){
    $('#root').innerHTML='<div class="app login">'+loader()+'<p role="status">Abrindo o congresso…</p></div>';return;
   }
   if(!openedProfiles.has(S.me)){openedProfiles.add(S.me);discovery.record(S.me,'open');}
@@ -999,7 +999,7 @@ document.addEventListener('submit',e=>{
  act(e.target.querySelector('button'),async()=>{await backend.sendChat(text);if($('#chatIn')?.value.trim()===text)$('#chatIn').value='';$('#chatIn')?.focus();});
 });
 function votingPhaseAt(at=Date.now()){return resultDay(at)?.key??votingOpen(at);}
-function homePhase(){const {cur,nxt}=nextItem();return `${cur?.start}:${nxt?.start}:${Date.now()<DISCOVERY_END}`;}
+function homePhase(){const {cur,nxt}=nextItem();return `${cur?.start}:${nxt?.start}:${Date.now()<DISCOVERY_END}:${finaleEnabled()}`;}
 let votingPhase=votingPhaseAt(),currentHomePhase=homePhase();
 setInterval(()=>{tick();const phase=votingPhaseAt(),home=homePhase();if(phase!==votingPhase||home!==currentHomePhase){votingPhase=phase;currentHomePhase=home;backend.refreshTime?.();render();void settlePresentationAwards();}},1000);
 document.addEventListener('visibilitychange',()=>{
